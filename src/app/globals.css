@@ -1,12 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --color-cream: #f4f1ea;
+  --color-forest: #20342b;
+  --color-sage: #6f8f6a;
+  --color-gold: #c9a646;
+  --color-gold-light: #d4af37;
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-sans: "Helvetica Neue", Arial, sans-serif;
+}
+
 body {
-  background-color: #f4f1ea;
-  color: #20342b;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
+  @apply bg-cream text-forest font-sans;
 }
 
 h1, h2, h3 {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-style: italic;
+  @apply font-serif italic;
 }
