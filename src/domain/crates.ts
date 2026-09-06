@@ -33,3 +33,8 @@ export async function renameCrate(db: Db, crateId: string, name: string): Promis
 export async function deleteCrate(db: Db, crateId: string): Promise<void> {
   await db.delete(crates).where(eq(crates.id, crateId));
 }
+
+export async function getCrateById(db: Db, crateId: string) {
+  const [row] = await db.select().from(crates).where(eq(crates.id, crateId)).limit(1);
+  return row ?? null;
+}

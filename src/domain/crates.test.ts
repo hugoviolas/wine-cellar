@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createTestDb } from '../db/testDb';
 import { bootstrapSuperAdmin } from './bootstrap';
-import { createCrate, listCrates, renameCrate, deleteCrate } from './crates';
+import { createCrate, listCrates, renameCrate, deleteCrate, getCrateById } from './crates';
 
 describe('crates', () => {
   it('crée puis liste une clayette', async () => {
@@ -42,5 +42,19 @@ describe('crates', () => {
     const crateId = await createCrate(db, { cellarId, name: 'À supprimer', capacity: 6 });
     await deleteCrate(db, crateId);
     expect(await listCrates(db, cellarId)).toHaveLength(0);
+  });
+
+  it('retourne null pour un identifiant de clayette inconnu', async () => {
+    const db = await createTestDb();
+    expect(await getCrateById(db, 'inconnu')).toBeNull();
+  });
+
+  it('retourne la clayette correspondant à son identifiant', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const crate = await getCrateById(db, crateId);
+    expect(crate?.name).toBe('Clayette 1');
+    expect(crate?.cellarId).toBe(cellarId);
   });
 });
