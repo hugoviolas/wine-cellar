@@ -14,14 +14,25 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
   const [crates, setCrates] = useState(initialCrates);
   const [name, setName] = useState('');
   const [capacity, setCapacity] = useState(12);
+  const [error, setError] = useState<string | null>(null);
+
+  async function readError(response: Response, fallback: string): Promise<string> {
+    const data = await response.json().catch(() => null);
+    return typeof data?.error === 'string' ? data.error : fallback;
+  }
 
   async function addCrate(event: React.FormEvent) {
     event.preventDefault();
+    setError(null);
     const response = await fetch('/api/crates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cellarId, name, capacity }),
     });
+    if (!response.ok) {
+      setError(await readError(response, 'Impossible d’ajouter cette clayette.'));
+      return;
+    }
     const data = await response.json();
     setCrates([...crates, { id: data.id, name, capacity }]);
     setName('');
@@ -29,13 +40,20 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
   }
 
   async function removeCrate(id: string) {
-    await fetch(`/api/crates/${id}`, { method: 'DELETE' });
+    setError(null);
+    const response = await fetch(`/api/crates/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      setError(await readError(response, 'Impossible de supprimer cette clayette.'));
+      return;
+    }
     setCrates(crates.filter((c) => c.id !== id));
     router.refresh();
   }
 
   return (
     <div className="space-y-6">
+      {error && <p className="text-sm text-red-700">{error}</p>}
+
       <form onSubmit={addCrate} className="flex gap-2 items-end">
         <div>
           <label className="block text-xs uppercase tracking-wide mb-1">Nom</label>

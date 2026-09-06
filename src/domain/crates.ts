@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import type { Db } from '../db/client';
 import { crates } from '../db/schema';
 import { newId } from '../db/id';
@@ -8,6 +9,15 @@ export interface CreateCrateInput {
   name: string;
   capacity: number;
 }
+
+/** Corps attendu par `POST /api/crates`, validé avant tout contrôle d'accès. */
+export const createCrateBodySchema = z
+  .object({
+    cellarId: z.string().min(1),
+    name: z.string().min(1),
+    capacity: z.number().int().positive(),
+  })
+  .strict();
 
 export async function createCrate(db: Db, input: CreateCrateInput): Promise<string> {
   const id = newId();
