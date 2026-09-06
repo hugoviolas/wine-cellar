@@ -28,6 +28,31 @@ describe('parseBottleDetails', () => {
     expect(() => parseBottleDetails('cider', { method: 'industriel' })).toThrow();
   });
 
+  it('valide des détails de bière corrects', () => {
+    const result = parseBottleDetails('beer', {
+      style: 'IPA',
+      ibu: 55,
+      ebc: 12,
+      fermentation: 'haute',
+    });
+    expect(result.style).toBe('IPA');
+    expect(result.ibu).toBe(55);
+    expect(result.fermentation).toBe('haute');
+  });
+
+  it('valide des détails d’effervescent corrects', () => {
+    const result = parseBottleDetails('sparkling', {
+      grapeVarieties: ['Chardonnay', 'Pinot Noir'],
+      dosage: 'brut nature',
+      method: 'méthode traditionnelle',
+      disgorgementDate: '2023-04-15',
+    });
+    expect(result.grapeVarieties).toEqual(['Chardonnay', 'Pinot Noir']);
+    expect(result.dosage).toBe('brut nature');
+    expect(result.method).toBe('méthode traditionnelle');
+    expect(result.disgorgementDate).toBe('2023-04-15');
+  });
+
   it('valide des détails de spiritueux corrects', () => {
     const result = parseBottleDetails('spirit', { spiritType: 'Whisky', age: 12 });
     expect(result.age).toBe(12);
