@@ -1,16 +1,19 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/db/client';
-import { getBottle } from '@/domain/bottles';
+import { requireUser } from '@/lib/requireUser';
+import { resolveBottleAccess } from '@/domain/bottleAccess';
 import { computeGardeStatus, computeGardeProgress } from '@/domain/gardeStatus';
 import { GardeBadge } from '@/components/GardeBadge';
 import { GardeGauge } from '@/components/GardeGauge';
 import { UserNoteEditor } from '@/components/UserNoteEditor';
 
 export default async function BottleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const user = await requireUser();
   const { id } = await params;
-  const bottle = await getBottle(db, id);
-  if (!bottle) notFound();
+  const access = await resolveBottleAccess(db, user.id, id);
+  if (access.status !== 'ok') notFound();
+  const bottle = access.bottle;
 
   const currentYear = new Date().getFullYear();
   const status = computeGardeStatus(bottle.drinkFrom, bottle.drinkUntil, currentYear);

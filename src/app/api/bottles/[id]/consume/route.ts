@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/requireUser';
+import { requireApiUser } from '@/lib/requireApiUser';
 import { db } from '@/db/client';
-import { getBottle } from '@/domain/bottles';
-import { getCrateById } from '@/domain/crates';
-import { checkCellarAccess } from '@/domain/access';
+import { resolveBottleAccess } from '@/domain/bottleAccess';
 import { consumeBottle, BottleUnavailableError } from '@/domain/consume';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser();
+  const auth = await requireApiUser();
+  if ('error' in auth) return auth.error;
+  const { user } = auth;
   const { id } = await params;
 
-  const bottle = await getBottle(db, id);
-  if (!bottle) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
-  const crate = await getCrateById(db, bottle.crateId);
-  if (!crate) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
-  const access = await checkCellarAccess(db, user.id, crate.cellarId);
-  if (!access.allowed) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  const access = await resolveBottleAccess(db, user.id, id);
+  if (access.status === 'not_found') {
+    return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  }
+  if (access.status === 'forbidden') {
+    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  }
 
   const body = await request.json().catch(() => ({}));
 

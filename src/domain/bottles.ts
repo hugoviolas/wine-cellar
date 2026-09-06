@@ -1,4 +1,5 @@
 import { eq, and, gt } from 'drizzle-orm';
+import { z } from 'zod';
 import type { Db } from '../db/client';
 import { bottles, crates } from '../db/schema';
 import { newId } from '../db/id';
@@ -72,6 +73,21 @@ export interface UpdateBottleInput {
   drinkFrom?: number | null;
   drinkUntil?: number | null;
 }
+
+/**
+ * Champs modifiables depuis `PATCH /api/bottles/[id]`.
+ * `.strict()` empêche toute affectation de masse (par exemple `crateId`, qui
+ * déplacerait la bouteille dans une autre cave après le contrôle d'accès).
+ */
+export const updateBottleBodySchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    quantity: z.number().int().min(0).optional(),
+    userNote: z.string().nullable().optional(),
+    drinkFrom: z.number().int().nullable().optional(),
+    drinkUntil: z.number().int().nullable().optional(),
+  })
+  .strict();
 
 export async function updateBottle(db: Db, bottleId: string, input: UpdateBottleInput): Promise<void> {
   await db.update(bottles).set(input).where(eq(bottles.id, bottleId));

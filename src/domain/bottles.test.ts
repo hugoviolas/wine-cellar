@@ -2,7 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { createTestDb } from '../db/testDb';
 import { bootstrapSuperAdmin } from './bootstrap';
 import { createCrate } from './crates';
-import { createBottle, listBottlesByCellar, listActiveBottlesByCellar, getBottle, updateBottle, deleteBottle } from './bottles';
+import {
+  createBottle,
+  listBottlesByCellar,
+  listActiveBottlesByCellar,
+  getBottle,
+  updateBottle,
+  deleteBottle,
+  updateBottleBodySchema,
+} from './bottles';
 
 describe('bottles', () => {
   it('crée une bouteille avec des détails valides pour sa catégorie', async () => {
@@ -97,5 +105,22 @@ describe('getBottle / updateBottle / deleteBottle', () => {
 
     await deleteBottle(db, bottleId);
     expect(await getBottle(db, bottleId)).toBeNull();
+  });
+});
+
+describe('updateBottleBodySchema', () => {
+  it('rejette une clé inconnue (pas de réaffectation de clayette)', () => {
+    const result = updateBottleBodySchema.safeParse({ crateId: 'x', userNote: 'y' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejette une quantité négative', () => {
+    const result = updateBottleBodySchema.safeParse({ quantity: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepte une mise à jour valide', () => {
+    const result = updateBottleBodySchema.safeParse({ userNote: 'Superbe', quantity: 0, drinkUntil: null });
+    expect(result.success).toBe(true);
   });
 });
