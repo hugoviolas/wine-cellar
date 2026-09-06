@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createTestDb } from '../db/testDb';
 import { bootstrapSuperAdmin } from './bootstrap';
 import { checkCellarAccess } from './access';
-import { users } from '../db/schema';
+import { users, cellarMemberships } from '../db/schema';
 import { newId } from '../db/id';
 import { hashPassword } from './auth';
 
@@ -18,16 +18,32 @@ describe('checkCellarAccess', () => {
     expect(result).toEqual({ allowed: true, role: 'super_admin' });
   });
 
-  it('autorise un membre owner', async () => {
+  it('autorise un membre non-admin via une vraie ligne de membership', async () => {
     const db = await createTestDb();
     const { cellarId } = await bootstrapSuperAdmin(db, {
       email: 'admin@example.com',
       password: 'x',
       cellarName: 'Ma Cave',
     });
-    // le bootstrap crée déjà le membership owner pour son propre user ; on le relit via un user non-admin dédié
-    const result = await checkCellarAccess(db, (await db.select().from(users))[0].id, cellarId);
-    expect(result.allowed).toBe(true);
+
+    const editorId = newId();
+    await db.insert(users).values({
+      id: editorId,
+      email: 'editeur@example.com',
+      passwordHash: await hashPassword('x'),
+      isSuperAdmin: false,
+      createdAt: new Date().toISOString(),
+    });
+    await db.insert(cellarMemberships).values({
+      id: newId(),
+      cellarId,
+      userId: editorId,
+      role: 'editor',
+      createdAt: new Date().toISOString(),
+    });
+
+    const result = await checkCellarAccess(db, editorId, cellarId);
+    expect(result).toEqual({ allowed: true, role: 'editor' });
   });
 
   it('refuse un utilisateur sans lien avec la cave', async () => {
