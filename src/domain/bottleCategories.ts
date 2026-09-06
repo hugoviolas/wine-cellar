@@ -43,6 +43,9 @@ export const detailsSchemaByCategory = {
 
 export type BottleCategory = keyof typeof detailsSchemaByCategory;
 
-export function parseBottleDetails(category: BottleCategory, details: unknown) {
-  return detailsSchemaByCategory[category].parse(details);
+export function parseBottleDetails<C extends BottleCategory>(
+  category: C,
+  details: unknown,
+): z.infer<(typeof detailsSchemaByCategory)[C]> {
+  return detailsSchemaByCategory[category].parse(details) as z.infer<(typeof detailsSchemaByCategory)[C]>;
 }
