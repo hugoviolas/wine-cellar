@@ -59,3 +59,24 @@ export async function listActiveBottlesByCellar(db: Db, cellarId: string) {
     .innerJoin(crates, eq(bottles.crateId, crates.id))
     .where(and(eq(crates.cellarId, cellarId), gt(bottles.quantity, 0)));
 }
+
+export async function getBottle(db: Db, bottleId: string) {
+  const [row] = await db.select().from(bottles).where(eq(bottles.id, bottleId)).limit(1);
+  return row ?? null;
+}
+
+export interface UpdateBottleInput {
+  name?: string;
+  quantity?: number;
+  userNote?: string | null;
+  drinkFrom?: number | null;
+  drinkUntil?: number | null;
+}
+
+export async function updateBottle(db: Db, bottleId: string, input: UpdateBottleInput): Promise<void> {
+  await db.update(bottles).set(input).where(eq(bottles.id, bottleId));
+}
+
+export async function deleteBottle(db: Db, bottleId: string): Promise<void> {
+  await db.delete(bottles).where(eq(bottles.id, bottleId));
+}

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createTestDb } from '../db/testDb';
 import { bootstrapSuperAdmin } from './bootstrap';
 import { createCrate } from './crates';
-import { createBottle, listBottlesByCellar, listActiveBottlesByCellar } from './bottles';
+import { createBottle, listBottlesByCellar, listActiveBottlesByCellar, getBottle, updateBottle, deleteBottle } from './bottles';
 
 describe('bottles', () => {
   it('crée une bouteille avec des détails valides pour sa catégorie', async () => {
@@ -68,5 +68,34 @@ describe('bottles', () => {
 
     const all = await listBottlesByCellar(db, cellarId);
     expect(all).toHaveLength(2);
+  });
+});
+
+describe('getBottle / updateBottle / deleteBottle', () => {
+  it('retourne null pour un identifiant inconnu', async () => {
+    const db = await createTestDb();
+    expect(await getBottle(db, 'inconnu')).toBeNull();
+  });
+
+  it('met à jour la note personnelle et la quantité', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 2, details: {} });
+
+    await updateBottle(db, bottleId, { userNote: 'Superbe avec un gigot', quantity: 1 });
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.userNote).toBe('Superbe avec un gigot');
+    expect(bottle?.quantity).toBe(1);
+  });
+
+  it('supprime une bouteille', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 1, details: {} });
+
+    await deleteBottle(db, bottleId);
+    expect(await getBottle(db, bottleId)).toBeNull();
   });
 });
