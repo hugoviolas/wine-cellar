@@ -1985,6 +1985,14 @@ Expected: PASS (7 tests au total).
 
 - [ ] **Step 5: Routes API (pas de test automatisé — colle framework)**
 
+**Note (ruling recorded during Task 10's review):** every route below that acts on an
+existing row by id must resolve that row's `cellarId` and call `checkCellarAccess`
+before mutating or returning it — not just `requireUser()`. Task 10's `PATCH`/`DELETE
+/api/crates/[id]` originally only checked `requireUser()`, which let any logged-in user
+mutate any cellar's crate by id; the same pattern is corrected here from the start
+rather than repeated. This requires `getCrateById` (added to `src/domain/crates.ts`
+during Task 10's fix round) to resolve a bottle's cellar via its crate.
+
 Créer `src/app/api/bottles/route.ts` :
 
 ```ts
@@ -1992,6 +2000,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
 import { checkCellarAccess } from '@/domain/access';
+import { getCrateById } from '@/domain/crates';
 import { createBottle, listActiveBottlesByCellar } from '@/domain/bottles';
 
 export async function GET(request: Request) {
@@ -2006,8 +2015,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  await requireUser();
+  const user = await requireUser();
   const body = await request.json();
+
+  const crate = await getCrateById(db, body.crateId);
+  if (!crate) return NextResponse.json({ error: 'Clayette introuvable' }, { status: 404 });
+  const access = await checkCellarAccess(db, user.id, crate.cellarId);
+  if (!access.allowed) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+
   try {
     const id = await createBottle(db, body);
     return NextResponse.json({ id });
@@ -2024,26 +2039,42 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/requireUser';
 import { db } from '@/db/client';
 import { getBottle, updateBottle, deleteBottle } from '@/domain/bottles';
+import { getCrateById } from '@/domain/crates';
+import { checkCellarAccess } from '@/domain/access';
+
+async function requireBottleAccess(userId: string, bottleId: string) {
+  const bottle = await getBottle(db, bottleId);
+  if (!bottle) return { bottle: null, error: NextResponse.json({ error: 'Introuvable' }, { status: 404 }) };
+  const crate = await getCrateById(db, bottle.crateId);
+  if (!crate) return { bottle: null, error: NextResponse.json({ error: 'Introuvable' }, { status: 404 }) };
+  const access = await checkCellarAccess(db, userId, crate.cellarId);
+  if (!access.allowed) return { bottle: null, error: NextResponse.json({ error: 'Accès refusé' }, { status: 403 }) };
+  return { bottle, error: null };
+}
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
-  const bottle = await getBottle(db, id);
-  if (!bottle) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  const { bottle, error } = await requireBottleAccess(user.id, id);
+  if (error) return error;
   return NextResponse.json(bottle);
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
+  const { error } = await requireBottleAccess(user.id, id);
+  if (error) return error;
   const body = await request.json();
   await updateBottle(db, id, body);
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
+  const { error } = await requireBottleAccess(user.id, id);
+  if (error) return error;
   await deleteBottle(db, id);
   return NextResponse.json({ ok: true });
 }
@@ -2727,17 +2758,31 @@ Expected: PASS (3 tests).
 
 - [ ] **Step 5: Route API (pas de test automatisé — colle framework)**
 
+**Note (same ruling as Task 13):** resolve the bottle's cellar and check access before
+consuming — do not rely on `requireUser()` alone.
+
 Créer `src/app/api/bottles/[id]/consume/route.ts` :
 
 ```ts
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/requireUser';
 import { db } from '@/db/client';
+import { getBottle } from '@/domain/bottles';
+import { getCrateById } from '@/domain/crates';
+import { checkCellarAccess } from '@/domain/access';
 import { consumeBottle, BottleUnavailableError } from '@/domain/consume';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
+
+  const bottle = await getBottle(db, id);
+  if (!bottle) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  const crate = await getCrateById(db, bottle.crateId);
+  if (!crate) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  const access = await checkCellarAccess(db, user.id, crate.cellarId);
+  if (!access.allowed) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+
   const body = await request.json().catch(() => ({}));
 
   try {
