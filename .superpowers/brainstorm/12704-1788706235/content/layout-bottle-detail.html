@@ -1,0 +1,73 @@
+<style>
+  .bd-app { font-family: Georgia, 'Times New Roman', serif; background:#f4f1ea; color:#20342b; border-radius:8px; overflow:hidden; border:1px solid #e5e0d3; }
+  .bd-header { background:#20342b; color:#f4f1ea; padding:16px 18px; }
+  .bd-header .back { font-size:11px; color:#c9a646; font-family:'Helvetica Neue',Arial,sans-serif; margin-bottom:8px; }
+  .bd-header .name { font-style:italic; font-size:19px; }
+  .bd-header .sub { font-size:11px; color:#cfc9b8; font-family:'Helvetica Neue',Arial,sans-serif; margin-top:4px; }
+  .bd-body { padding:16px; font-family:'Helvetica Neue',Arial,sans-serif; }
+  .bd-badge-row { display:flex; gap:8px; margin-bottom:16px; }
+  .bd-badge { font-size:10px; padding:4px 10px; border-radius:12px; }
+  .bd-badge.ready { background:#e6efe2; color:#4a6350; }
+  .bd-badge.qty { background:#fff; border:1px solid #e0dbcd; color:#8a8578; }
+  .bd-section { margin-bottom:16px; }
+  .bd-section h4 { font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:#8a8578; margin:0 0 6px 0; font-weight:600; }
+  .bd-section p { font-size:12.5px; line-height:1.5; color:#2d2d2d; margin:0; font-family:Georgia,serif; font-style:italic; }
+  .bd-pairing { display:flex; flex-wrap:wrap; gap:6px; }
+  .bd-pairing span { background:#fff; border:1px solid #e0dbcd; border-radius:14px; padding:4px 10px; font-size:11px; }
+  .bd-gauge-track { background:#e8e4d8; height:6px; border-radius:3px; position:relative; margin-top:8px; }
+  .bd-gauge-fill { position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,#c9a646,#6f8f6a); border-radius:3px; }
+  .bd-gauge-labels { display:flex; justify-content:space-between; font-size:9.5px; color:#8a8578; margin-top:4px; }
+  .bd-note { background:#fff; border-left:3px solid #c9a646; border-radius:2px; padding:8px 10px; font-size:11.5px; color:#4a4a4a; }
+</style>
+
+<h2>Fiche bouteille — détail</h2>
+<p class="subtitle">Analyse, accords, dégustation, fenêtre de garde — sur un exemple de Bordeaux</p>
+
+<div class="mockup" style="max-width:320px;">
+  <div class="mockup-header">Fiche bouteille (mobile — desktop identique en plus large)</div>
+  <div class="mockup-body">
+    <div class="bd-app">
+      <div class="bd-header">
+        <div class="back">← Clayette 1 — Bordeaux</div>
+        <div class="name">Château Margaux</div>
+        <div class="sub">2015 · Margaux, Bordeaux · Rouge</div>
+      </div>
+      <div class="bd-body">
+        <div class="bd-badge-row">
+          <div class="bd-badge ready">● À boire maintenant</div>
+          <div class="bd-badge qty">1 bouteille en cave</div>
+        </div>
+
+        <div class="bd-section">
+          <h4>Fenêtre de garde</h4>
+          <div class="bd-gauge-track"><div class="bd-gauge-fill" style="width:62%"></div></div>
+          <div class="bd-gauge-labels"><span>2015</span><span>Apogée 2024–2032</span><span>2045</span></div>
+        </div>
+
+        <div class="bd-section">
+          <h4>Analyse</h4>
+          <p>Robe grenat profond. Nez complexe de fruits noirs mûrs, violette et épices douces, sous-bois en évolution. Bouche ample, tanins soyeux, belle fraîcheur, finale longue sur la réglisse.</p>
+        </div>
+
+        <div class="bd-section">
+          <h4>Accords mets & vins</h4>
+          <div class="bd-pairing">
+            <span>Gigot d'agneau</span><span>Bœuf en croûte</span><span>Comté affiné</span>
+          </div>
+        </div>
+
+        <div class="bd-section">
+          <h4>Conseils de dégustation</h4>
+          <p>Carafer 1h avant service. Servir à 16–17°C, verre large type bourgogne.</p>
+        </div>
+
+        <div class="bd-section">
+          <h4>Ta note</h4>
+          <div class="bd-note">✎ Ajouter une note ou corriger l'analyse…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:14px;">La jauge de garde est calculée par l'IA (corrigeable), le badge en haut change selon la période : « trop jeune » / « à boire maintenant » / « à surveiller, en fin de fenêtre ». Le champ « Ta note » est éditable et prime toujours sur le texte généré.</p>
