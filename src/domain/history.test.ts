@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createTestDb } from '../db/testDb';
 import { bootstrapSuperAdmin } from './bootstrap';
-import { createCrate } from './crates';
+import { createCrate, deleteCrate } from './crates';
 import { createBottle } from './bottles';
 import { consumeBottle } from './consume';
 import { listConsumptionHistory } from './history';
@@ -27,5 +27,32 @@ describe('listConsumptionHistory', () => {
     expect(historyA).toHaveLength(2);
     expect(historyA[0].bottleNameSnapshot).toBe('Vin A2');
     expect(historyA[1].bottleNameSnapshot).toBe('Vin A1');
+  });
+
+  it('signale une bouteille comme injoignable si sa clayette a depuis été supprimée', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette', capacity: 6 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 1, details: {} });
+
+    await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-01-01' });
+    await deleteCrate(db, crateId);
+
+    const history = await listConsumptionHistory(db, cellarId);
+    expect(history).toHaveLength(1);
+    expect(history[0].bottleId).toBe(bottleId);
+    expect(history[0].bottleReachable).toBeNull();
+  });
+
+  it('signale une bouteille comme joignable tant que sa clayette existe encore', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette', capacity: 6 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 2, details: {} });
+
+    await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-01-01' });
+
+    const history = await listConsumptionHistory(db, cellarId);
+    expect(history[0].bottleReachable).toBe(crateId);
   });
 });
