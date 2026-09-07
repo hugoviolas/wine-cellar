@@ -12,8 +12,10 @@ export interface CreateCrateInput {
 
 /**
  * Corps attendu par `POST /api/crates`, validé avant tout contrôle d'accès.
- * `name` est optionnel : une clayette sans nom fourni reçoit le nom par
- * défaut « Clayette N » (voir `createCrate`).
+ * `name` est optionnel : une clayette sans nom fourni est stockée avec
+ * `name: null` — « Clayette N » n'est jamais stocké tel quel, seulement
+ * calculé à l'affichage (voir `crateLabel`), pour éviter un doublon avec le
+ * préfixe « Clayette N — » déjà affiché partout ailleurs.
  */
 export const createCrateBodySchema = z
   .object({
@@ -41,7 +43,7 @@ async function nextAvailableCrateNumber(db: Db, cellarId: string): Promise<numbe
 export async function createCrate(db: Db, input: CreateCrateInput): Promise<string> {
   const id = newId();
   const number = await nextAvailableCrateNumber(db, input.cellarId);
-  const name = input.name?.trim() || `Clayette ${number}`;
+  const name = input.name?.trim() || null;
   await db.insert(crates).values({
     id,
     cellarId: input.cellarId,
@@ -79,19 +81,13 @@ export async function reorderCrates(db: Db, cellarId: string, orderedIds: string
 }
 
 /**
- * Renomme une clayette. Un nom vide (ou uniquement des espaces) réinitialise
- * le nom par défaut « Clayette N », plutôt que d'être rejeté — même
- * convention qu'à la création.
+ * Renomme une clayette. Un nom vide (ou uniquement des espaces) efface le
+ * nom (stocké `null`), plutôt que d'être rejeté — voir `crateLabel` pour le
+ * calcul du nom par défaut affiché dans ce cas.
  */
 export async function renameCrate(db: Db, crateId: string, name: string): Promise<void> {
   const trimmed = name.trim();
-  if (trimmed) {
-    await db.update(crates).set({ name: trimmed }).where(eq(crates.id, crateId));
-    return;
-  }
-  const crate = await getCrateById(db, crateId);
-  if (!crate) return;
-  await db.update(crates).set({ name: `Clayette ${crate.number}` }).where(eq(crates.id, crateId));
+  await db.update(crates).set({ name: trimmed || null }).where(eq(crates.id, crateId));
 }
 
 /** Vrai si la clayette contient encore au moins une bouteille en stock (quantité > 0). */

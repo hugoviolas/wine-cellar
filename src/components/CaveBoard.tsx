@@ -19,7 +19,7 @@ import { CrateCard, type BottleRow } from './CrateCard';
 interface Crate {
   id: string;
   number: number;
-  name: string;
+  name: string | null;
   capacity: number;
 }
 

@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { crateLabel } from '@/lib/crateLabel';
 
 interface CrateOption {
   id: string;
   number: number;
-  name: string;
+  name: string | null;
 }
 
 export function BottleActions({
@@ -114,7 +115,7 @@ export function BottleActions({
             >
               {otherCrates.map((crate) => (
                 <option key={crate.id} value={crate.id}>
-                  Clayette {crate.number} — {crate.name}
+                  {crateLabel(crate.number, crate.name)}
                 </option>
               ))}
             </select>

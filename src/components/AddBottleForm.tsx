@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { crateLabel } from '@/lib/crateLabel';
 
 interface Crate {
   id: string;
   number: number;
-  name: string;
+  name: string | null;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -73,7 +74,7 @@ export function AddBottleForm({ crates }: { crates: Crate[] }) {
           required
         >
           {crates.map((crate) => (
-            <option key={crate.id} value={crate.id}>Clayette {crate.number} — {crate.name}</option>
+            <option key={crate.id} value={crate.id}>{crateLabel(crate.number, crate.name)}</option>
           ))}
         </select>
       </div>

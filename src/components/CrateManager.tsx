@@ -19,11 +19,12 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { crateLabel } from '@/lib/crateLabel';
 
 interface Crate {
   id: string;
   number: number;
-  name: string;
+  name: string | null;
   capacity: number;
 }
 
@@ -44,7 +45,7 @@ function SortableCrateRow({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-  const [name, setName] = useState(crate.name);
+  const [name, setName] = useState(crate.name ?? '');
 
   return (
     <li ref={setNodeRef} style={style} className="flex items-center justify-between gap-2 px-4 py-3 text-sm bg-white">
@@ -54,7 +55,7 @@ function SortableCrateRow({
           {...attributes}
           {...listeners}
           className="cursor-grab touch-none text-gray-400 px-1 select-none"
-          aria-label={`Réorganiser Clayette ${crate.number} — ${crate.name}`}
+          aria-label={`Réorganiser ${crateLabel(crate.number, crate.name)}`}
         >
           ⋮⋮
         </button>
@@ -68,7 +69,7 @@ function SortableCrateRow({
         <span className="whitespace-nowrap text-gray-500">({crate.capacity} emplacements)</span>
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        {name !== crate.name && (
+        {name !== (crate.name ?? '') && (
           <button
             type="button"
             onClick={() => onRename(crate.id, name)}
@@ -131,13 +132,14 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
       setError(await readError(response, 'Impossible de renommer cette clayette.'));
       return;
     }
-    // Le serveur applique le même repli sur « Clayette N » pour un nom vide
-    // (voir renameCrate côté domaine) — reproduit ici pour que l'état local
-    // affiche immédiatement le nom réellement appliqué, sans attendre un
-    // aller-retour serveur que router.refresh() seul ne garantit pas de
-    // répercuter sur cet état déjà initialisé.
+    // Le serveur stocke `null` pour un nom vide (voir renameCrate côté
+    // domaine) — reproduit ici pour que l'état local reflète immédiatement
+    // la valeur réellement stockée, sans attendre un aller-retour serveur
+    // que router.refresh() seul ne garantit pas de répercuter sur cet état
+    // déjà initialisé. `crateLabel` calcule « Clayette N » à l'affichage
+    // à partir de ce `null` — ne jamais stocker ce texte ici.
     const trimmed = name.trim();
-    setCrates(crates.map((c) => (c.id === id ? { ...c, name: trimmed || `Clayette ${c.number}` } : c)));
+    setCrates(crates.map((c) => (c.id === id ? { ...c, name: trimmed || null } : c)));
     router.refresh();
   }
 

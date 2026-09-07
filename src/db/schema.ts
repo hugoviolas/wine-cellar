@@ -29,7 +29,7 @@ export const crates = sqliteTable('crates', {
   id: text('id').primaryKey(),
   cellarId: text('cellar_id').notNull().references(() => cellars.id),
   number: integer('number').notNull().default(1),
-  name: text('name').notNull(),
+  name: text('name'),
   capacity: integer('capacity').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: text('created_at').notNull(),

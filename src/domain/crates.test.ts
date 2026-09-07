@@ -42,7 +42,7 @@ describe('crates', () => {
     expect(crates[0].name).toBe('Nouveau nom');
   });
 
-  it('attribue un nom par défaut « Clayette N » si aucun nom n’est fourni à la création', async () => {
+  it('stocke un nom nul si aucun nom n’est fourni à la création (le nom par défaut est calculé à l’affichage)', async () => {
     const db = await createTestDb();
     const { cellarId } = await bootstrapSuperAdmin(db, {
       email: 'a@example.com',
@@ -51,10 +51,10 @@ describe('crates', () => {
     });
     const crateId = await createCrate(db, { cellarId, capacity: 6 });
     const crate = await getCrateById(db, crateId);
-    expect(crate?.name).toBe(`Clayette ${crate?.number}`);
+    expect(crate?.name).toBeNull();
   });
 
-  it('attribue un nom par défaut « Clayette N » si un nom vide (espaces) est fourni à la création', async () => {
+  it('stocke un nom nul si un nom vide (espaces) est fourni à la création', async () => {
     const db = await createTestDb();
     const { cellarId } = await bootstrapSuperAdmin(db, {
       email: 'a@example.com',
@@ -63,10 +63,10 @@ describe('crates', () => {
     });
     const crateId = await createCrate(db, { cellarId, name: '   ', capacity: 6 });
     const crate = await getCrateById(db, crateId);
-    expect(crate?.name).toBe(`Clayette ${crate?.number}`);
+    expect(crate?.name).toBeNull();
   });
 
-  it('réinitialise au nom par défaut « Clayette N » si on renomme avec un nom vide', async () => {
+  it('efface le nom (nul) si on renomme avec un nom vide', async () => {
     const db = await createTestDb();
     const { cellarId } = await bootstrapSuperAdmin(db, {
       email: 'a@example.com',
@@ -76,7 +76,7 @@ describe('crates', () => {
     const crateId = await createCrate(db, { cellarId, name: 'Un nom', capacity: 6 });
     await renameCrate(db, crateId, '   ');
     const crate = await getCrateById(db, crateId);
-    expect(crate?.name).toBe(`Clayette ${crate?.number}`);
+    expect(crate?.name).toBeNull();
   });
 
   it('supprime une clayette', async () => {

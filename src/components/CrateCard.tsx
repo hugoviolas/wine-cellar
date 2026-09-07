@@ -5,6 +5,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { wineColorStripeClass } from '@/lib/wineColor';
+import { crateLabel } from '@/lib/crateLabel';
 
 export interface BottleRow {
   id: string;
@@ -60,7 +61,7 @@ export function CrateCard({
 }: {
   id: string;
   number: number;
-  name: string;
+  name: string | null;
   capacity: number;
   bottles: BottleRow[];
   canEdit: boolean;
@@ -71,7 +72,7 @@ export function CrateCard({
   return (
     <div className="mb-6">
       <div className="flex justify-between items-baseline mb-2">
-        <h4 className="text-sm italic">Clayette {number} — {name}</h4>
+        <h4 className="text-sm italic">{crateLabel(number, name)}</h4>
         <span className="text-xs text-gray-500">{occupied}/{capacity}</span>
       </div>
       <div
