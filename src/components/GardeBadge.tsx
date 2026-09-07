@@ -1,11 +1,4 @@
-import type { GardeStatus } from '@/domain/gardeStatus';
-
-const LABELS: Record<GardeStatus, string> = {
-  too_young: 'Trop jeune',
-  ready: 'À boire maintenant',
-  closing_window: 'À surveiller, fin de fenêtre',
-  unknown: 'Fenêtre de garde inconnue',
-};
+import { GARDE_STATUS_LABELS, type GardeStatus } from '@/domain/gardeStatus';
 
 const STYLES: Record<GardeStatus, string> = {
   too_young: 'bg-blue-50 text-blue-800',
@@ -17,7 +10,7 @@ const STYLES: Record<GardeStatus, string> = {
 export function GardeBadge({ status }: { status: GardeStatus }) {
   return (
     <span className={`text-xs px-3 py-1 rounded-full ${STYLES[status]}`}>
-      ● {LABELS[status]}
+      ● {GARDE_STATUS_LABELS[status]}
     </span>
   );
 }

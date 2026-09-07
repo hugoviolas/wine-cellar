@@ -48,6 +48,7 @@ export default async function CavePage() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg">Ma Cave</h2>
         <div className="flex gap-3 text-sm">
+          <Link href="/cave/vins" className="text-forest underline">Liste des vins</Link>
           <Link href="/cave/clayettes" className="text-forest underline">Gérer les clayettes</Link>
           {canManage && <Link href="/cave/parametres" className="text-forest underline">Réglages</Link>}
           <Link href="/cave/ajouter" className="bg-forest text-cream rounded px-3 py-1.5">+ Ajouter</Link>

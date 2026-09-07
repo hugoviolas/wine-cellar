@@ -1,5 +1,12 @@
 export type GardeStatus = 'too_young' | 'ready' | 'closing_window' | 'unknown';
 
+export const GARDE_STATUS_LABELS: Record<GardeStatus, string> = {
+  too_young: 'Trop jeune',
+  ready: 'À boire maintenant',
+  closing_window: 'À surveiller, fin de fenêtre',
+  unknown: 'Fenêtre de garde inconnue',
+};
+
 export function computeGardeStatus(
   drinkFrom: number | null,
   drinkUntil: number | null,
