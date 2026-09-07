@@ -8,6 +8,7 @@ import {
   deleteCrate,
   getCrateById,
   crateHasActiveBottles,
+  reorderCrates,
 } from './crates';
 import { createBottle, getBottle } from './bottles';
 import { consumeBottle } from './consume';
@@ -121,5 +122,31 @@ describe('crates', () => {
     expect(await getCrateById(db, crateId)).toBeNull();
     const bottle = await getBottle(db, bottleId);
     expect(bottle?.crateId).toBeNull();
+  });
+
+  it('applique le nouvel ordre demandé (glisser-déposer)', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const id1 = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
+    const id2 = await createCrate(db, { cellarId, name: 'Champagne', capacity: 6 });
+    const id3 = await createCrate(db, { cellarId, name: 'Cidres', capacity: 6 });
+
+    await reorderCrates(db, cellarId, [id3, id1, id2]);
+
+    const ordered = await listCrates(db, cellarId);
+    expect(ordered.map((c) => c.id)).toEqual([id3, id1, id2]);
+    // Les numéros stables ne bougent pas avec le réordonnancement.
+    expect(ordered.map((c) => c.number)).toEqual([3, 1, 2]);
+  });
+
+  it('refuse un réordonnancement qui ne correspond pas exactement aux clayettes de la cave', async () => {
+    const db = await createTestDb();
+    const caveA = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave A' });
+    const caveB = await bootstrapSuperAdmin(db, { email: 'b@example.com', password: 'x', cellarName: 'Cave B' });
+    const id1 = await createCrate(db, { cellarId: caveA.cellarId, name: 'Bordeaux', capacity: 6 });
+    const otherId = await createCrate(db, { cellarId: caveB.cellarId, name: 'Autre cave', capacity: 6 });
+
+    await expect(reorderCrates(db, caveA.cellarId, [id1, otherId])).rejects.toThrow();
+    await expect(reorderCrates(db, caveA.cellarId, [])).rejects.toThrow();
   });
 });

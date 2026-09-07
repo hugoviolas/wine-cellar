@@ -2,6 +2,23 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Crate {
   id: string;
@@ -10,12 +27,50 @@ interface Crate {
   capacity: number;
 }
 
+function SortableCrateRow({ crate, onRemove }: { crate: Crate; onRemove: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: crate.id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <li ref={setNodeRef} style={style} className="flex items-center justify-between px-4 py-3 text-sm bg-white">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="cursor-grab touch-none text-gray-400 px-1 select-none"
+          aria-label={`Réorganiser Clayette ${crate.number} — ${crate.name}`}
+        >
+          ⋮⋮
+        </button>
+        <span>
+          Clayette {crate.number} — {crate.name} ({crate.capacity} emplacements)
+        </span>
+      </div>
+      <button onClick={() => onRemove(crate.id)} className="text-red-700 text-xs">
+        Supprimer
+      </button>
+    </li>
+  );
+}
+
 export function CrateManager({ cellarId, initialCrates }: { cellarId: string; initialCrates: Crate[] }) {
   const router = useRouter();
   const [crates, setCrates] = useState(initialCrates);
   const [name, setName] = useState('');
   const [capacity, setCapacity] = useState(12);
   const [error, setError] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   async function readError(response: Response, fallback: string): Promise<string> {
     const data = await response.json().catch(() => null);
@@ -51,6 +106,29 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
     router.refresh();
   }
 
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const previousOrder = crates;
+    const oldIndex = crates.findIndex((c) => c.id === active.id);
+    const newIndex = crates.findIndex((c) => c.id === over.id);
+    const reordered = arrayMove(crates, oldIndex, newIndex);
+    setCrates(reordered);
+
+    const response = await fetch('/api/crates/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cellarId, orderedIds: reordered.map((c) => c.id) }),
+    });
+    if (!response.ok) {
+      setError(await readError(response, 'Impossible d’enregistrer le nouvel ordre.'));
+      setCrates(previousOrder);
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <div className="space-y-6">
       {error && <p className="text-sm text-red-700">{error}</p>}
@@ -82,16 +160,15 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
         </button>
       </form>
 
-      <ul className="divide-y divide-gray-200 bg-white rounded">
-        {crates.map((crate) => (
-          <li key={crate.id} className="flex items-center justify-between px-4 py-3 text-sm">
-            <span>Clayette {crate.number} — {crate.name} ({crate.capacity} emplacements)</span>
-            <button onClick={() => removeCrate(crate.id)} className="text-red-700 text-xs">
-              Supprimer
-            </button>
-          </li>
-        ))}
-      </ul>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={crates.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+          <ul className="divide-y divide-gray-200 bg-white rounded">
+            {crates.map((crate) => (
+              <SortableCrateRow key={crate.id} crate={crate} onRemove={removeCrate} />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }

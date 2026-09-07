@@ -50,7 +50,27 @@ export async function createCrate(db: Db, input: CreateCrateInput): Promise<stri
 }
 
 export async function listCrates(db: Db, cellarId: string) {
-  return db.select().from(crates).where(eq(crates.cellarId, cellarId)).orderBy(crates.number);
+  return db.select().from(crates).where(eq(crates.cellarId, cellarId)).orderBy(crates.sortOrder);
+}
+
+/**
+ * Applique un nouvel ordre d'affichage (glisser-déposer). `orderedIds` doit
+ * contenir exactement les clayettes de `cellarId`, dans le nouvel ordre —
+ * sinon la fonction échoue sans rien modifier, pour ne pas laisser une
+ * clayette d'une autre cave se faire réordonner par erreur.
+ */
+export async function reorderCrates(db: Db, cellarId: string, orderedIds: string[]): Promise<void> {
+  const existing = await listCrates(db, cellarId);
+  const existingIds = new Set(existing.map((c) => c.id));
+  const sameSet =
+    orderedIds.length === existing.length && orderedIds.every((id) => existingIds.has(id));
+  if (!sameSet) {
+    throw new Error('La liste fournie ne correspond pas exactement aux clayettes de cette cave.');
+  }
+
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(crates).set({ sortOrder: i }).where(eq(crates.id, orderedIds[i]));
+  }
 }
 
 export async function renameCrate(db: Db, crateId: string, name: string): Promise<void> {
