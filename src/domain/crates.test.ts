@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { createTestDb } from '../db/testDb';
 import { bootstrapSuperAdmin } from './bootstrap';
-import { createCrate, listCrates, renameCrate, deleteCrate, getCrateById } from './crates';
+import {
+  createCrate,
+  listCrates,
+  renameCrate,
+  deleteCrate,
+  getCrateById,
+  crateHasActiveBottles,
+} from './crates';
+import { createBottle, getBottle } from './bottles';
+import { consumeBottle } from './consume';
 
 describe('crates', () => {
   it('crée puis liste une clayette', async () => {
@@ -56,5 +65,61 @@ describe('crates', () => {
     const crate = await getCrateById(db, crateId);
     expect(crate?.name).toBe('Clayette 1');
     expect(crate?.cellarId).toBe(cellarId);
+  });
+
+  it('attribue des numéros auto-incrémentés à la création', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const id1 = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
+    const id2 = await createCrate(db, { cellarId, name: 'Champagne', capacity: 6 });
+    const crate1 = await getCrateById(db, id1);
+    const crate2 = await getCrateById(db, id2);
+    expect(crate1?.number).toBe(1);
+    expect(crate2?.number).toBe(2);
+  });
+
+  it('réutilise le numéro d’une clayette supprimée plutôt que de décaler les autres', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const id1 = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
+    const id2 = await createCrate(db, { cellarId, name: 'Champagne', capacity: 6 });
+    const id3 = await createCrate(db, { cellarId, name: 'Cidres', capacity: 6 });
+    await deleteCrate(db, id2);
+
+    const id4 = await createCrate(db, { cellarId, name: 'Spiritueux', capacity: 6 });
+    const crate4 = await getCrateById(db, id4);
+    expect(crate4?.number).toBe(2);
+
+    const crate3 = await getCrateById(db, id3);
+    expect(crate3?.number).toBe(3);
+    expect(id1).not.toBe(id2);
+  });
+
+  it('crateHasActiveBottles distingue bouteilles en stock et bouteilles épuisées', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
+    expect(await crateHasActiveBottles(db, crateId)).toBe(false);
+
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 1, details: {} });
+    expect(await crateHasActiveBottles(db, crateId)).toBe(true);
+
+    await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-09-07' });
+    expect(await crateHasActiveBottles(db, crateId)).toBe(false);
+  });
+
+  it('supprime une clayette ne contenant que des bouteilles épuisées, qui deviennent orphelines', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 1, details: {} });
+    await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-09-07' });
+
+    expect(await crateHasActiveBottles(db, crateId)).toBe(false);
+    await deleteCrate(db, crateId);
+
+    expect(await getCrateById(db, crateId)).toBeNull();
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.crateId).toBeNull();
   });
 });

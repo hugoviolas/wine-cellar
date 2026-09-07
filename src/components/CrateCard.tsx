@@ -10,13 +10,23 @@ interface BottleRow {
   color: string | null;
 }
 
-export function CrateCard({ name, capacity, bottles }: { name: string; capacity: number; bottles: BottleRow[] }) {
+export function CrateCard({
+  number,
+  name,
+  capacity,
+  bottles,
+}: {
+  number: number;
+  name: string;
+  capacity: number;
+  bottles: BottleRow[];
+}) {
   const occupied = bottles.reduce((sum, b) => sum + b.quantity, 0);
 
   return (
     <div className="mb-6">
       <div className="flex justify-between items-baseline mb-2">
-        <h4 className="text-sm italic">{name}</h4>
+        <h4 className="text-sm italic">Clayette {number} — {name}</h4>
         <span className="text-xs text-gray-500">{occupied}/{capacity}</span>
       </div>
       <div className="bg-white rounded shadow-sm divide-y divide-gray-100">

@@ -15,6 +15,7 @@ export async function resolveBottleAccess(
 ): Promise<BottleAccessResult> {
   const bottle = await getBottle(db, bottleId);
   if (!bottle) return { status: 'not_found' };
+  if (!bottle.crateId) return { status: 'not_found' };
   const crate = await getCrateById(db, bottle.crateId);
   if (!crate) return { status: 'not_found' };
   const access = await checkCellarAccess(db, userId, crate.cellarId);

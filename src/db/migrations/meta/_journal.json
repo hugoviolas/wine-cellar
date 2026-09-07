@@ -8,6 +8,13 @@
       "when": 1788712496259,
       "tag": "0000_workable_black_widow",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788728466127,
+      "tag": "0001_wonderful_sunspot",
+      "breakpoints": true
     }
   ]
 }

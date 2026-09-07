@@ -27,6 +27,7 @@ export const cellarMemberships = sqliteTable('cellar_memberships', {
 export const crates = sqliteTable('crates', {
   id: text('id').primaryKey(),
   cellarId: text('cellar_id').notNull().references(() => cellars.id),
+  number: integer('number').notNull().default(1),
   name: text('name').notNull(),
   capacity: integer('capacity').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
@@ -35,7 +36,7 @@ export const crates = sqliteTable('crates', {
 
 export const bottles = sqliteTable('bottles', {
   id: text('id').primaryKey(),
-  crateId: text('crate_id').notNull().references(() => crates.id),
+  crateId: text('crate_id').references(() => crates.id, { onDelete: 'set null' }),
   category: text('category', {
     enum: ['wine', 'sparkling', 'cider', 'beer', 'spirit'],
   }).notNull(),

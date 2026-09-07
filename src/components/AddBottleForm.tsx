@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface Crate {
   id: string;
+  number: number;
   name: string;
 }
 
@@ -63,7 +64,7 @@ export function AddBottleForm({ crates }: { crates: Crate[] }) {
           required
         >
           {crates.map((crate) => (
-            <option key={crate.id} value={crate.id}>{crate.name}</option>
+            <option key={crate.id} value={crate.id}>Clayette {crate.number} — {crate.name}</option>
           ))}
         </select>
       </div>

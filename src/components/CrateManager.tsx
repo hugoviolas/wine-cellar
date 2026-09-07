@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface Crate {
   id: string;
+  number: number;
   name: string;
   capacity: number;
 }
@@ -33,8 +34,8 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
       setError(await readError(response, 'Impossible d’ajouter cette clayette.'));
       return;
     }
-    const data = await response.json();
-    setCrates([...crates, { id: data.id, name, capacity }]);
+    const created: Crate = await response.json();
+    setCrates([...crates, created]);
     setName('');
     router.refresh();
   }
@@ -61,7 +62,7 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="border border-gray-300 rounded px-3 py-2 text-sm"
-            placeholder="Clayette 3 — Cidres"
+            placeholder="Cidres"
             required
           />
         </div>
@@ -84,7 +85,7 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
       <ul className="divide-y divide-gray-200 bg-white rounded">
         {crates.map((crate) => (
           <li key={crate.id} className="flex items-center justify-between px-4 py-3 text-sm">
-            <span>{crate.name} ({crate.capacity} emplacements)</span>
+            <span>Clayette {crate.number} — {crate.name} ({crate.capacity} emplacements)</span>
             <button onClick={() => removeCrate(crate.id)} className="text-red-700 text-xs">
               Supprimer
             </button>

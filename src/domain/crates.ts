@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
+import { eq, and, gt } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/client';
-import { crates } from '../db/schema';
+import { crates, bottles } from '../db/schema';
 import { newId } from '../db/id';
 
 export interface CreateCrateInput {
@@ -19,11 +19,28 @@ export const createCrateBodySchema = z
   })
   .strict();
 
+/**
+ * Plus petit numéro de clayette non utilisé dans la cave : un numéro libéré
+ * par une suppression est réutilisé plutôt que de décaler les autres.
+ */
+async function nextAvailableCrateNumber(db: Db, cellarId: string): Promise<number> {
+  const rows = await db
+    .select({ number: crates.number })
+    .from(crates)
+    .where(eq(crates.cellarId, cellarId));
+  const used = new Set(rows.map((r) => r.number));
+  let n = 1;
+  while (used.has(n)) n++;
+  return n;
+}
+
 export async function createCrate(db: Db, input: CreateCrateInput): Promise<string> {
   const id = newId();
+  const number = await nextAvailableCrateNumber(db, input.cellarId);
   await db.insert(crates).values({
     id,
     cellarId: input.cellarId,
+    number,
     name: input.name,
     capacity: input.capacity,
     sortOrder: 0,
@@ -33,11 +50,21 @@ export async function createCrate(db: Db, input: CreateCrateInput): Promise<stri
 }
 
 export async function listCrates(db: Db, cellarId: string) {
-  return db.select().from(crates).where(eq(crates.cellarId, cellarId)).orderBy(crates.sortOrder);
+  return db.select().from(crates).where(eq(crates.cellarId, cellarId)).orderBy(crates.number);
 }
 
 export async function renameCrate(db: Db, crateId: string, name: string): Promise<void> {
   await db.update(crates).set({ name }).where(eq(crates.id, crateId));
+}
+
+/** Vrai si la clayette contient encore au moins une bouteille en stock (quantité > 0). */
+export async function crateHasActiveBottles(db: Db, crateId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: bottles.id })
+    .from(bottles)
+    .where(and(eq(bottles.crateId, crateId), gt(bottles.quantity, 0)))
+    .limit(1);
+  return row !== undefined;
 }
 
 export async function deleteCrate(db: Db, crateId: string): Promise<void> {

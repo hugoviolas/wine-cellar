@@ -35,6 +35,7 @@ export default async function CavePage() {
         {crates.map((crate) => (
           <CrateCard
             key={crate.id}
+            number={crate.number}
             name={crate.name}
             capacity={crate.capacity}
             bottles={bottleRows

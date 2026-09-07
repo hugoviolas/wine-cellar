@@ -28,6 +28,12 @@ export async function consumeBottle(db: Db, input: ConsumeBottleInput): Promise<
 
   await db.update(bottles).set({ quantity: bottle.quantity - 1 }).where(eq(bottles.id, bottle.id));
 
+  // Une bouteille avec quantité ≥ 1 appartient forcément encore à une
+  // clayette vivante : la suppression d'une clayette est bloquée tant
+  // qu'elle contient des bouteilles en stock (voir crateHasActiveBottles).
+  if (!bottle.crateId) {
+    throw new Error('Bouteille orpheline : sa clayette a été supprimée.');
+  }
   const cellarId = await getCellarIdForCrate(db, bottle.crateId);
   const historyId = newId();
   await db.insert(consumptionHistory).values({

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db/client';
 import { requireApiUser } from '@/lib/requireApiUser';
 import { checkCellarAccess } from '@/domain/access';
-import { createCrate, listCrates, createCrateBodySchema } from '@/domain/crates';
+import { createCrate, listCrates, getCrateById, createCrateBodySchema } from '@/domain/crates';
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -33,5 +33,5 @@ export async function POST(request: Request) {
   if (!access.allowed) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
 
   const id = await createCrate(db, input);
-  return NextResponse.json({ id });
+  return NextResponse.json(await getCrateById(db, id));
 }
