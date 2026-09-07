@@ -5,6 +5,7 @@ export const users = sqliteTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   isSuperAdmin: integer('is_super_admin', { mode: 'boolean' }).notNull().default(false),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
   createdAt: text('created_at').notNull(),
 });
 
@@ -72,4 +73,30 @@ export const consumptionHistory = sqliteTable('consumption_history', {
   bottleProducerSnapshot: text('bottle_producer_snapshot'),
   bottleVintageSnapshot: integer('bottle_vintage_snapshot'),
   bottleCategorySnapshot: text('bottle_category_snapshot').notNull(),
+});
+
+export const invitations = sqliteTable('invitations', {
+  id: text('id').primaryKey(),
+  cellarId: text('cellar_id').notNull().references(() => cellars.id),
+  email: text('email').notNull(),
+  role: text('role', { enum: ['editor', 'reader'] }).notNull(),
+  token: text('token').notNull().unique(),
+  status: text('status', { enum: ['pending', 'accepted', 'expired'] }).notNull().default('pending'),
+  invitedByUserId: text('invited_by_user_id').notNull().references(() => users.id),
+  expiresAt: text('expires_at').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const passwordResetTokens = sqliteTable('password_reset_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  token: text('token').notNull().unique(),
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const appSettings = sqliteTable('app_settings', {
+  id: text('id').primaryKey(),
+  registrationEnabled: integer('registration_enabled', { mode: 'boolean' }).notNull().default(true),
 });
