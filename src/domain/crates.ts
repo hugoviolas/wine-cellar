@@ -6,15 +6,19 @@ import { newId } from '../db/id';
 
 export interface CreateCrateInput {
   cellarId: string;
-  name: string;
+  name?: string;
   capacity: number;
 }
 
-/** Corps attendu par `POST /api/crates`, validé avant tout contrôle d'accès. */
+/**
+ * Corps attendu par `POST /api/crates`, validé avant tout contrôle d'accès.
+ * `name` est optionnel : une clayette sans nom fourni reçoit le nom par
+ * défaut « Clayette N » (voir `createCrate`).
+ */
 export const createCrateBodySchema = z
   .object({
     cellarId: z.string().min(1),
-    name: z.string().min(1),
+    name: z.string().optional(),
     capacity: z.number().int().positive(),
   })
   .strict();
@@ -37,11 +41,12 @@ async function nextAvailableCrateNumber(db: Db, cellarId: string): Promise<numbe
 export async function createCrate(db: Db, input: CreateCrateInput): Promise<string> {
   const id = newId();
   const number = await nextAvailableCrateNumber(db, input.cellarId);
+  const name = input.name?.trim() || `Clayette ${number}`;
   await db.insert(crates).values({
     id,
     cellarId: input.cellarId,
     number,
-    name: input.name,
+    name,
     capacity: input.capacity,
     sortOrder: 0,
     createdAt: new Date().toISOString(),
@@ -73,8 +78,20 @@ export async function reorderCrates(db: Db, cellarId: string, orderedIds: string
   }
 }
 
+/**
+ * Renomme une clayette. Un nom vide (ou uniquement des espaces) réinitialise
+ * le nom par défaut « Clayette N », plutôt que d'être rejeté — même
+ * convention qu'à la création.
+ */
 export async function renameCrate(db: Db, crateId: string, name: string): Promise<void> {
-  await db.update(crates).set({ name }).where(eq(crates.id, crateId));
+  const trimmed = name.trim();
+  if (trimmed) {
+    await db.update(crates).set({ name: trimmed }).where(eq(crates.id, crateId));
+    return;
+  }
+  const crate = await getCrateById(db, crateId);
+  if (!crate) return;
+  await db.update(crates).set({ name: `Clayette ${crate.number}` }).where(eq(crates.id, crateId));
 }
 
 /** Vrai si la clayette contient encore au moins une bouteille en stock (quantité > 0). */

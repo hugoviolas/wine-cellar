@@ -19,10 +19,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const body = await request.json().catch(() => null);
-  const name = typeof body?.name === 'string' ? body.name.trim() : '';
-  if (!name) return NextResponse.json({ error: 'Nom de clayette requis.' }, { status: 400 });
+  if (typeof body?.name !== 'string') {
+    return NextResponse.json({ error: 'Nom de clayette invalide.' }, { status: 400 });
+  }
 
-  await renameCrate(db, id, name);
+  await renameCrate(db, id, body.name);
   return NextResponse.json({ ok: true });
 }
 
