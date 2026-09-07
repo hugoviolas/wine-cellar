@@ -90,6 +90,10 @@ export async function renameCrate(db: Db, crateId: string, name: string): Promis
   await db.update(crates).set({ name: trimmed || null }).where(eq(crates.id, crateId));
 }
 
+export async function updateCrateCapacity(db: Db, crateId: string, capacity: number): Promise<void> {
+  await db.update(crates).set({ capacity }).where(eq(crates.id, crateId));
+}
+
 /** Vrai si la clayette contient encore au moins une bouteille en stock (quantité > 0). */
 export async function crateHasActiveBottles(db: Db, crateId: string): Promise<boolean> {
   const [row] = await db

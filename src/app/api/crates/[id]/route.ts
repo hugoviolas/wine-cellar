@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/requireApiUser';
-import { renameCrate, deleteCrate, getCrateById, crateHasActiveBottles } from '@/domain/crates';
+import { renameCrate, updateCrateCapacity, deleteCrate, getCrateById, crateHasActiveBottles } from '@/domain/crates';
 import { checkCellarAccess } from '@/domain/access';
 import { canEditCellarContent } from '@/domain/permissions';
 import { db } from '@/db/client';
@@ -19,11 +19,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const body = await request.json().catch(() => null);
-  if (typeof body?.name !== 'string') {
-    return NextResponse.json({ error: 'Nom de clayette invalide.' }, { status: 400 });
+  if (!body || (body.name === undefined && body.capacity === undefined)) {
+    return NextResponse.json({ error: 'Aucun champ à mettre à jour.' }, { status: 400 });
   }
 
-  await renameCrate(db, id, body.name);
+  if (body.name !== undefined) {
+    if (typeof body.name !== 'string') {
+      return NextResponse.json({ error: 'Nom de clayette invalide.' }, { status: 400 });
+    }
+    await renameCrate(db, id, body.name);
+  }
+
+  if (body.capacity !== undefined) {
+    if (typeof body.capacity !== 'number' || !Number.isInteger(body.capacity) || body.capacity < 1) {
+      return NextResponse.json({ error: 'Capacité invalide.' }, { status: 400 });
+    }
+    await updateCrateCapacity(db, id, body.capacity);
+  }
+
   return NextResponse.json({ ok: true });
 }
 

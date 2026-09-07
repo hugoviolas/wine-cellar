@@ -5,6 +5,7 @@ import {
   createCrate,
   listCrates,
   renameCrate,
+  updateCrateCapacity,
   deleteCrate,
   getCrateById,
   crateHasActiveBottles,
@@ -77,6 +78,19 @@ describe('crates', () => {
     await renameCrate(db, crateId, '   ');
     const crate = await getCrateById(db, crateId);
     expect(crate?.name).toBeNull();
+  });
+
+  it('change la capacité d’une clayette', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette', capacity: 6 });
+    await updateCrateCapacity(db, crateId, 24);
+    const crate = await getCrateById(db, crateId);
+    expect(crate?.capacity).toBe(24);
   });
 
   it('supprime une clayette', async () => {
