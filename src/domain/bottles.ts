@@ -74,6 +74,12 @@ export async function getBottle(db: Db, bottleId: string) {
 
 export interface UpdateBottleInput {
   name?: string;
+  producer?: string | null;
+  vintage?: number | null;
+  region?: string | null;
+  color?: string | null;
+  abv?: number | null;
+  volumeMl?: number | null;
   quantity?: number;
   userNote?: string | null;
   drinkFrom?: number | null;
@@ -88,11 +94,19 @@ export interface UpdateBottleInput {
  * mais la route doit vérifier que la clayette cible appartient à la même
  * cave que la clayette actuelle avant d'appeler `updateBottle` — sans quoi
  * ce champ redeviendrait le vecteur de déplacement inter-caves déjà corrigé
- * une fois (voir `PATCH /api/bottles/[id]`).
+ * une fois (voir `PATCH /api/bottles/[id]`). Les champs spécifiques à la
+ * catégorie (cépages, appellation...) ne sont volontairement pas ici : ils
+ * vivent dans `details` (JSON) et ne sont pas encore exposés à l'édition.
  */
 export const updateBottleBodySchema = z
   .object({
     name: z.string().min(1).optional(),
+    producer: z.string().nullable().optional(),
+    vintage: z.number().int().nullable().optional(),
+    region: z.string().nullable().optional(),
+    color: z.string().nullable().optional(),
+    abv: z.number().nullable().optional(),
+    volumeMl: z.number().int().nullable().optional(),
     quantity: z.number().int().min(0).optional(),
     userNote: z.string().nullable().optional(),
     drinkFrom: z.number().int().nullable().optional(),

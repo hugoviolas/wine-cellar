@@ -1,3 +1,10 @@
+export const WINE_COLOR_LABELS: Record<string, string> = {
+  rouge: 'Rouge',
+  blanc: 'Blanc',
+  rose: 'Rosé',
+  autre: 'Autre',
+};
+
 const WINE_COLOR_STRIPE: Record<string, string> = {
   rouge: 'border-l-4 border-l-[#7a2331]',
   blanc: 'border-l-4 border-l-[#d4af37]',

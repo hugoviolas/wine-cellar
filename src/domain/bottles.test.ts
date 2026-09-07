@@ -98,6 +98,31 @@ describe('getBottle / updateBottle / deleteBottle', () => {
     expect(bottle?.quantity).toBe(1);
   });
 
+  it('met à jour les champs d’identité de la bouteille (édition complète)', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 1, details: {} });
+
+    await updateBottle(db, bottleId, {
+      name: 'Château Margaux',
+      producer: 'Château Margaux',
+      vintage: 2015,
+      region: 'Bordeaux',
+      color: 'rouge',
+      abv: 13.5,
+      volumeMl: 750,
+    });
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.name).toBe('Château Margaux');
+    expect(bottle?.producer).toBe('Château Margaux');
+    expect(bottle?.vintage).toBe(2015);
+    expect(bottle?.region).toBe('Bordeaux');
+    expect(bottle?.color).toBe('rouge');
+    expect(bottle?.abv).toBe(13.5);
+    expect(bottle?.volumeMl).toBe(750);
+  });
+
   it('supprime une bouteille', async () => {
     const db = await createTestDb();
     const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
@@ -192,6 +217,18 @@ describe('updateBottleBodySchema', () => {
 
   it('accepte une mise à jour valide', () => {
     const result = updateBottleBodySchema.safeParse({ userNote: 'Superbe', quantity: 0, drinkUntil: null });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepte les champs d’identité (édition complète) avec valeurs nulles pour les effacer', () => {
+    const result = updateBottleBodySchema.safeParse({
+      producer: null,
+      vintage: 2018,
+      region: null,
+      color: 'blanc',
+      abv: null,
+      volumeMl: 750,
+    });
     expect(result.success).toBe(true);
   });
 });

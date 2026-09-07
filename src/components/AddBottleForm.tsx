@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crateLabel } from '@/lib/crateLabel';
+import { WINE_COLOR_LABELS } from '@/lib/wineColor';
+import { CATEGORY_LABELS } from '@/lib/bottleCategory';
+import { useToast } from '@/components/Toast';
 
 interface Crate {
   id: string;
@@ -10,23 +13,9 @@ interface Crate {
   name: string | null;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  wine: 'Vin',
-  sparkling: 'Champagne / effervescent',
-  cider: 'Cidre',
-  beer: 'Bière',
-  spirit: 'Spiritueux',
-};
-
-const WINE_COLOR_LABELS: Record<string, string> = {
-  rouge: 'Rouge',
-  blanc: 'Blanc',
-  rose: 'Rosé',
-  autre: 'Autre',
-};
-
 export function AddBottleForm({ crates }: { crates: Crate[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [crateId, setCrateId] = useState(crates[0]?.id ?? '');
   const [category, setCategory] = useState('wine');
   const [color, setColor] = useState('');
@@ -54,9 +43,13 @@ export function AddBottleForm({ crates }: { crates: Crate[] }) {
       }),
     });
     if (!response.ok) {
-      setError('Impossible d’ajouter cette bouteille.');
+      const data = await response.json().catch(() => ({}));
+      const message = data.error ?? 'Impossible d’ajouter cette bouteille.';
+      setError(message);
+      toast.error(message);
       return;
     }
+    toast.success('Bouteille ajoutée.');
     router.push('/cave');
     router.refresh();
   }

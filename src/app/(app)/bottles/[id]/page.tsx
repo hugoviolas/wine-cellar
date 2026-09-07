@@ -9,6 +9,7 @@ import { GardeBadge } from '@/components/GardeBadge';
 import { GardeGauge } from '@/components/GardeGauge';
 import { UserNoteEditor } from '@/components/UserNoteEditor';
 import { BottleActions } from '@/components/BottleActions';
+import { EditBottleForm } from '@/components/EditBottleForm';
 import { wineColorStripeClass } from '@/lib/wineColor';
 
 export default async function BottleDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -73,6 +74,22 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
       <section className="mb-6">
         <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Ta note</h4>
         <UserNoteEditor bottleId={bottle.id} initialNote={bottle.userNote} />
+      </section>
+
+      <section className="mb-6">
+        <EditBottleForm
+          bottle={{
+            id: bottle.id,
+            category: bottle.category,
+            name: bottle.name,
+            producer: bottle.producer,
+            vintage: bottle.vintage,
+            region: bottle.region,
+            color: bottle.color,
+            abv: bottle.abv,
+            volumeMl: bottle.volumeMl,
+          }}
+        />
       </section>
 
       <BottleActions bottleId={bottle.id} otherCrates={siblingCrates} initialQuantity={bottle.quantity} />
