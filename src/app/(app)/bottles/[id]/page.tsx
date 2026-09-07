@@ -75,7 +75,7 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
         <UserNoteEditor bottleId={bottle.id} initialNote={bottle.userNote} />
       </section>
 
-      <BottleActions bottleId={bottle.id} otherCrates={siblingCrates} />
+      <BottleActions bottleId={bottle.id} otherCrates={siblingCrates} initialQuantity={bottle.quantity} />
 
       <a
         href={`/bottles/${bottle.id}/consommer`}

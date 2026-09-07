@@ -12,12 +12,15 @@ interface CrateOption {
 export function BottleActions({
   bottleId,
   otherCrates,
+  initialQuantity,
 }: {
   bottleId: string;
   otherCrates: CrateOption[];
+  initialQuantity: number;
 }) {
   const router = useRouter();
   const [targetCrateId, setTargetCrateId] = useState(otherCrates[0]?.id ?? '');
+  const [quantity, setQuantity] = useState(initialQuantity);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -25,6 +28,23 @@ export function BottleActions({
   async function readError(response: Response, fallback: string): Promise<string> {
     const data = await response.json().catch(() => null);
     return typeof data?.error === 'string' ? data.error : fallback;
+  }
+
+  async function updateQuantity() {
+    if (quantity === initialQuantity || quantity < 0) return;
+    setError(null);
+    setBusy(true);
+    const response = await fetch(`/api/bottles/${bottleId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity }),
+    });
+    setBusy(false);
+    if (!response.ok) {
+      setError(await readError(response, 'Impossible de mettre à jour la quantité.'));
+      return;
+    }
+    router.refresh();
   }
 
   async function moveBottle() {
@@ -61,6 +81,27 @@ export function BottleActions({
   return (
     <section className="mb-6 space-y-4">
       {error && <p className="text-sm text-red-700">{error}</p>}
+
+      <div>
+        <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Quantité en stock</h4>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min={0}
+            value={quantity}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+            className="border border-gray-300 rounded px-3 py-2 text-sm w-24"
+          />
+          <button
+            type="button"
+            onClick={updateQuantity}
+            disabled={busy || quantity === initialQuantity || quantity < 0}
+            className="border border-forest text-forest rounded px-3 py-2 text-sm"
+          >
+            Mettre à jour
+          </button>
+        </div>
+      </div>
 
       {otherCrates.length > 0 && (
         <div>
