@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { wineColorStripeClass } from '@/lib/wineColor';
 
 interface BottleRow {
   id: string;
@@ -35,7 +36,7 @@ export function CrateCard({
           <Link
             key={bottle.id}
             href={`/bottles/${bottle.id}`}
-            className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+            className={`flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50 ${wineColorStripeClass(bottle.color)}`}
           >
             <span className="flex-1">{bottle.name}</span>
             <span className="text-xs text-gray-500">{bottle.vintage ?? 'NV'}</span>

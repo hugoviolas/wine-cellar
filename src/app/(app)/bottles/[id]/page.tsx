@@ -9,6 +9,7 @@ import { GardeBadge } from '@/components/GardeBadge';
 import { GardeGauge } from '@/components/GardeGauge';
 import { UserNoteEditor } from '@/components/UserNoteEditor';
 import { BottleActions } from '@/components/BottleActions';
+import { wineColorStripeClass } from '@/lib/wineColor';
 
 export default async function BottleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -31,6 +32,7 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="max-w-lg">
       <Link href="/cave" className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
+      <div className={`pl-4 ${wineColorStripeClass(bottle.color)}`}>
       <h2 className="text-xl mb-1">{bottle.name}</h2>
       <p className="text-xs text-gray-500 mb-4">
         {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} · {bottle.category}
@@ -41,6 +43,7 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
         <span className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
           {bottle.quantity} bouteille{bottle.quantity > 1 ? 's' : ''} en cave
         </span>
+      </div>
       </div>
 
       <section className="mb-6">

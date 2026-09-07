@@ -17,10 +17,18 @@ const CATEGORY_LABELS: Record<string, string> = {
   spirit: 'Spiritueux',
 };
 
+const WINE_COLOR_LABELS: Record<string, string> = {
+  rouge: 'Rouge',
+  blanc: 'Blanc',
+  rose: 'Rosé',
+  autre: 'Autre',
+};
+
 export function AddBottleForm({ crates }: { crates: Crate[] }) {
   const router = useRouter();
   const [crateId, setCrateId] = useState(crates[0]?.id ?? '');
   const [category, setCategory] = useState('wine');
+  const [color, setColor] = useState('');
   const [name, setName] = useState('');
   const [producer, setProducer] = useState('');
   const [vintage, setVintage] = useState('');
@@ -38,6 +46,7 @@ export function AddBottleForm({ crates }: { crates: Crate[] }) {
         category,
         name,
         producer: producer || undefined,
+        color: category === 'wine' && color ? color : undefined,
         vintage: vintage ? Number(vintage) : undefined,
         quantity,
         details: {},
@@ -73,7 +82,10 @@ export function AddBottleForm({ crates }: { crates: Crate[] }) {
         <label className="block text-xs uppercase tracking-wide mb-1">Catégorie</label>
         <select
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => {
+            setCategory(e.target.value);
+            if (e.target.value !== 'wine') setColor('');
+          }}
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
         >
           {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
@@ -81,6 +93,22 @@ export function AddBottleForm({ crates }: { crates: Crate[] }) {
           ))}
         </select>
       </div>
+
+      {category === 'wine' && (
+        <div>
+          <label className="block text-xs uppercase tracking-wide mb-1">Couleur</label>
+          <select
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          >
+            <option value="">—</option>
+            {Object.entries(WINE_COLOR_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="block text-xs uppercase tracking-wide mb-1">Nom</label>
