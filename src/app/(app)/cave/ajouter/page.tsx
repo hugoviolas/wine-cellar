@@ -11,6 +11,7 @@ export default async function AddBottlePage() {
     .select()
     .from(cellarMemberships)
     .where(eq(cellarMemberships.userId, user.id))
+    .orderBy(cellarMemberships.createdAt)
     .limit(1);
 
   const crates = membership ? await listCrates(db, membership.cellarId) : [];

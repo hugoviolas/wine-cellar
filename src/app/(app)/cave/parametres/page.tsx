@@ -9,12 +9,13 @@ import { listCellarMembersWithEmail } from '@/domain/cellarMembers';
 import { InviteMemberForm } from '@/components/InviteMemberForm';
 import { MembersList } from '@/components/MembersList';
 
-export default async function CavePametresPage() {
+export default async function CaveParametresPage() {
   const user = await requireUser();
   const [membership] = await db
     .select()
     .from(cellarMemberships)
     .where(eq(cellarMemberships.userId, user.id))
+    .orderBy(cellarMemberships.createdAt)
     .limit(1);
 
   if (!membership) {

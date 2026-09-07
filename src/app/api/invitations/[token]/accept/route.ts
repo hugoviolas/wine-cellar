@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   if (parsed.data.mode === 'login') {
     const auth = await requireApiUser();
     if ('error' in auth) return auth.error;
-    if (auth.user.email !== lookup.invitation.email) {
+    if (auth.user.email.toLowerCase() !== lookup.invitation.email.toLowerCase()) {
       return NextResponse.json(
         { error: 'Cette invitation est destinée à une autre adresse email.' },
         { status: 403 },

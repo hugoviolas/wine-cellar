@@ -93,4 +93,24 @@ describe('acceptInvitation', () => {
     const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
     await expect(acceptInvitation(db, 'inconnu', userId)).rejects.toThrow();
   });
+
+  it('met à jour le rôle au lieu de dupliquer le membership si l’utilisateur est déjà membre de la cave', async () => {
+    const db = await createTestDb();
+    const { userId: ownerId, cellarId } = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
+    const inviteeId = await createUserAccount(db, 'invite@example.com', 'x');
+
+    const readerInvite = await createInvitation(db, { cellarId, email: 'invite@example.com', role: 'reader', invitedByUserId: ownerId });
+    await acceptInvitation(db, readerInvite.token, inviteeId);
+
+    const editorInvite = await createInvitation(db, { cellarId, email: 'invite@example.com', role: 'editor', invitedByUserId: ownerId });
+    await acceptInvitation(db, editorInvite.token, inviteeId);
+
+    const memberships = await db
+      .select()
+      .from(cellarMemberships)
+      .where(eq(cellarMemberships.userId, inviteeId));
+    expect(memberships).toHaveLength(1);
+    expect(memberships[0].role).toBe('editor');
+    expect(memberships[0].cellarId).toBe(cellarId);
+  });
 });

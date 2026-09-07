@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/client';
 import { invitations, cellarMemberships } from '../db/schema';
@@ -32,7 +32,7 @@ export async function createInvitation(
   await db.insert(invitations).values({
     id,
     cellarId: input.cellarId,
-    email: input.email,
+    email: input.email.toLowerCase(),
     role: input.role,
     token,
     status: 'pending',
@@ -69,13 +69,31 @@ export async function acceptInvitation(
     throw new Error('Invitation invalide.');
   }
 
-  await db.insert(cellarMemberships).values({
-    id: newId(),
-    cellarId: lookup.invitation.cellarId,
-    userId,
-    role: lookup.invitation.role,
-    createdAt: new Date().toISOString(),
-  });
+  const [existingMembership] = await db
+    .select()
+    .from(cellarMemberships)
+    .where(
+      and(
+        eq(cellarMemberships.cellarId, lookup.invitation.cellarId),
+        eq(cellarMemberships.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (existingMembership) {
+    await db
+      .update(cellarMemberships)
+      .set({ role: lookup.invitation.role })
+      .where(eq(cellarMemberships.id, existingMembership.id));
+  } else {
+    await db.insert(cellarMemberships).values({
+      id: newId(),
+      cellarId: lookup.invitation.cellarId,
+      userId,
+      role: lookup.invitation.role,
+      createdAt: new Date().toISOString(),
+    });
+  }
   await db.update(invitations).set({ status: 'accepted' }).where(eq(invitations.id, lookup.invitation.id));
 
   return { cellarId: lookup.invitation.cellarId };
