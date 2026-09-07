@@ -11,3 +11,8 @@ export async function getAppSettings(db: Db): Promise<{ registrationEnabled: boo
   await db.insert(appSettings).values(defaults);
   return defaults;
 }
+
+export async function setRegistrationEnabled(db: Db, enabled: boolean): Promise<void> {
+  await getAppSettings(db);
+  await db.update(appSettings).set({ registrationEnabled: enabled }).where(eq(appSettings.id, SETTINGS_ID));
+}
