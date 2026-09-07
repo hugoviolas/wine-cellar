@@ -24,9 +24,13 @@ export interface CreateBottleInput {
 export async function createBottle(db: Db, input: CreateBottleInput): Promise<string> {
   const details = parseBottleDetails(input.category, input.details);
   const id = newId();
+  const siblingCount = (
+    await db.select({ id: bottles.id }).from(bottles).where(eq(bottles.crateId, input.crateId))
+  ).length;
   await db.insert(bottles).values({
     id,
     crateId: input.crateId,
+    sortOrder: siblingCount,
     category: input.category,
     name: input.name,
     producer: input.producer ?? null,
@@ -50,7 +54,8 @@ export async function listBottlesByCellar(db: Db, cellarId: string) {
     .select({ bottle: bottles, crate: crates })
     .from(bottles)
     .innerJoin(crates, eq(bottles.crateId, crates.id))
-    .where(eq(crates.cellarId, cellarId));
+    .where(eq(crates.cellarId, cellarId))
+    .orderBy(bottles.sortOrder);
 }
 
 export async function listActiveBottlesByCellar(db: Db, cellarId: string) {
@@ -58,7 +63,8 @@ export async function listActiveBottlesByCellar(db: Db, cellarId: string) {
     .select({ bottle: bottles, crate: crates })
     .from(bottles)
     .innerJoin(crates, eq(bottles.crateId, crates.id))
-    .where(and(eq(crates.cellarId, cellarId), gt(bottles.quantity, 0)));
+    .where(and(eq(crates.cellarId, cellarId), gt(bottles.quantity, 0)))
+    .orderBy(bottles.sortOrder);
 }
 
 export async function getBottle(db: Db, bottleId: string) {
@@ -96,7 +102,39 @@ export const updateBottleBodySchema = z
   .strict();
 
 export async function updateBottle(db: Db, bottleId: string, input: UpdateBottleInput): Promise<void> {
+  if (input.crateId) {
+    // Une bouteille déplacée vers une autre clayette est ajoutée à la fin
+    // de celle-ci — son ancien sortOrder n'a aucun sens dans ce nouveau
+    // contexte et pourrait entrer en collision avec un ordre déjà existant.
+    const siblingCount = (
+      await db.select({ id: bottles.id }).from(bottles).where(eq(bottles.crateId, input.crateId))
+    ).length;
+    await db.update(bottles).set({ ...input, sortOrder: siblingCount }).where(eq(bottles.id, bottleId));
+    return;
+  }
   await db.update(bottles).set(input).where(eq(bottles.id, bottleId));
+}
+
+/**
+ * Réordonne les bouteilles actives (quantité > 0) d'une clayette. `orderedIds`
+ * doit correspondre exactement à l'ensemble des bouteilles actives de cette
+ * clayette — même garde-fou que `reorderCrates`, pour éviter qu'une liste
+ * incomplète ou d'une autre clayette ne corrompe le tri.
+ */
+export async function reorderBottlesInCrate(db: Db, crateId: string, orderedIds: string[]): Promise<void> {
+  const existing = await db
+    .select({ id: bottles.id })
+    .from(bottles)
+    .where(and(eq(bottles.crateId, crateId), gt(bottles.quantity, 0)));
+  const existingIds = new Set(existing.map((b) => b.id));
+  const sameSet = orderedIds.length === existing.length && orderedIds.every((id) => existingIds.has(id));
+  if (!sameSet) {
+    throw new Error('La liste fournie ne correspond pas exactement aux bouteilles actives de cette clayette.');
+  }
+
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(bottles).set({ sortOrder: i }).where(eq(bottles.id, orderedIds[i]));
+  }
 }
 
 export async function deleteBottle(db: Db, bottleId: string): Promise<void> {

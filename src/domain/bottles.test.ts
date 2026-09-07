@@ -10,6 +10,7 @@ import {
   updateBottle,
   deleteBottle,
   updateBottleBodySchema,
+  reorderBottlesInCrate,
 } from './bottles';
 
 describe('bottles', () => {
@@ -105,6 +106,71 @@ describe('getBottle / updateBottle / deleteBottle', () => {
 
     await deleteBottle(db, bottleId);
     expect(await getBottle(db, bottleId)).toBeNull();
+  });
+
+  it('ajoute chaque nouvelle bouteille à la fin de sa clayette (sortOrder croissant)', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const firstId = await createBottle(db, { crateId, category: 'wine', name: 'Premier', quantity: 1, details: {} });
+    const secondId = await createBottle(db, { crateId, category: 'wine', name: 'Second', quantity: 1, details: {} });
+
+    const first = await getBottle(db, firstId);
+    const second = await getBottle(db, secondId);
+    expect(first?.sortOrder).toBe(0);
+    expect(second?.sortOrder).toBe(1);
+  });
+
+  it('place une bouteille déplacée vers une autre clayette à la fin de celle-ci', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateAId = await createCrate(db, { cellarId, name: 'Clayette A', capacity: 12 });
+    const crateBId = await createCrate(db, { cellarId, name: 'Clayette B', capacity: 12 });
+    await createBottle(db, { crateId: crateBId, category: 'wine', name: 'Déjà là', quantity: 1, details: {} });
+    const movedId = await createBottle(db, { crateId: crateAId, category: 'wine', name: 'À déplacer', quantity: 1, details: {} });
+
+    await updateBottle(db, movedId, { crateId: crateBId });
+
+    const moved = await getBottle(db, movedId);
+    expect(moved?.crateId).toBe(crateBId);
+    expect(moved?.sortOrder).toBe(1);
+  });
+});
+
+describe('reorderBottlesInCrate', () => {
+  it('applique le nouvel ordre aux bouteilles actives de la clayette', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const aId = await createBottle(db, { crateId, category: 'wine', name: 'A', quantity: 1, details: {} });
+    const bId = await createBottle(db, { crateId, category: 'wine', name: 'B', quantity: 1, details: {} });
+    const cId = await createBottle(db, { crateId, category: 'wine', name: 'C', quantity: 1, details: {} });
+
+    await reorderBottlesInCrate(db, crateId, [cId, aId, bId]);
+
+    const ordered = await listActiveBottlesByCellar(db, cellarId);
+    expect(ordered.map((row) => row.bottle.id)).toEqual([cId, aId, bId]);
+  });
+
+  it('rejette une liste qui ne correspond pas exactement aux bouteilles actives de la clayette', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    await createBottle(db, { crateId, category: 'wine', name: 'A', quantity: 1, details: {} });
+
+    await expect(reorderBottlesInCrate(db, crateId, ['id-inconnu'])).rejects.toThrow();
+  });
+
+  it('ignore les bouteilles épuisées (quantité 0) dans la validation de l’ensemble', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const activeId = await createBottle(db, { crateId, category: 'wine', name: 'Active', quantity: 1, details: {} });
+    const emptyId = await createBottle(db, { crateId, category: 'wine', name: 'Épuisée', quantity: 0, details: {} });
+
+    await reorderBottlesInCrate(db, crateId, [activeId]);
+    const empty = await getBottle(db, emptyId);
+    expect(empty?.sortOrder).toBe(1);
   });
 });
 

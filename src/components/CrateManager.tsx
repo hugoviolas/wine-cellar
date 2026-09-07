@@ -160,7 +160,7 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
         </button>
       </form>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext id="crate-manager" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={crates.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           <ul className="divide-y divide-gray-200 bg-white rounded">
             {crates.map((crate) => (

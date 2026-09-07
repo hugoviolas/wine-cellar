@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
 import { checkCellarAccess } from '@/domain/access';
-import { canManageCellar } from '@/domain/permissions';
+import { canManageCellar, canEditCellarContent } from '@/domain/permissions';
 import { cellarMemberships } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { listCrates } from '@/domain/crates';
 import { listActiveBottlesByCellar } from '@/domain/bottles';
-import { CrateCard } from '@/components/CrateCard';
+import { CaveBoard } from '@/components/CaveBoard';
+import type { BottleRow } from '@/components/CrateCard';
 
 export default async function CavePage() {
   const user = await requireUser();
@@ -24,9 +25,23 @@ export default async function CavePage() {
 
   const access = await checkCellarAccess(db, user.id, membership.cellarId);
   const canManage = access.allowed && canManageCellar(access.role);
+  const canEdit = access.allowed && canEditCellarContent(access.role);
 
   const crates = await listCrates(db, membership.cellarId);
   const bottleRows = await listActiveBottlesByCellar(db, membership.cellarId);
+
+  const bottlesByCrate: Record<string, BottleRow[]> = {};
+  for (const crate of crates) {
+    bottlesByCrate[crate.id] = bottleRows
+      .filter((row) => row.crate.id === crate.id)
+      .map((row) => ({
+        id: row.bottle.id,
+        name: row.bottle.name,
+        vintage: row.bottle.vintage,
+        quantity: row.bottle.quantity,
+        color: row.bottle.color,
+      }));
+  }
 
   return (
     <div>
@@ -38,25 +53,7 @@ export default async function CavePage() {
           <Link href="/cave/ajouter" className="bg-forest text-cream rounded px-3 py-1.5">+ Ajouter</Link>
         </div>
       </div>
-      <div className="grid sm:grid-cols-2 gap-6">
-        {crates.map((crate) => (
-          <CrateCard
-            key={crate.id}
-            number={crate.number}
-            name={crate.name}
-            capacity={crate.capacity}
-            bottles={bottleRows
-              .filter((row) => row.crate.id === crate.id)
-              .map((row) => ({
-                id: row.bottle.id,
-                name: row.bottle.name,
-                vintage: row.bottle.vintage,
-                quantity: row.bottle.quantity,
-                color: row.bottle.color,
-              }))}
-          />
-        ))}
-      </div>
+      <CaveBoard crates={crates} initialBottlesByCrate={bottlesByCrate} canEdit={canEdit} />
     </div>
   );
 }
