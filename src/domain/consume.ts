@@ -9,6 +9,7 @@ export interface ConsumeBottleInput {
   bottleId: string;
   consumedByUserId: string;
   consumedAt: string;
+  quantity?: number;
   rating?: number;
   comment?: string;
   occasion?: string;
@@ -21,12 +22,17 @@ async function getCellarIdForCrate(db: Db, crateId: string): Promise<string> {
 }
 
 export async function consumeBottle(db: Db, input: ConsumeBottleInput): Promise<string> {
-  const [bottle] = await db.select().from(bottles).where(eq(bottles.id, input.bottleId)).limit(1);
-  if (!bottle || bottle.quantity < 1) {
-    throw new BottleUnavailableError('Aucune bouteille disponible à consommer');
+  const quantity = input.quantity ?? 1;
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    throw new BottleUnavailableError('Quantité invalide');
   }
 
-  await db.update(bottles).set({ quantity: bottle.quantity - 1 }).where(eq(bottles.id, bottle.id));
+  const [bottle] = await db.select().from(bottles).where(eq(bottles.id, input.bottleId)).limit(1);
+  if (!bottle || bottle.quantity < quantity) {
+    throw new BottleUnavailableError('Quantité demandée supérieure au stock disponible');
+  }
+
+  await db.update(bottles).set({ quantity: bottle.quantity - quantity }).where(eq(bottles.id, bottle.id));
 
   // Une bouteille avec quantité ≥ 1 appartient forcément encore à une
   // clayette vivante : la suppression d'une clayette est bloquée tant
@@ -42,6 +48,7 @@ export async function consumeBottle(db: Db, input: ConsumeBottleInput): Promise<
     cellarId,
     consumedByUserId: input.consumedByUserId,
     consumedAt: input.consumedAt,
+    quantity,
     rating: input.rating ?? null,
     comment: input.comment ?? null,
     occasion: input.occasion ?? null,

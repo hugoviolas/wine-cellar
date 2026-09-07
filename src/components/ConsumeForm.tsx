@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export function ConsumeForm({ bottleId }: { bottleId: string }) {
+export function ConsumeForm({ bottleId, maxQuantity }: { bottleId: string; maxQuantity: number }) {
   const router = useRouter();
   const [consumedAt, setConsumedAt] = useState(new Date().toISOString().slice(0, 10));
+  const [quantity, setQuantity] = useState(1);
   const [rating, setRating] = useState(3);
   const [comment, setComment] = useState('');
   const [occasion, setOccasion] = useState('');
@@ -17,7 +18,7 @@ export function ConsumeForm({ bottleId }: { bottleId: string }) {
     const response = await fetch(`/api/bottles/${bottleId}/consume`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ consumedAt, rating, comment, occasion }),
+      body: JSON.stringify({ consumedAt, quantity, rating, comment, occasion }),
     });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
@@ -39,6 +40,21 @@ export function ConsumeForm({ bottleId }: { bottleId: string }) {
           value={consumedAt}
           onChange={(e) => setConsumedAt(e.target.value)}
           className="border border-gray-300 rounded px-3 py-2 text-sm"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs uppercase tracking-wide mb-1">
+          Quantité (max {maxQuantity})
+        </label>
+        <input
+          type="number"
+          min={1}
+          max={maxQuantity}
+          value={quantity}
+          onChange={(e) => setQuantity(Number(e.target.value))}
+          className="border border-gray-300 rounded px-3 py-2 text-sm w-20"
           required
         />
       </div>
@@ -75,7 +91,11 @@ export function ConsumeForm({ bottleId }: { bottleId: string }) {
         />
       </div>
 
-      <button type="submit" className="bg-forest text-cream rounded px-4 py-2 text-sm">
+      <button
+        type="submit"
+        disabled={quantity < 1 || quantity > maxQuantity}
+        className="bg-forest text-cream rounded px-4 py-2 text-sm"
+      >
         Confirmer la consommation
       </button>
     </form>

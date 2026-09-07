@@ -26,6 +26,7 @@ export default async function HistoriquePage() {
               <span className="text-xs text-gray-500">{entry.consumedAt}</span>
             </div>
             <div className="text-xs text-gray-500 mt-1">
+              {entry.quantity > 1 && <span>×{entry.quantity} · </span>}
               {entry.occasion && <span>{entry.occasion} · </span>}
               {entry.rating != null && <span>Note {entry.rating}/5</span>}
             </div>

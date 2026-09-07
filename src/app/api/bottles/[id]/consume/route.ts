@@ -25,6 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       bottleId: id,
       consumedByUserId: user.id,
       consumedAt: body.consumedAt ?? new Date().toISOString().slice(0, 10),
+      quantity: body.quantity,
       rating: body.rating,
       comment: body.comment,
       occasion: body.occasion,

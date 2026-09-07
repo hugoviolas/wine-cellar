@@ -59,4 +59,57 @@ describe('consumeBottle', () => {
     expect(bottle).not.toBeNull();
     expect(bottle?.quantity).toBe(0);
   });
+
+  it('consomme plusieurs bouteilles en une fois si demandé', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 5, details: {} });
+
+    await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-09-06', quantity: 3 });
+
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.quantity).toBe(2);
+
+    const history = await db.select().from(consumptionHistory).where(eq(consumptionHistory.bottleId, bottleId));
+    expect(history).toHaveLength(1);
+    expect(history[0].quantity).toBe(3);
+  });
+
+  it('refuse une quantité demandée supérieure au stock disponible', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 2, details: {} });
+
+    await expect(
+      consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-09-06', quantity: 3 }),
+    ).rejects.toBeInstanceOf(BottleUnavailableError);
+
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.quantity).toBe(2);
+  });
+
+  it('refuse une quantité nulle ou négative', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 2, details: {} });
+
+    await expect(
+      consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-09-06', quantity: 0 }),
+    ).rejects.toBeInstanceOf(BottleUnavailableError);
+  });
+
+  it('consomme par défaut une seule bouteille avec quantité par défaut enregistrée dans l’historique', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 2, details: {} });
+
+    await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-09-06' });
+
+    const history = await db.select().from(consumptionHistory).where(eq(consumptionHistory.bottleId, bottleId));
+    expect(history[0].quantity).toBe(1);
+  });
 });
