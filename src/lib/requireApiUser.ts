@@ -19,7 +19,7 @@ export async function requireApiUser(): Promise<ApiUserResult> {
   }
 
   const [user] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
-  if (!user) {
+  if (!user || !user.isActive) {
     return { error: NextResponse.json({ error: 'Authentification requise.' }, { status: 401 }) };
   }
 

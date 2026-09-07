@@ -16,6 +16,7 @@ export async function authenticateUser(
 ): Promise<AuthenticatedUser | null> {
   const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (!user) return null;
+  if (!user.isActive) return null;
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) return null;
   return { id: user.id, email: user.email, isSuperAdmin: user.isSuperAdmin };

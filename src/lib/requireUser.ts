@@ -9,7 +9,7 @@ export async function requireUser() {
   if (!session.userId) redirect('/login');
 
   const [user] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
-  if (!user) redirect('/login');
+  if (!user || !user.isActive) redirect('/login');
 
   return { id: user.id, email: user.email, isSuperAdmin: user.isSuperAdmin };
 }
