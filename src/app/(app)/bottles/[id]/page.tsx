@@ -4,9 +4,11 @@ import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
 import { resolveBottleAccess } from '@/domain/bottleAccess';
 import { computeGardeStatus, computeGardeProgress } from '@/domain/gardeStatus';
+import { getCrateById, listCrates } from '@/domain/crates';
 import { GardeBadge } from '@/components/GardeBadge';
 import { GardeGauge } from '@/components/GardeGauge';
 import { UserNoteEditor } from '@/components/UserNoteEditor';
+import { BottleActions } from '@/components/BottleActions';
 
 export default async function BottleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -14,6 +16,13 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
   const access = await resolveBottleAccess(db, user.id, id);
   if (access.status !== 'ok') notFound();
   const bottle = access.bottle;
+
+  // bottle.crateId est garanti non nul : resolveBottleAccess exclut les
+  // bouteilles orphelines (voir bottleAccess.ts).
+  const currentCrate = await getCrateById(db, bottle.crateId as string);
+  const siblingCrates = currentCrate
+    ? (await listCrates(db, currentCrate.cellarId)).filter((c) => c.id !== currentCrate.id)
+    : [];
 
   const currentYear = new Date().getFullYear();
   const status = computeGardeStatus(bottle.drinkFrom, bottle.drinkUntil, currentYear);
@@ -62,6 +71,8 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
         <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Ta note</h4>
         <UserNoteEditor bottleId={bottle.id} initialNote={bottle.userNote} />
       </section>
+
+      <BottleActions bottleId={bottle.id} otherCrates={siblingCrates} />
 
       <a
         href={`/bottles/${bottle.id}/consommer`}

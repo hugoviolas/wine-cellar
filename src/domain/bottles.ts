@@ -72,12 +72,17 @@ export interface UpdateBottleInput {
   userNote?: string | null;
   drinkFrom?: number | null;
   drinkUntil?: number | null;
+  crateId?: string;
 }
 
 /**
- * Champs modifiables depuis `PATCH /api/bottles/[id]`.
- * `.strict()` empêche toute affectation de masse (par exemple `crateId`, qui
- * déplacerait la bouteille dans une autre cave après le contrôle d'accès).
+ * Champs modifiables depuis `PATCH /api/bottles/[id]`. `.strict()` empêche
+ * toute affectation de masse au-delà de cette liste précise. `crateId` est
+ * volontairement autorisé (déplacer une bouteille vers une autre clayette),
+ * mais la route doit vérifier que la clayette cible appartient à la même
+ * cave que la clayette actuelle avant d'appeler `updateBottle` — sans quoi
+ * ce champ redeviendrait le vecteur de déplacement inter-caves déjà corrigé
+ * une fois (voir `PATCH /api/bottles/[id]`).
  */
 export const updateBottleBodySchema = z
   .object({
@@ -86,6 +91,7 @@ export const updateBottleBodySchema = z
     userNote: z.string().nullable().optional(),
     drinkFrom: z.number().int().nullable().optional(),
     drinkUntil: z.number().int().nullable().optional(),
+    crateId: z.string().min(1).optional(),
   })
   .strict();
 

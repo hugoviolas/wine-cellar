@@ -61,7 +61,7 @@ export const bottles = sqliteTable('bottles', {
 
 export const consumptionHistory = sqliteTable('consumption_history', {
   id: text('id').primaryKey(),
-  bottleId: text('bottle_id').notNull().references(() => bottles.id),
+  bottleId: text('bottle_id').references(() => bottles.id, { onDelete: 'set null' }),
   cellarId: text('cellar_id').notNull().references(() => cellars.id),
   consumedByUserId: text('consumed_by_user_id').notNull().references(() => users.id),
   consumedAt: text('consumed_at').notNull(),

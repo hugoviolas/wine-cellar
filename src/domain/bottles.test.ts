@@ -109,9 +109,14 @@ describe('getBottle / updateBottle / deleteBottle', () => {
 });
 
 describe('updateBottleBodySchema', () => {
-  it('rejette une clé inconnue (pas de réaffectation de clayette)', () => {
-    const result = updateBottleBodySchema.safeParse({ crateId: 'x', userNote: 'y' });
+  it('rejette une clé réellement inconnue', () => {
+    const result = updateBottleBodySchema.safeParse({ notAField: 'x', userNote: 'y' });
     expect(result.success).toBe(false);
+  });
+
+  it('accepte crateId (réaffectation de clayette) — la vérification "même cave" se fait dans la route', () => {
+    const result = updateBottleBodySchema.safeParse({ crateId: 'une-autre-clayette' });
+    expect(result.success).toBe(true);
   });
 
   it('rejette une quantité négative', () => {
