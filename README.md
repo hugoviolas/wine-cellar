@@ -34,36 +34,46 @@ Se connecter sur `/login` avec les identifiants `BOOTSTRAP_EMAIL` /
 
 ## Docker (test local)
 
-Pour lancer l'app dans un conteneur, avec reconstruction automatique de l'image à
-chaque modification de fichier :
+Deux services, définis dans `docker-compose.yml` (image `node:24` officielle, code monté
+en direct depuis l'hôte — pas besoin de `docker compose watch`, qui demande Docker
+Compose ≥ 2.22 ; ceci fonctionne dès la 2.x) :
+
+- **`start`** — lance l'app avec `yarn dev`. Le serveur de développement de Next.js
+  recharge déjà tout seul à chaque modification de fichier.
+- **`build`** — vérification de types en continu (`tsc --watch`), pour un retour rapide
+  sur les erreurs TypeScript pendant que tu codes. Ne redémarre pas `start`.
 
 ```bash
 cp .env.example .env        # comme ci-dessus, avec de vraies valeurs
 mkdir -p data
 
-docker compose watch
+docker compose up start build     # ou : yarn docker:up
+# ou séparément : yarn docker:start / yarn docker:watch
 ```
 
-`docker compose watch` démarre le conteneur (`docker-compose.yml`, service `app`) et
-surveille les fichiers du projet : chaque sauvegarde reconstruit l'image et relance le
-conteneur avec le code à jour. Le fichier `data/cave.db` vit dans un volume monté depuis
-l'hôte, donc il survit aux rebuilds.
+`node_modules` et `.next` sont des volumes anonymes propres à chaque conteneur (pas
+partagés avec l'hôte) : le premier démarrage lance `yarn install` à l'intérieur du
+conteneur (les binaires natifs de `@libsql/client` compilés sur macOS ne fonctionnent
+pas dans un conteneur Linux), et ne mélange pas le cache Turbopack du conteneur avec un
+éventuel `.next` de build local sur l'hôte.
 
-La première fois, il faut créer le compte super-admin depuis l'intérieur du conteneur :
+La première fois, il faut créer le compte super-admin depuis l'intérieur du conteneur
+`start` :
 
 ```bash
-docker compose exec app yarn bootstrap
+docker compose exec start yarn bootstrap
+docker compose exec start yarn db:migrate   # si besoin, sinon appliqué au démarrage
 ```
 
-(les migrations, elles, s'appliquent automatiquement à chaque démarrage du conteneur —
-`yarn db:migrate` est idempotent).
+Le fichier `data/cave.db` vit dans un volume monté depuis l'hôte, donc il survit aux
+redémarrages des conteneurs.
 
-Sans `--watch`, `docker compose up --build` fonctionne aussi pour un lancement simple
-sans reconstruction automatique.
-
-> Ceci vise le test local sur ta machine. Le déploiement réel sur le Raspberry Pi (build
-> croisé ARM64, tunnel Cloudflare) reste à faire dans un chantier séparé, comme prévu au
-> design.
+> Ceci vise le test local sur ta machine. Un `Dockerfile` + `.dockerignore` séparés
+> existent aussi pour construire une vraie image de production autonome
+> (`docker build -t wine-cellar .`) — c'est ce que le déploiement réel sur le Raspberry
+> Pi (build croisé ARM64, tunnel Cloudflare) utilisera, dans un chantier séparé comme
+> prévu au design. `docker-compose.yml` ne s'en sert pas : il privilégie le montage en
+> direct pour le confort d'itération locale.
 
 ## Scripts
 
@@ -71,12 +81,16 @@ sans reconstruction automatique.
 | ------------------ | --------------------------------------------------------- |
 | `yarn dev`         | Serveur de développement                                   |
 | `yarn build`       | Build de production                                        |
+| `yarn build:watch` | Vérification de types en continu (`tsc --watch`, sans build)|
 | `yarn start`       | Serveur de production (après `yarn build`)                  |
 | `yarn test`        | Suite de tests Vitest (logique métier de `src/domain/*`)    |
 | `yarn lint`        | ESLint                                                     |
 | `yarn db:generate` | Génère une migration Drizzle à partir du schéma            |
 | `yarn db:migrate`  | Applique les migrations à la base                           |
 | `yarn bootstrap`   | Crée le compte super-admin et sa cave initiale              |
+| `yarn docker:start`| `docker compose up start` (lance l'app en conteneur)         |
+| `yarn docker:watch`| `docker compose up build` (vérification de types en continu) |
+| `yarn docker:up`   | `docker compose up` (les deux services ensemble)              |
 
 ## Organisation du code
 
