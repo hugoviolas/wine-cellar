@@ -32,6 +32,39 @@ Se connecter sur `/login` avec les identifiants `BOOTSTRAP_EMAIL` /
 > Sans `SESSION_SECRET` d'au moins 32 caractères, l'application refuse de démarrer avec
 > un message explicite.
 
+## Docker (test local)
+
+Pour lancer l'app dans un conteneur, avec reconstruction automatique de l'image à
+chaque modification de fichier :
+
+```bash
+cp .env.example .env        # comme ci-dessus, avec de vraies valeurs
+mkdir -p data
+
+docker compose watch
+```
+
+`docker compose watch` démarre le conteneur (`docker-compose.yml`, service `app`) et
+surveille les fichiers du projet : chaque sauvegarde reconstruit l'image et relance le
+conteneur avec le code à jour. Le fichier `data/cave.db` vit dans un volume monté depuis
+l'hôte, donc il survit aux rebuilds.
+
+La première fois, il faut créer le compte super-admin depuis l'intérieur du conteneur :
+
+```bash
+docker compose exec app yarn bootstrap
+```
+
+(les migrations, elles, s'appliquent automatiquement à chaque démarrage du conteneur —
+`yarn db:migrate` est idempotent).
+
+Sans `--watch`, `docker compose up --build` fonctionne aussi pour un lancement simple
+sans reconstruction automatique.
+
+> Ceci vise le test local sur ta machine. Le déploiement réel sur le Raspberry Pi (build
+> croisé ARM64, tunnel Cloudflare) reste à faire dans un chantier séparé, comme prévu au
+> design.
+
 ## Scripts
 
 | Commande           | Rôle                                                      |

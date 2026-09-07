@@ -1,0 +1,28 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    volumes:
+      # La base SQLite vit hors du conteneur : elle survit aux rebuilds et
+      # aux redémarrages. Le chemin relatif de DATABASE_URL (.env) résout
+      # au même endroit, puisque le WORKDIR du conteneur est aussi /app.
+      - ./data:/app/data
+    develop:
+      watch:
+        # `docker compose watch` reconstruit l'image dès qu'un fichier
+        # suivi change — c'est le "service build" continu demandé. Combiné
+        # au conteneur déjà démarré (le "service start"), une sauvegarde
+        # suffit à voir le changement pris en compte.
+        - action: rebuild
+          path: .
+          ignore:
+            - node_modules/
+            - .next/
+            - data/
+            - .git/
+            - .superpowers/
