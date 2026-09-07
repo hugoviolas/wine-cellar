@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '@/db/client';
 import { requireApiUser } from '@/lib/requireApiUser';
 import { checkCellarAccess } from '@/domain/access';
+import { canEditCellarContent } from '@/domain/permissions';
 import { reorderCrates } from '@/domain/crates';
 
 const reorderBodySchema = z
@@ -26,6 +27,9 @@ export async function POST(request: Request) {
 
   const access = await checkCellarAccess(db, user.id, cellarId);
   if (!access.allowed) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  if (!canEditCellarContent(access.role)) {
+    return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
+  }
 
   try {
     await reorderCrates(db, cellarId, orderedIds);

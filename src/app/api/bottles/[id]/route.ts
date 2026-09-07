@@ -3,21 +3,22 @@ import { requireApiUser } from '@/lib/requireApiUser';
 import { db } from '@/db/client';
 import { updateBottle, deleteBottle, updateBottleBodySchema } from '@/domain/bottles';
 import { getCrateById } from '@/domain/crates';
+import { canEditCellarContent } from '@/domain/permissions';
 import { resolveBottleAccess, type BottleAccessResult } from '@/domain/bottleAccess';
 
 type BottleAccessOutcome =
-  | { bottle: Extract<BottleAccessResult, { status: 'ok' }>['bottle']; error: null }
-  | { bottle: null; error: NextResponse };
+  | { bottle: Extract<BottleAccessResult, { status: 'ok' }>['bottle']; role: Extract<BottleAccessResult, { status: 'ok' }>['role']; error: null }
+  | { bottle: null; role: null; error: NextResponse };
 
 async function requireBottleAccess(userId: string, bottleId: string): Promise<BottleAccessOutcome> {
   const result = await resolveBottleAccess(db, userId, bottleId);
   if (result.status === 'not_found') {
-    return { bottle: null, error: NextResponse.json({ error: 'Introuvable' }, { status: 404 }) };
+    return { bottle: null, role: null, error: NextResponse.json({ error: 'Introuvable' }, { status: 404 }) };
   }
   if (result.status === 'forbidden') {
-    return { bottle: null, error: NextResponse.json({ error: 'Accès refusé' }, { status: 403 }) };
+    return { bottle: null, role: null, error: NextResponse.json({ error: 'Accès refusé' }, { status: 403 }) };
   }
-  return { bottle: result.bottle, error: null };
+  return { bottle: result.bottle, role: result.role, error: null };
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -33,8 +34,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const auth = await requireApiUser();
   if ('error' in auth) return auth.error;
   const { id } = await params;
-  const { bottle, error } = await requireBottleAccess(auth.user.id, id);
+  const { bottle, role, error } = await requireBottleAccess(auth.user.id, id);
   if (error) return error;
+  if (!canEditCellarContent(role)) {
+    return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
+  }
 
   const rawBody = await request.json().catch(() => null);
   const parsed = updateBottleBodySchema.safeParse(rawBody);
@@ -70,8 +74,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const auth = await requireApiUser();
   if ('error' in auth) return auth.error;
   const { id } = await params;
-  const { error } = await requireBottleAccess(auth.user.id, id);
+  const { role, error } = await requireBottleAccess(auth.user.id, id);
   if (error) return error;
+  if (!canEditCellarContent(role)) {
+    return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
+  }
   await deleteBottle(db, id);
   return NextResponse.json({ ok: true });
 }

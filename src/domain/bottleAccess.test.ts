@@ -84,4 +84,15 @@ describe('resolveBottleAccess', () => {
     const result = await resolveBottleAccess(db, userId, 'bouteille-inconnue');
     expect(result).toEqual({ status: 'not_found' });
   });
+
+  it('inclut le rôle du membre dans le résultat "ok"', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 1, details: {} });
+    const owner = (await db.select().from(users))[0];
+
+    const result = await resolveBottleAccess(db, owner.id, bottleId);
+    expect(result).toMatchObject({ status: 'ok', role: 'super_admin' });
+  });
 });

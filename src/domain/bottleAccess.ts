@@ -1,10 +1,10 @@
 import type { Db } from '../db/client';
 import { getBottle } from './bottles';
 import { getCrateById } from './crates';
-import { checkCellarAccess } from './access';
+import { checkCellarAccess, type CellarRole } from './access';
 
 export type BottleAccessResult =
-  | { status: 'ok'; bottle: NonNullable<Awaited<ReturnType<typeof getBottle>>> }
+  | { status: 'ok'; bottle: NonNullable<Awaited<ReturnType<typeof getBottle>>>; role: CellarRole }
   | { status: 'not_found' }
   | { status: 'forbidden' };
 
@@ -20,5 +20,5 @@ export async function resolveBottleAccess(
   if (!crate) return { status: 'not_found' };
   const access = await checkCellarAccess(db, userId, crate.cellarId);
   if (!access.allowed) return { status: 'forbidden' };
-  return { status: 'ok', bottle };
+  return { status: 'ok', bottle, role: access.role };
 }

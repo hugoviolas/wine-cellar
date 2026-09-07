@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db/client';
 import { requireApiUser } from '@/lib/requireApiUser';
 import { checkCellarAccess } from '@/domain/access';
+import { canEditCellarContent } from '@/domain/permissions';
 import { createCrate, listCrates, getCrateById, createCrateBodySchema } from '@/domain/crates';
 
 export async function GET(request: Request) {
@@ -31,6 +32,9 @@ export async function POST(request: Request) {
 
   const access = await checkCellarAccess(db, user.id, input.cellarId);
   if (!access.allowed) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  if (!canEditCellarContent(access.role)) {
+    return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
+  }
 
   const id = await createCrate(db, input);
   return NextResponse.json(await getCrateById(db, id));

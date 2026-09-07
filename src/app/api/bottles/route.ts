@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db/client';
 import { requireApiUser } from '@/lib/requireApiUser';
 import { checkCellarAccess } from '@/domain/access';
+import { canEditCellarContent } from '@/domain/permissions';
 import { getCrateById } from '@/domain/crates';
 import { createBottle, listActiveBottlesByCellar } from '@/domain/bottles';
 
@@ -28,6 +29,9 @@ export async function POST(request: Request) {
   if (!crate) return NextResponse.json({ error: 'Clayette introuvable' }, { status: 404 });
   const access = await checkCellarAccess(db, user.id, crate.cellarId);
   if (!access.allowed) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  if (!canEditCellarContent(access.role)) {
+    return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
+  }
 
   try {
     const id = await createBottle(db, body);
