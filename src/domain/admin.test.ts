@@ -7,6 +7,9 @@ import {
   getUserById,
   setUserActive,
   setUserSuperAdmin,
+  listAllCellarsWithOwner,
+  countMembersByCellarId,
+  createCellarByAdmin,
 } from './admin';
 
 describe('listAllUsers', () => {
@@ -43,5 +46,41 @@ describe('setUserSuperAdmin', () => {
 
     await setUserSuperAdmin(db, userId, false);
     expect((await getUserById(db, userId))?.isSuperAdmin).toBe(false);
+  });
+});
+
+describe('listAllCellarsWithOwner', () => {
+  it('liste toutes les caves avec l’email du owner', async () => {
+    const db = await createTestDb();
+    await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave A' });
+
+    const list = await listAllCellarsWithOwner(db);
+    expect(list).toHaveLength(1);
+    expect(list[0].name).toBe('Cave A');
+    expect(list[0].ownerEmail).toBe('a@example.com');
+  });
+});
+
+describe('countMembersByCellarId', () => {
+  it('compte les membres par cave', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave A' });
+
+    const counts = await countMembersByCellarId(db);
+    expect(counts[cellarId]).toBe(1);
+  });
+});
+
+describe('createCellarByAdmin', () => {
+  it('crée une cave et son membership owner', async () => {
+    const db = await createTestDb();
+    const ownerId = await createUserAccount(db, 'owner@example.com', 'x');
+
+    const cellarId = await createCellarByAdmin(db, { name: 'Nouvelle cave', ownerId });
+
+    const list = await listAllCellarsWithOwner(db);
+    expect(list.find((c) => c.id === cellarId)?.ownerEmail).toBe('owner@example.com');
+    const counts = await countMembersByCellarId(db);
+    expect(counts[cellarId]).toBe(1);
   });
 });
