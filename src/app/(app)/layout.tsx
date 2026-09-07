@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/requireUser';
 import { ToastProvider } from '@/components/Toast';
+import { MobileNav } from '@/components/MobileNav';
 
 // Toutes les pages protégées lisent la session utilisateur — jamais de
 // pré-rendu statique à la construction (qui exécuterait ce layout sans
@@ -14,17 +15,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <ToastProvider>
       <div>
-        <header className="bg-forest text-cream px-5 py-4 flex items-center justify-between">
+        <header className="bg-forest text-cream px-5 py-4 flex items-center justify-between relative">
           <Link href="/accueil" className="font-serif italic text-lg">Ma Cave</Link>
-          <nav className="flex gap-4 text-xs uppercase tracking-wide">
-            <Link href="/accueil">Accueil</Link>
-            <Link href="/cave">Cave</Link>
-            <Link href="/historique">Historique</Link>
-            {user.isSuperAdmin && <Link href="/admin/utilisateurs">Admin</Link>}
-            <form action="/api/auth/logout" method="post">
-              <button type="submit">Déconnexion</button>
-            </form>
-          </nav>
+          <MobileNav isSuperAdmin={user.isSuperAdmin} />
         </header>
         <main className="p-4 max-w-5xl mx-auto">{children}</main>
       </div>

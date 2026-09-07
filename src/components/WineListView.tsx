@@ -119,31 +119,31 @@ export function WineListView({ rows }: { rows: WineListRow[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-100">
-              <th className="px-3 py-2">Nom</th>
-              <th className="px-3 py-2">Catégorie</th>
-              <th className="px-3 py-2">Couleur</th>
-              <th className="px-3 py-2">Millésime</th>
-              <th className="px-3 py-2">Note</th>
-              <th className="px-3 py-2">Quantité</th>
-              <th className="px-3 py-2">Garde</th>
-              <th className="px-3 py-2">Ajoutée le</th>
+              <th className="px-2 sm:px-3 py-2">Nom</th>
+              <th className="px-2 sm:px-3 py-2 hidden sm:table-cell">Catégorie</th>
+              <th className="px-2 sm:px-3 py-2">Couleur</th>
+              <th className="px-2 sm:px-3 py-2">Millésime</th>
+              <th className="px-2 sm:px-3 py-2">Note</th>
+              <th className="px-2 sm:px-3 py-2">Qté</th>
+              <th className="px-3 py-2 hidden sm:table-cell">Garde</th>
+              <th className="px-3 py-2 hidden sm:table-cell">Ajoutée le</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filtered.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
-                <td className="px-3 py-2">
+                <td className="px-2 sm:px-3 py-2 max-w-[120px] sm:max-w-none truncate">
                   <Link href={`/bottles/${row.id}`} className="text-forest underline">
                     {row.name}
                   </Link>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">{CATEGORY_LABELS[row.category] ?? row.category}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{row.color ? WINE_COLOR_LABELS[row.color] ?? row.color : '—'}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{row.vintage ?? 'NV'}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{row.rating != null ? `${row.rating}/5` : '—'}</td>
-                <td className="px-3 py-2 whitespace-nowrap">×{row.quantity}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{GARDE_STATUS_LABELS[row.gardeStatus]}</td>
-                <td className="px-3 py-2 whitespace-nowrap text-gray-500">{row.createdAt.slice(0, 10)}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap hidden sm:table-cell">{CATEGORY_LABELS[row.category] ?? row.category}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap">{row.color ? WINE_COLOR_LABELS[row.color] ?? row.color : '—'}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap">{row.vintage ?? 'NV'}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap">{row.rating != null ? `${row.rating}/5` : '—'}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap">×{row.quantity}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap hidden sm:table-cell">{GARDE_STATUS_LABELS[row.gardeStatus]}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap text-gray-500 hidden sm:table-cell">{row.createdAt.slice(0, 10)}</td>
               </tr>
             ))}
             {filtered.length === 0 && (

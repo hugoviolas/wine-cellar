@@ -51,7 +51,11 @@ function SortableCrateRow({
   const changed = name !== (crate.name ?? '') || capacity !== crate.capacity;
 
   return (
-    <li ref={setNodeRef} style={style} className="flex items-center justify-between gap-2 px-4 py-3 text-sm bg-white">
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 text-sm bg-white"
+    >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
           type="button"
@@ -62,13 +66,15 @@ function SortableCrateRow({
         >
           ⋮⋮
         </button>
-        <span className="whitespace-nowrap text-gray-500">Clayette {crate.number} —</span>
+        <span className="whitespace-nowrap text-gray-500 shrink-0">Clayette {crate.number} —</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nom (optionnel)"
           className="border border-gray-300 rounded px-2 py-1 text-sm flex-1 min-w-0"
         />
+      </div>
+      <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap sm:shrink-0 pl-8 sm:pl-0">
         <input
           type="number"
           min={1}
@@ -77,8 +83,6 @@ function SortableCrateRow({
           className="border border-gray-300 rounded px-2 py-1 text-sm w-20"
         />
         <span className="whitespace-nowrap text-gray-500">emplacements</span>
-      </div>
-      <div className="flex items-center gap-3 shrink-0">
         {changed && capacity >= 1 && (
           <button
             type="button"
