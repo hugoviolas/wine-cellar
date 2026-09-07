@@ -44,7 +44,7 @@ export function CreateCellarForm({ users }: { users: UserOption[] }) {
         />
       </div>
       <div>
-        <label className="block text-xs uppercase tracking-wide mb-1">Owner</label>
+        <label className="block text-xs uppercase tracking-wide mb-1">Propriétaire</label>
         <select
           value={ownerId}
           onChange={(e) => setOwnerId(e.target.value)}

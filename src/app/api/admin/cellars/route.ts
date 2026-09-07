@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const rawBody = await request.json().catch(() => null);
   const parsed = createCellarBodySchema.safeParse(rawBody);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Nom et owner requis.' }, { status: 400 });
+    return NextResponse.json({ error: 'Nom et propriétaire requis.' }, { status: 400 });
   }
 
   const id = await createCellarByAdmin(db, parsed.data);
