@@ -43,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     await updateMembershipRole(db, id, parsed.data.role);
   } catch (err) {
     if (err instanceof CannotModifyOwnerError) {
-      return NextResponse.json({ error: 'Le rôle du owner ne peut pas être modifié.' }, { status: 400 });
+      return NextResponse.json({ error: 'Le rôle du propriétaire ne peut pas être modifié.' }, { status: 400 });
     }
     throw err;
   }
@@ -62,7 +62,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     await removeMembership(db, id);
   } catch (err) {
     if (err instanceof CannotModifyOwnerError) {
-      return NextResponse.json({ error: 'Le owner ne peut pas être retiré.' }, { status: 400 });
+      return NextResponse.json({ error: 'Le propriétaire ne peut pas être retiré.' }, { status: 400 });
     }
     throw err;
   }
