@@ -38,6 +38,7 @@ export const crates = sqliteTable('crates', {
 export const bottles = sqliteTable('bottles', {
   id: text('id').primaryKey(),
   crateId: text('crate_id').references(() => crates.id, { onDelete: 'set null' }),
+  sortOrder: integer('sort_order').notNull().default(0),
   category: text('category', {
     enum: ['wine', 'sparkling', 'cider', 'beer', 'spirit'],
   }).notNull(),
@@ -66,6 +67,7 @@ export const consumptionHistory = sqliteTable('consumption_history', {
   cellarId: text('cellar_id').notNull().references(() => cellars.id),
   consumedByUserId: text('consumed_by_user_id').notNull().references(() => users.id),
   consumedAt: text('consumed_at').notNull(),
+  quantity: integer('quantity').notNull().default(1),
   rating: integer('rating'),
   comment: text('comment'),
   occasion: text('occasion'),
