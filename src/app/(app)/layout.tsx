@@ -8,7 +8,7 @@ import { requireUser } from '@/lib/requireUser';
 export const dynamic = 'force-dynamic';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  await requireUser();
+  const user = await requireUser();
 
   return (
     <div>
@@ -17,6 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <nav className="flex gap-4 text-xs uppercase tracking-wide">
           <Link href="/cave">Cave</Link>
           <Link href="/historique">Historique</Link>
+          {user.isSuperAdmin && <Link href="/admin/utilisateurs">Admin</Link>}
           <form action="/api/auth/logout" method="post">
             <button type="submit">Déconnexion</button>
           </form>
