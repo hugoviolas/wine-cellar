@@ -36,17 +36,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   const { bottle, role, error } = await requireBottleAccess(auth.user.id, id);
   if (error) return error;
-  if (!canEditCellarContent(role)) {
-    return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
-  }
 
   const rawBody = await request.json().catch(() => null);
   const parsed = updateBottleBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Champs de mise à jour invalides.' }, { status: 400 });
   }
-  if (Object.keys(parsed.data).length === 0) {
+  const patchKeys = Object.keys(parsed.data);
+  if (patchKeys.length === 0) {
     return NextResponse.json({ error: 'Aucun champ à mettre à jour.' }, { status: 400 });
+  }
+
+  // Un patch qui ne porte que sur la note personnelle est ouvert à tout
+  // membre (y compris reader — voir la matrice de permissions du spec :
+  // "Consommer une bouteille + noter"). Tout autre champ, seul ou combiné à
+  // userNote, reste réservé aux rôles pouvant éditer le contenu de la cave.
+  const isNoteOnlyPatch = patchKeys.length === 1 && patchKeys[0] === 'userNote';
+  if (!isNoteOnlyPatch && !canEditCellarContent(role)) {
+    return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
   if (parsed.data.crateId) {

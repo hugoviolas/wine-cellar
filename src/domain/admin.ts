@@ -20,6 +20,16 @@ export async function setUserSuperAdmin(db: Db, userId: string, isSuperAdmin: bo
   await db.update(users).set({ isSuperAdmin }).where(eq(users.id, userId));
 }
 
+/**
+ * Indique s'il existe, en excluant `excludeUserId`, au moins un autre compte
+ * super-admin actif. Sert à empêcher de rétrograder le dernier super-admin
+ * actif restant (ce qui verrouillerait `/admin/**` pour tout le monde).
+ */
+export async function hasOtherActiveSuperAdmin(db: Db, excludeUserId: string): Promise<boolean> {
+  const all = await listAllUsers(db);
+  return all.some((u) => u.isSuperAdmin && u.isActive && u.id !== excludeUserId);
+}
+
 export async function listAllCellarsWithOwner(db: Db) {
   return db
     .select({

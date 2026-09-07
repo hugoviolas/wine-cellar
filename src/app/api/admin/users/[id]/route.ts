@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/db/client';
 import { requireSuperAdminApi } from '@/lib/requireSuperAdminApi';
-import { getUserById, setUserActive, setUserSuperAdmin } from '@/domain/admin';
+import { getUserById, setUserActive, setUserSuperAdmin, hasOtherActiveSuperAdmin } from '@/domain/admin';
 
 const updateUserBodySchema = z
   .object({
@@ -26,6 +26,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (Object.keys(parsed.data).length === 0) {
     return NextResponse.json({ error: 'Aucun champ à mettre à jour.' }, { status: 400 });
+  }
+
+  if (parsed.data.isActive === false && target.id === auth.user.id) {
+    return NextResponse.json({ error: 'Tu ne peux pas désactiver ton propre compte.' }, { status: 400 });
+  }
+  if (parsed.data.isSuperAdmin === false && target.isSuperAdmin === true) {
+    const hasOther = await hasOtherActiveSuperAdmin(db, target.id);
+    if (!hasOther) {
+      return NextResponse.json(
+        { error: 'Impossible de rétrograder le dernier super-admin actif.' },
+        { status: 400 },
+      );
+    }
   }
 
   if (parsed.data.isActive !== undefined) {

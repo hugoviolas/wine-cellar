@@ -23,7 +23,10 @@ export async function POST(request: Request) {
   const auth = await requireApiUser();
   if ('error' in auth) return auth.error;
   const { user } = auth;
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });
+  }
 
   const crate = await getCrateById(db, body.crateId);
   if (!crate) return NextResponse.json({ error: 'Clayette introuvable' }, { status: 404 });

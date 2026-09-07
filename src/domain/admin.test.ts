@@ -10,6 +10,7 @@ import {
   listAllCellarsWithOwner,
   countMembersByCellarId,
   createCellarByAdmin,
+  hasOtherActiveSuperAdmin,
 } from './admin';
 
 describe('listAllUsers', () => {
@@ -68,6 +69,34 @@ describe('countMembersByCellarId', () => {
 
     const counts = await countMembersByCellarId(db);
     expect(counts[cellarId]).toBe(1);
+  });
+});
+
+describe('hasOtherActiveSuperAdmin', () => {
+  it('retourne false quand le compte exclu est le seul super-admin actif', async () => {
+    const db = await createTestDb();
+    const { userId } = await bootstrapSuperAdmin(db, { email: 'seul@example.com', password: 'x', cellarName: 'Cave' });
+
+    expect(await hasOtherActiveSuperAdmin(db, userId)).toBe(false);
+  });
+
+  it('retourne true quand un autre super-admin actif existe', async () => {
+    const db = await createTestDb();
+    const { userId: firstId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const secondId = await createUserAccount(db, 'b@example.com', 'x');
+    await setUserSuperAdmin(db, secondId, true);
+
+    expect(await hasOtherActiveSuperAdmin(db, firstId)).toBe(true);
+  });
+
+  it('ignore un autre super-admin désactivé', async () => {
+    const db = await createTestDb();
+    const { userId: firstId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const secondId = await createUserAccount(db, 'b@example.com', 'x');
+    await setUserSuperAdmin(db, secondId, true);
+    await setUserActive(db, secondId, false);
+
+    expect(await hasOtherActiveSuperAdmin(db, firstId)).toBe(false);
   });
 });
 
