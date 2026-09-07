@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { PasswordInput } from '@/components/PasswordInput';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,11 +41,10 @@ export default function LoginPage() {
           required
         />
         <label className="block text-xs uppercase tracking-wide mb-1">Mot de passe</label>
-        <input
-          type="password"
+        <PasswordInput
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 mb-6 text-sm"
+          onChange={setPassword}
+          className="mb-6"
           required
         />
         <button type="submit" className="w-full bg-forest text-cream rounded py-2 text-sm">
