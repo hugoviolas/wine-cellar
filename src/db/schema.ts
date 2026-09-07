@@ -13,6 +13,9 @@ export const cellars = sqliteTable('cellars', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   ownerId: text('owner_id').notNull().references(() => users.id),
+  brand: text('brand'),
+  model: text('model'),
+  notes: text('notes'),
   aiEnabled: integer('ai_enabled', { mode: 'boolean' }).notNull().default(true),
   createdAt: text('created_at').notNull(),
 });

@@ -6,8 +6,10 @@ import { canManageCellar } from '@/domain/permissions';
 import { cellarMemberships } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { listCellarMembersWithEmail } from '@/domain/cellarMembers';
+import { getCellarById } from '@/domain/cellars';
 import { InviteMemberForm } from '@/components/InviteMemberForm';
 import { MembersList } from '@/components/MembersList';
+import { CellarInfoForm } from '@/components/CellarInfoForm';
 
 export default async function CaveParametresPage() {
   const user = await requireUser();
@@ -28,10 +30,19 @@ export default async function CaveParametresPage() {
   }
 
   const members = await listCellarMembersWithEmail(db, membership.cellarId);
+  const cellar = await getCellarById(db, membership.cellarId);
 
   return (
     <div className="max-w-xl">
       <h2 className="text-lg mb-4">Réglages de la cave</h2>
+      {cellar && (
+        <CellarInfoForm
+          cellarId={membership.cellarId}
+          initialBrand={cellar.brand}
+          initialModel={cellar.model}
+          initialNotes={cellar.notes}
+        />
+      )}
       <InviteMemberForm cellarId={membership.cellarId} />
       <h3 className="text-sm mb-3">Membres</h3>
       <MembersList initialMembers={members} />
