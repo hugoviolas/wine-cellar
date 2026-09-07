@@ -53,7 +53,7 @@ export function MembersList({ initialMembers }: { initialMembers: Member[] }) {
           <li key={member.membershipId} className="flex items-center justify-between px-4 py-3 text-sm">
             <span>{member.email}</span>
             {member.role === 'owner' ? (
-              <span className="text-xs text-gray-500">Owner</span>
+              <span className="text-xs text-gray-500">Propriétaire</span>
             ) : (
               <div className="flex items-center gap-3">
                 <select
