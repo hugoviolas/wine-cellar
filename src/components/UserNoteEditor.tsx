@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useToast } from '@/components/Toast';
 
 export function UserNoteEditor({ bottleId, initialNote }: { bottleId: string; initialNote: string | null }) {
+  const toast = useToast();
   const [note, setNote] = useState(initialNote ?? '');
   const [saved, setSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,10 +18,13 @@ export function UserNoteEditor({ bottleId, initialNote }: { bottleId: string; in
     });
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      setError(typeof data?.error === 'string' ? data.error : 'Impossible d’enregistrer la note.');
+      const message = typeof data?.error === 'string' ? data.error : 'Impossible d’enregistrer la note.';
+      setError(message);
+      toast.error(message);
       return;
     }
     setSaved(true);
+    toast.success('Note enregistrée.');
   }
 
   return (

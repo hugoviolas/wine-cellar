@@ -15,6 +15,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CrateCard, type BottleRow } from './CrateCard';
+import { useToast } from '@/components/Toast';
 
 interface Crate {
   id: string;
@@ -33,6 +34,7 @@ export function CaveBoard({
   canEdit: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [bottlesByCrate, setBottlesByCrate] = useState(initialBottlesByCrate);
   const [error, setError] = useState<string | null>(null);
   const [activeBottle, setActiveBottle] = useState<BottleRow | null>(null);
@@ -83,7 +85,9 @@ export function CaveBoard({
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        setError(typeof data?.error === 'string' ? data.error : 'Impossible d’enregistrer le nouvel ordre.');
+        const message = typeof data?.error === 'string' ? data.error : 'Impossible d’enregistrer le nouvel ordre.';
+        setError(message);
+        toast.error(message);
         setBottlesByCrate(previous);
         return;
       }
@@ -109,7 +113,9 @@ export function CaveBoard({
     });
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      setError(typeof data?.error === 'string' ? data.error : 'Impossible de déplacer cette bouteille.');
+      const message = typeof data?.error === 'string' ? data.error : 'Impossible de déplacer cette bouteille.';
+      setError(message);
+      toast.error(message);
       setBottlesByCrate(previous);
       return;
     }

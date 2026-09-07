@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crateLabel } from '@/lib/crateLabel';
+import { useToast } from '@/components/Toast';
 
 interface CrateOption {
   id: string;
@@ -20,6 +21,7 @@ export function BottleActions({
   initialQuantity: number;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [targetCrateId, setTargetCrateId] = useState(otherCrates[0]?.id ?? '');
   const [quantity, setQuantity] = useState(initialQuantity);
   const [error, setError] = useState<string | null>(null);
@@ -42,9 +44,12 @@ export function BottleActions({
     });
     setBusy(false);
     if (!response.ok) {
-      setError(await readError(response, 'Impossible de mettre à jour la quantité.'));
+      const message = await readError(response, 'Impossible de mettre à jour la quantité.');
+      setError(message);
+      toast.error(message);
       return;
     }
+    toast.success('Quantité mise à jour.');
     router.refresh();
   }
 
@@ -59,9 +64,12 @@ export function BottleActions({
     });
     setBusy(false);
     if (!response.ok) {
-      setError(await readError(response, 'Impossible de déplacer cette bouteille.'));
+      const message = await readError(response, 'Impossible de déplacer cette bouteille.');
+      setError(message);
+      toast.error(message);
       return;
     }
+    toast.success('Bouteille déplacée.');
     router.push('/cave');
     router.refresh();
   }
@@ -72,9 +80,12 @@ export function BottleActions({
     const response = await fetch(`/api/bottles/${bottleId}`, { method: 'DELETE' });
     setBusy(false);
     if (!response.ok) {
-      setError(await readError(response, 'Impossible de supprimer cette bouteille.'));
+      const message = await readError(response, 'Impossible de supprimer cette bouteille.');
+      setError(message);
+      toast.error(message);
       return;
     }
+    toast.success('Bouteille supprimée.');
     router.push('/cave');
     router.refresh();
   }

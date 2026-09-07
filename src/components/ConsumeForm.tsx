@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/Toast';
 
 export function ConsumeForm({ bottleId, maxQuantity }: { bottleId: string; maxQuantity: number }) {
   const router = useRouter();
+  const toast = useToast();
   const [consumedAt, setConsumedAt] = useState(new Date().toISOString().slice(0, 10));
   const [quantity, setQuantity] = useState(1);
   const [rating, setRating] = useState(3);
@@ -22,9 +24,12 @@ export function ConsumeForm({ bottleId, maxQuantity }: { bottleId: string; maxQu
     });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      setError(data.error ?? 'Impossible d’enregistrer la consommation.');
+      const message = data.error ?? 'Impossible d’enregistrer la consommation.';
+      setError(message);
+      toast.error(message);
       return;
     }
+    toast.success('Consommation enregistrée.');
     router.push('/cave');
     router.refresh();
   }
