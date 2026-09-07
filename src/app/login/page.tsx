@@ -23,7 +23,7 @@ export default function LoginPage() {
       setError(data.error ?? 'Une erreur est survenue');
       return;
     }
-    router.push('/cave');
+    router.push('/accueil');
     router.refresh();
   }
 

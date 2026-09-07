@@ -15,8 +15,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <ToastProvider>
       <div>
         <header className="bg-forest text-cream px-5 py-4 flex items-center justify-between">
-          <span className="font-serif italic text-lg">Ma Cave</span>
+          <Link href="/accueil" className="font-serif italic text-lg">Ma Cave</Link>
           <nav className="flex gap-4 text-xs uppercase tracking-wide">
+            <Link href="/accueil">Accueil</Link>
             <Link href="/cave">Cave</Link>
             <Link href="/historique">Historique</Link>
             {user.isSuperAdmin && <Link href="/admin/utilisateurs">Admin</Link>}
