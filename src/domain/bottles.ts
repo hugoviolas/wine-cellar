@@ -82,6 +82,7 @@ export interface UpdateBottleInput {
   volumeMl?: number | null;
   quantity?: number;
   userNote?: string | null;
+  rating?: number | null;
   drinkFrom?: number | null;
   drinkUntil?: number | null;
   crateId?: string;
@@ -109,6 +110,7 @@ export const updateBottleBodySchema = z
     volumeMl: z.number().int().nullable().optional(),
     quantity: z.number().int().min(0).optional(),
     userNote: z.string().nullable().optional(),
+    rating: z.number().int().min(0).max(5).nullable().optional(),
     drinkFrom: z.number().int().nullable().optional(),
     drinkUntil: z.number().int().nullable().optional(),
     crateId: z.string().min(1).optional(),

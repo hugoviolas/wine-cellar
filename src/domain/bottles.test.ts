@@ -98,6 +98,17 @@ describe('getBottle / updateBottle / deleteBottle', () => {
     expect(bottle?.quantity).toBe(1);
   });
 
+  it('met à jour la note sur 5 d’une bouteille pas encore consommée', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 2, details: {} });
+
+    await updateBottle(db, bottleId, { rating: 4 });
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.rating).toBe(4);
+  });
+
   it('met à jour les champs d’identité de la bouteille (édition complète)', async () => {
     const db = await createTestDb();
     const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
@@ -230,5 +241,15 @@ describe('updateBottleBodySchema', () => {
       volumeMl: 750,
     });
     expect(result.success).toBe(true);
+  });
+
+  it('accepte une note entre 0 et 5, ou nulle pour l’effacer', () => {
+    expect(updateBottleBodySchema.safeParse({ rating: 4 }).success).toBe(true);
+    expect(updateBottleBodySchema.safeParse({ rating: null }).success).toBe(true);
+  });
+
+  it('rejette une note hors de la plage 0-5', () => {
+    expect(updateBottleBodySchema.safeParse({ rating: 6 }).success).toBe(false);
+    expect(updateBottleBodySchema.safeParse({ rating: -1 }).success).toBe(false);
   });
 });

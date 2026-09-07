@@ -73,7 +73,7 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
 
       <section className="mb-6">
         <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Ta note</h4>
-        <UserNoteEditor bottleId={bottle.id} initialNote={bottle.userNote} />
+        <UserNoteEditor bottleId={bottle.id} initialNote={bottle.userNote} initialRating={bottle.rating} />
       </section>
 
       <section className="mb-6">

@@ -57,6 +57,13 @@
       "when": 1788815350111,
       "tag": "0007_small_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788815903878,
+      "tag": "0008_good_purifiers",
+      "breakpoints": true
     }
   ]
 }

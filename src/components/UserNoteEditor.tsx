@@ -3,9 +3,18 @@
 import { useState } from 'react';
 import { useToast } from '@/components/Toast';
 
-export function UserNoteEditor({ bottleId, initialNote }: { bottleId: string; initialNote: string | null }) {
+export function UserNoteEditor({
+  bottleId,
+  initialNote,
+  initialRating,
+}: {
+  bottleId: string;
+  initialNote: string | null;
+  initialRating: number | null;
+}) {
   const toast = useToast();
   const [note, setNote] = useState(initialNote ?? '');
+  const [rating, setRating] = useState(initialRating?.toString() ?? '');
   const [saved, setSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,7 +23,7 @@ export function UserNoteEditor({ bottleId, initialNote }: { bottleId: string; in
     const response = await fetch(`/api/bottles/${bottleId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userNote: note }),
+      body: JSON.stringify({ userNote: note, rating: rating === '' ? null : Number(rating) }),
     });
     if (!response.ok) {
       const data = await response.json().catch(() => null);
@@ -29,6 +38,17 @@ export function UserNoteEditor({ bottleId, initialNote }: { bottleId: string; in
 
   return (
     <div>
+      <label className="block text-xs uppercase tracking-wide mb-1">Note (0 à 5)</label>
+      <select
+        value={rating}
+        onChange={(e) => { setRating(e.target.value); setSaved(false); }}
+        className="border border-gray-300 rounded px-3 py-2 text-sm mb-3"
+      >
+        <option value="">—</option>
+        {[0, 1, 2, 3, 4, 5].map((n) => (
+          <option key={n} value={n}>{n}</option>
+        ))}
+      </select>
       <textarea
         value={note}
         onChange={(e) => { setNote(e.target.value); setSaved(false); }}

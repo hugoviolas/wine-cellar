@@ -61,6 +61,7 @@ export const bottles = sqliteTable('bottles', {
   aiTastingAdvice: text('ai_tasting_advice'),
   aiGeneratedAt: text('ai_generated_at'),
   userNote: text('user_note'),
+  rating: integer('rating'),
   createdAt: text('created_at').notNull(),
 });
 

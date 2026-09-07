@@ -47,12 +47,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Aucun champ à mettre à jour.' }, { status: 400 });
   }
 
-  // Un patch qui ne porte que sur la note personnelle est ouvert à tout
-  // membre (y compris reader — voir la matrice de permissions du spec :
-  // "Consommer une bouteille + noter"). Tout autre champ, seul ou combiné à
-  // userNote, reste réservé aux rôles pouvant éditer le contenu de la cave.
-  const isNoteOnlyPatch = patchKeys.length === 1 && patchKeys[0] === 'userNote';
-  if (!isNoteOnlyPatch && !canEditCellarContent(role)) {
+  // Un patch qui ne porte que sur la note personnelle et/ou la note sur 5
+  // est ouvert à tout membre (y compris reader — voir la matrice de
+  // permissions du spec : "Consommer une bouteille + noter"). Tout autre
+  // champ, seul ou combiné à ceux-ci, reste réservé aux rôles pouvant
+  // éditer le contenu de la cave.
+  const personalFields = new Set(['userNote', 'rating']);
+  const isPersonalOnlyPatch = patchKeys.every((key) => personalFields.has(key));
+  if (!isPersonalOnlyPatch && !canEditCellarContent(role)) {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
