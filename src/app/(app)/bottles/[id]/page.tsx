@@ -5,11 +5,14 @@ import { requireUser } from '@/lib/requireUser';
 import { resolveBottleAccess } from '@/domain/bottleAccess';
 import { computeGardeStatus, computeGardeProgress } from '@/domain/gardeStatus';
 import { getCrateById, listCrates } from '@/domain/crates';
+import { getCellarById } from '@/domain/cellars';
+import { isAiAvailable } from '@/domain/ai/available';
 import { GardeBadge } from '@/components/GardeBadge';
 import { GardeGauge } from '@/components/GardeGauge';
 import { UserNoteEditor } from '@/components/UserNoteEditor';
 import { BottleActions } from '@/components/BottleActions';
 import { EditBottleForm } from '@/components/EditBottleForm';
+import { AiAnalysisButton } from '@/components/AiAnalysisButton';
 import { wineColorStripeClass } from '@/lib/wineColor';
 
 export default async function BottleDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,6 +28,9 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
   const siblingCrates = currentCrate
     ? (await listCrates(db, currentCrate.cellarId)).filter((c) => c.id !== currentCrate.id)
     : [];
+  const cellar = currentCrate ? await getCellarById(db, currentCrate.cellarId) : null;
+  const aiAvailable = cellar ? isAiAvailable(cellar) : false;
+  const pairings = Array.isArray(bottle.aiPairings) ? (bottle.aiPairings as string[]) : [];
 
   const currentYear = new Date().getFullYear();
   const status = computeGardeStatus(bottle.drinkFrom, bottle.drinkUntil, currentYear);
@@ -57,10 +63,27 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
         />
       </section>
 
+      {aiAvailable && (
+        <AiAnalysisButton bottleId={bottle.id} hasAnalysis={Boolean(bottle.aiGeneratedAt)} />
+      )}
+
       {bottle.aiAnalysis && (
         <section className="mb-6">
           <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Analyse</h4>
           <p className="text-sm italic font-serif">{bottle.aiAnalysis}</p>
+        </section>
+      )}
+
+      {pairings.length > 0 && (
+        <section className="mb-6">
+          <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Accords mets-vin</h4>
+          <div className="flex flex-wrap gap-2">
+            {pairings.map((pairing) => (
+              <span key={pairing} className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
+                {pairing}
+              </span>
+            ))}
+          </div>
         </section>
       )}
 
