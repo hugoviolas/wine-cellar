@@ -28,7 +28,11 @@ export type ResetTokenLookup =
 
 export async function validateResetToken(db: Db, token: string): Promise<ResetTokenLookup> {
   const [row] = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token)).limit(1);
-  if (!row) return { status: 'not_found' };
+  // `userId` nul : le compte a été supprimé depuis (voir deleteUser dans
+  // domain/admin.ts, qui met les jetons de réinitialisation orphelins à
+  // `null` plutôt que de les supprimer) — un jeton sans compte associé
+  // n'a plus de sens, traité comme introuvable.
+  if (!row || row.userId === null) return { status: 'not_found' };
   if (row.usedAt) return { status: 'already_used' };
   if (new Date(row.expiresAt).getTime() < Date.now()) return { status: 'expired' };
   return { status: 'valid', userId: row.userId };

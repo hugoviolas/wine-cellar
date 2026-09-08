@@ -64,6 +64,13 @@
       "when": 1788815903878,
       "tag": "0008_good_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1788873970681,
+      "tag": "0009_lovely_shooting_star",
+      "breakpoints": true
     }
   ]
 }

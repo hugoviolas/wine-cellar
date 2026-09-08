@@ -12,7 +12,11 @@ export const users = sqliteTable('users', {
 export const cellars = sqliteTable('cellars', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  ownerId: text('owner_id').notNull().references(() => users.id),
+  // Nullable + set null (pas notNull) : `deleteUser` ne supprime jamais les
+  // caves qu'un compte possède, mais efface la ligne `users` elle-même — la
+  // cave doit donc pouvoir survivre avec un propriétaire nul plutôt que de
+  // bloquer la suppression du compte (voir domain/admin.ts).
+  ownerId: text('owner_id').references(() => users.id, { onDelete: 'set null' }),
   brand: text('brand'),
   model: text('model'),
   notes: text('notes'),
@@ -23,7 +27,7 @@ export const cellars = sqliteTable('cellars', {
 export const cellarMemberships = sqliteTable('cellar_memberships', {
   id: text('id').primaryKey(),
   cellarId: text('cellar_id').notNull().references(() => cellars.id),
-  userId: text('user_id').notNull().references(() => users.id),
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
   role: text('role', { enum: ['owner', 'editor', 'reader'] }).notNull(),
   createdAt: text('created_at').notNull(),
 });
@@ -69,7 +73,7 @@ export const consumptionHistory = sqliteTable('consumption_history', {
   id: text('id').primaryKey(),
   bottleId: text('bottle_id').references(() => bottles.id, { onDelete: 'set null' }),
   cellarId: text('cellar_id').notNull().references(() => cellars.id),
-  consumedByUserId: text('consumed_by_user_id').notNull().references(() => users.id),
+  consumedByUserId: text('consumed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   consumedAt: text('consumed_at').notNull(),
   quantity: integer('quantity').notNull().default(1),
   rating: integer('rating'),
@@ -88,14 +92,14 @@ export const invitations = sqliteTable('invitations', {
   role: text('role', { enum: ['editor', 'reader'] }).notNull(),
   token: text('token').notNull().unique(),
   status: text('status', { enum: ['pending', 'accepted', 'expired'] }).notNull().default('pending'),
-  invitedByUserId: text('invited_by_user_id').notNull().references(() => users.id),
+  invitedByUserId: text('invited_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   expiresAt: text('expires_at').notNull(),
   createdAt: text('created_at').notNull(),
 });
 
 export const passwordResetTokens = sqliteTable('password_reset_tokens', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
   token: text('token').notNull().unique(),
   expiresAt: text('expires_at').notNull(),
   usedAt: text('used_at'),

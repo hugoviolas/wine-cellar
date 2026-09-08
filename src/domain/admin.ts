@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { users, cellars, cellarMemberships } from '../db/schema';
+import { users, cellars, cellarMemberships, crates, bottles, consumptionHistory, invitations } from '../db/schema';
 import { newId } from '../db/id';
 
 export async function listAllUsers(db: Db) {
@@ -30,6 +30,13 @@ export async function hasOtherActiveSuperAdmin(db: Db, excludeUserId: string): P
   return all.some((u) => u.isSuperAdmin && u.isActive && u.id !== excludeUserId);
 }
 
+/**
+ * `leftJoin` (pas `innerJoin`) : le propriétaire d'une cave peut avoir été
+ * supprimé via `deleteUser` (qui ne touche jamais aux caves qu'il possède,
+ * voir plus bas) — une jointure stricte ferait disparaître silencieusement
+ * la cave de cette liste. `ownerEmail` vaut alors `null`, à afficher comme
+ * "compte supprimé" côté UI.
+ */
 export async function listAllCellarsWithOwner(db: Db) {
   return db
     .select({
@@ -37,10 +44,45 @@ export async function listAllCellarsWithOwner(db: Db) {
       name: cellars.name,
       ownerId: cellars.ownerId,
       ownerEmail: users.email,
+      aiEnabled: cellars.aiEnabled,
       createdAt: cellars.createdAt,
     })
     .from(cellars)
-    .innerJoin(users, eq(cellars.ownerId, users.id));
+    .leftJoin(users, eq(cellars.ownerId, users.id));
+}
+
+export async function setCellarAiEnabled(db: Db, cellarId: string, aiEnabled: boolean): Promise<void> {
+  await db.update(cellars).set({ aiEnabled }).where(eq(cellars.id, cellarId));
+}
+
+/**
+ * Supprime une cave et tout ce qui lui appartient : bouteilles, clayettes,
+ * historique de consommation, invitations et memberships. Irréversible —
+ * la confirmation se fait côté UI/route, pas ici.
+ */
+export async function deleteCellarCascade(db: Db, cellarId: string): Promise<void> {
+  const cellarCrates = await db.select({ id: crates.id }).from(crates).where(eq(crates.cellarId, cellarId));
+  const crateIds = cellarCrates.map((c) => c.id);
+  if (crateIds.length > 0) {
+    await db.delete(bottles).where(inArray(bottles.crateId, crateIds));
+  }
+  await db.delete(crates).where(eq(crates.cellarId, cellarId));
+  await db.delete(consumptionHistory).where(eq(consumptionHistory.cellarId, cellarId));
+  await db.delete(invitations).where(eq(invitations.cellarId, cellarId));
+  await db.delete(cellarMemberships).where(eq(cellarMemberships.cellarId, cellarId));
+  await db.delete(cellars).where(eq(cellars.id, cellarId));
+}
+
+/**
+ * Supprime uniquement le compte — ne touche jamais aux caves qu'il possède,
+ * à ses memberships, son historique ou ses invitations envoyées (demande
+ * explicite : la suppression d'un compte ne doit rien casser ailleurs).
+ * Ces lignes restent avec une référence vers un utilisateur qui n'existe
+ * plus plutôt que d'être supprimées ou bloquées — voir `listAllCellarsWithOwner`
+ * et `listCellarMembersWithEmail` pour l'affichage `leftJoin` correspondant.
+ */
+export async function deleteUser(db: Db, userId: string): Promise<void> {
+  await db.delete(users).where(eq(users.id, userId));
 }
 
 export async function countMembersByCellarId(db: Db): Promise<Record<string, number>> {
