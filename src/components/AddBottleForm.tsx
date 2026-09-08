@@ -107,7 +107,7 @@ export function AddBottleForm({
     <div className="max-w-md">
       {aiAvailable && (
         <div className="mb-4">
-          <PhotoFillButton cellarId={cellarId} onExtracted={applyExtraction} />
+          <PhotoFillButton endpoint="/api/bottles/extract-from-photo" extraBody={{ cellarId }} onExtracted={applyExtraction} />
           <p className="text-xs text-gray-500 mt-1">
             Vérifie et corrige les champs pré-remplis avant d’ajouter — la clayette et la quantité restent à choisir toi-même.
           </p>

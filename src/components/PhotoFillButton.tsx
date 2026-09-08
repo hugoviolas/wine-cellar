@@ -38,10 +38,12 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export function PhotoFillButton({
-  cellarId,
+  endpoint,
+  extraBody,
   onExtracted,
 }: {
-  cellarId: string;
+  endpoint: string;
+  extraBody?: Record<string, unknown>;
   onExtracted: (data: PhotoExtractionResult) => void;
 }) {
   const toast = useToast();
@@ -65,10 +67,10 @@ export function PhotoFillButton({
     setBusy(true);
     try {
       const imageBase64 = await fileToBase64(file);
-      const response = await fetch('/api/bottles/extract-from-photo', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cellarId, imageBase64, mediaType: file.type }),
+        body: JSON.stringify({ ...extraBody, imageBase64, mediaType: file.type }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null);
