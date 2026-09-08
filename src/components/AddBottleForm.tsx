@@ -6,6 +6,7 @@ import { crateLabel } from '@/lib/crateLabel';
 import { WINE_COLOR_LABELS } from '@/lib/wineColor';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { useToast } from '@/components/Toast';
+import { PhotoFillButton, type PhotoExtractionResult } from '@/components/PhotoFillButton';
 
 interface Crate {
   id: string;
@@ -13,7 +14,15 @@ interface Crate {
   name: string | null;
 }
 
-export function AddBottleForm({ crates }: { crates: Crate[] }) {
+export function AddBottleForm({
+  crates,
+  cellarId,
+  aiAvailable,
+}: {
+  crates: Crate[];
+  cellarId: string;
+  aiAvailable: boolean;
+}) {
   const router = useRouter();
   const toast = useToast();
   const [crateId, setCrateId] = useState(crates[0]?.id ?? '');
@@ -24,6 +33,20 @@ export function AddBottleForm({ crates }: { crates: Crate[] }) {
   const [vintage, setVintage] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
+
+  function applyExtraction(data: PhotoExtractionResult) {
+    if (data.name) setName(data.name);
+    if (data.producer) setProducer(data.producer);
+    if (data.vintage) setVintage(String(data.vintage));
+    if (data.category) {
+      setCategory(data.category);
+      if (data.category === 'wine' && data.color) {
+        setColor(data.color);
+      } else if (data.category !== 'wine') {
+        setColor('');
+      }
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -55,6 +78,16 @@ export function AddBottleForm({ crates }: { crates: Crate[] }) {
   }
 
   return (
+    <div className="max-w-md">
+      {aiAvailable && (
+        <div className="mb-4">
+          <PhotoFillButton cellarId={cellarId} onExtracted={applyExtraction} />
+          <p className="text-xs text-gray-500 mt-1">
+            Vérifie et corrige les champs pré-remplis avant d’ajouter — la clayette et la quantité restent à choisir toi-même.
+          </p>
+        </div>
+      )}
+
     <form onSubmit={handleSubmit} className="bg-white rounded p-6 max-w-md space-y-4">
       {error && <p className="text-sm text-red-700">{error}</p>}
 
@@ -151,5 +184,6 @@ export function AddBottleForm({ crates }: { crates: Crate[] }) {
         Ajouter à la cave
       </button>
     </form>
+    </div>
   );
 }

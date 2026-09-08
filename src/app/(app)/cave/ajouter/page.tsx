@@ -3,6 +3,8 @@ import { requireUser } from '@/lib/requireUser';
 import { cellarMemberships } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { listCrates } from '@/domain/crates';
+import { getCellarById } from '@/domain/cellars';
+import { isAiAvailable } from '@/domain/ai/available';
 import { AddBottleForm } from '@/components/AddBottleForm';
 
 export default async function AddBottlePage() {
@@ -15,14 +17,16 @@ export default async function AddBottlePage() {
     .limit(1);
 
   const crates = membership ? await listCrates(db, membership.cellarId) : [];
+  const cellar = membership ? await getCellarById(db, membership.cellarId) : null;
+  const aiAvailable = cellar ? isAiAvailable(cellar) : false;
 
   return (
     <div>
       <h2 className="text-lg mb-4">Ajouter une bouteille</h2>
-      {crates.length === 0 ? (
+      {crates.length === 0 || !membership ? (
         <p className="text-sm">Crée d’abord une clayette avant d’ajouter une bouteille.</p>
       ) : (
-        <AddBottleForm crates={crates} />
+        <AddBottleForm crates={crates} cellarId={membership.cellarId} aiAvailable={aiAvailable} />
       )}
     </div>
   );
