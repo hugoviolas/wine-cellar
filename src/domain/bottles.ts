@@ -86,6 +86,7 @@ export interface UpdateBottleInput {
   drinkFrom?: number | null;
   drinkUntil?: number | null;
   crateId?: string;
+  details?: unknown;
 }
 
 /**
@@ -95,9 +96,11 @@ export interface UpdateBottleInput {
  * mais la route doit vérifier que la clayette cible appartient à la même
  * cave que la clayette actuelle avant d'appeler `updateBottle` — sans quoi
  * ce champ redeviendrait le vecteur de déplacement inter-caves déjà corrigé
- * une fois (voir `PATCH /api/bottles/[id]`). Les champs spécifiques à la
- * catégorie (cépages, appellation...) ne sont volontairement pas ici : ils
- * vivent dans `details` (JSON) et ne sont pas encore exposés à l'édition.
+ * une fois (voir `PATCH /api/bottles/[id]`). `details` (cépages,
+ * appellation...) n'est validé qu'ici comme JSON quelconque — la route doit
+ * le repasser dans `parseBottleDetails(bottle.category, ...)` avant
+ * d'appeler `updateBottle`, pour valider sa forme selon la catégorie de la
+ * bouteille (immuable, donc absente de ce schéma).
  */
 export const updateBottleBodySchema = z
   .object({
@@ -114,6 +117,7 @@ export const updateBottleBodySchema = z
     drinkFrom: z.number().int().nullable().optional(),
     drinkUntil: z.number().int().nullable().optional(),
     crateId: z.string().min(1).optional(),
+    details: z.unknown().optional(),
   })
   .strict();
 

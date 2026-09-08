@@ -22,10 +22,12 @@ export function buildPhotoExtractionPrompt(
   "vintage": 2018,
   "category": "wine",
   "color": "rouge",
-  "region": "string | null"
+  "region": "string | null",
+  "grapeVarieties": ["string", "..."] ,
+  "appellation": "string | null"
 }
 
-"category" est une supposition parmi ces 5 valeurs exactement : "wine", "sparkling", "cider", "beer", "spirit" — choisis celle qui correspond le mieux à ce que tu vois sur l'étiquette. "color" est pertinent si "category" vaut "wine" ou "sparkling" (un champagne ou effervescent peut être blanc ou rosé, pas seulement le vin tranquille) — valeurs possibles : "rouge", "blanc", "rose", "autre", ou null si indéterminable. Tous les champs sont nullable : si tu ne détectes pas une information avec certitude, laisse-la à null plutôt que d'inventer une valeur.`,
+"category" est une supposition parmi ces 5 valeurs exactement : "wine", "sparkling", "cider", "beer", "spirit" — choisis celle qui correspond le mieux à ce que tu vois sur l'étiquette. "color" est pertinent si "category" vaut "wine" ou "sparkling" (un champagne ou effervescent peut être blanc ou rosé, pas seulement le vin tranquille) — valeurs possibles : "rouge", "blanc", "rose", "autre", ou null si indéterminable. "grapeVarieties" (pertinent si "category" vaut "wine" ou "sparkling") et "appellation" (pertinent si "category" vaut "wine") ne concernent que ce qui est explicitement lisible sur l'étiquette — n'invente rien à partir de tes propres connaissances si l'étiquette ne l'indique pas. Tous les champs sont nullable : si tu ne détectes pas une information avec certitude, laisse-la à null (ou tableau vide pour "grapeVarieties") plutôt que d'inventer une valeur.`,
   };
 
   return { system, content: [imageBlock, textBlock] };

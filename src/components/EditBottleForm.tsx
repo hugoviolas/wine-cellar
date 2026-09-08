@@ -17,6 +17,8 @@ interface BottleFields {
   color: string | null;
   abv: number | null;
   volumeMl: number | null;
+  grapeVarieties: string[];
+  appellation: string | null;
 }
 
 export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
@@ -30,8 +32,24 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
   const [color, setColor] = useState(bottle.color ?? '');
   const [abv, setAbv] = useState(bottle.abv?.toString() ?? '');
   const [volumeMl, setVolumeMl] = useState(bottle.volumeMl?.toString() ?? '');
+  const [grapeVarieties, setGrapeVarieties] = useState(bottle.grapeVarieties.join(', '));
+  const [appellation, setAppellation] = useState(bottle.appellation ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  function buildDetails(): Record<string, unknown> | undefined {
+    const grapeVarietiesArray = grapeVarieties
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (bottle.category === 'wine') {
+      return { grapeVarieties: grapeVarietiesArray, appellation: appellation.trim() || undefined };
+    }
+    if (bottle.category === 'sparkling') {
+      return { grapeVarieties: grapeVarietiesArray };
+    }
+    return undefined;
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -48,6 +66,7 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
         color: color || null,
         abv: abv.trim() ? Number(abv) : null,
         volumeMl: volumeMl.trim() ? Number(volumeMl) : null,
+        details: buildDetails(),
       }),
     });
     setBusy(false);
@@ -116,6 +135,30 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
       )}
 
       <RegionInput value={region} onChange={setRegion} />
+
+      {(bottle.category === 'wine' || bottle.category === 'sparkling') && (
+        <div>
+          <label className="block text-xs uppercase tracking-wide mb-1">Cépages</label>
+          <input
+            value={grapeVarieties}
+            onChange={(e) => setGrapeVarieties(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            placeholder="Niellucciu, Syrah"
+          />
+        </div>
+      )}
+
+      {bottle.category === 'wine' && (
+        <div>
+          <label className="block text-xs uppercase tracking-wide mb-1">Appellation</label>
+          <input
+            value={appellation}
+            onChange={(e) => setAppellation(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            placeholder="Patrimonio"
+          />
+        </div>
+      )}
 
       <div className="flex gap-4">
         <div>

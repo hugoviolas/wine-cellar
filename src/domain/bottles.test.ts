@@ -134,6 +134,19 @@ describe('getBottle / updateBottle / deleteBottle', () => {
     expect(bottle?.volumeMl).toBe(750);
   });
 
+  it('met à jour les détails de catégorie (cépages, appellation)', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 1, details: {} });
+
+    await updateBottle(db, bottleId, {
+      details: { grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' },
+    });
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.details).toEqual({ grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' });
+  });
+
   it('supprime une bouteille', async () => {
     const db = await createTestDb();
     const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
@@ -246,6 +259,13 @@ describe('updateBottleBodySchema', () => {
   it('accepte une note entre 0 et 5, ou nulle pour l’effacer', () => {
     expect(updateBottleBodySchema.safeParse({ rating: 4 }).success).toBe(true);
     expect(updateBottleBodySchema.safeParse({ rating: null }).success).toBe(true);
+  });
+
+  it('accepte details comme JSON quelconque — la forme précise est validée dans la route selon la catégorie', () => {
+    const result = updateBottleBodySchema.safeParse({
+      details: { grapeVarieties: ['Niellucciu'], appellation: 'Patrimonio' },
+    });
+    expect(result.success).toBe(true);
   });
 
   it('rejette une note hors de la plage 0-5', () => {

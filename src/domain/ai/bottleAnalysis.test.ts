@@ -17,6 +17,8 @@ describe('buildBottleAnalysisPrompt', () => {
         category: 'wine',
         region: 'Bordeaux',
         color: 'rouge',
+        grapeVarieties: ['Cabernet Sauvignon', 'Merlot'],
+        appellation: 'Margaux',
       },
       2026,
     );
@@ -29,6 +31,8 @@ describe('buildBottleAnalysisPrompt', () => {
     expect(text).toContain('wine');
     expect(text).toContain('Bordeaux');
     expect(text).toContain('Couleur : rouge');
+    expect(text).toContain('Cépages connus : Cabernet Sauvignon, Merlot');
+    expect(text).toContain('Appellation connue : Margaux');
     expect(text).toContain('Année actuelle : 2026');
     expect(text).toContain('3 à 5');
   });
@@ -42,6 +46,8 @@ describe('buildBottleAnalysisPrompt', () => {
         category: 'cider',
         region: null,
         color: null,
+        grapeVarieties: [],
+        appellation: null,
       },
       2026,
     );
@@ -51,6 +57,8 @@ describe('buildBottleAnalysisPrompt', () => {
     expect(text).toContain('Producteur : inconnu');
     expect(text).toContain('Région : inconnue');
     expect(text).toContain('Couleur : inconnue');
+    expect(text).toContain('Cépages connus : inconnus');
+    expect(text).toContain('Appellation connue : inconnue');
   });
 
   it('demande une estimation best-effort même pour un vin ancien probablement en fin de vie', () => {
@@ -62,6 +70,8 @@ describe('buildBottleAnalysisPrompt', () => {
         category: 'wine',
         region: null,
         color: 'rouge',
+        grapeVarieties: [],
+        appellation: null,
       },
       2026,
     );
@@ -98,16 +108,20 @@ describe('saveBottleAiAnalysis', () => {
     drinkFromYear: 2027,
     drinkUntilYear: 2032,
     region: 'Bordeaux',
+    grapeVarieties: ['Niellucciu', 'Syrah'],
+    appellation: 'Patrimonio',
   };
 
-  it('écrit les champs IA, la fenêtre de garde et la région quand elles sont vides', async () => {
+  const emptyBottleRef = { id: '', category: 'wine' as const, drinkFrom: null, drinkUntil: null, region: null, details: {} };
+
+  it('écrit les champs IA, la fenêtre de garde, la région, les cépages et l’appellation quand ils sont vides', async () => {
     const { db, bottleId } = await setupBottle();
     const before = await getBottle(db, bottleId);
     expect(before?.drinkFrom).toBeNull();
     expect(before?.drinkUntil).toBeNull();
     expect(before?.region).toBeNull();
 
-    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: null, drinkUntil: null, region: null }, analysis);
+    await saveBottleAiAnalysis(db, { ...emptyBottleRef, id: bottleId }, analysis);
 
     const after = await getBottle(db, bottleId);
     expect(after?.aiAnalysis).toBe(analysis.analysis);
@@ -117,25 +131,35 @@ describe('saveBottleAiAnalysis', () => {
     expect(after?.drinkFrom).toBe(2027);
     expect(after?.drinkUntil).toBe(2032);
     expect(after?.region).toBe('Bordeaux');
+    expect(after?.details).toEqual({ grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' });
   });
 
-  it('n’écrase pas une fenêtre de garde ou une région déjà renseignées', async () => {
+  it('n’écrase pas une fenêtre de garde, une région, des cépages ou une appellation déjà renseignés', async () => {
     const { db, bottleId } = await setupBottle();
-    await db.update(bottles).set({ drinkFrom: 2020, drinkUntil: 2024, region: 'Bourgogne' }).where(eq(bottles.id, bottleId));
+    const existingDetails = { grapeVarieties: ['Merlot'], appellation: 'Saint-Émilion' };
+    await db
+      .update(bottles)
+      .set({ drinkFrom: 2020, drinkUntil: 2024, region: 'Bourgogne', details: existingDetails })
+      .where(eq(bottles.id, bottleId));
 
-    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: 2020, drinkUntil: 2024, region: 'Bourgogne' }, analysis);
+    await saveBottleAiAnalysis(
+      db,
+      { id: bottleId, category: 'wine', drinkFrom: 2020, drinkUntil: 2024, region: 'Bourgogne', details: existingDetails },
+      analysis,
+    );
 
     const after = await getBottle(db, bottleId);
     expect(after?.drinkFrom).toBe(2020);
     expect(after?.drinkUntil).toBe(2024);
     expect(after?.region).toBe('Bourgogne');
+    expect(after?.details).toEqual(existingDetails);
     // Les champs IA eux sont toujours écrasés, y compris à la régénération.
     expect(after?.aiAnalysis).toBe(analysis.analysis);
   });
 
   it('remplace le contenu IA précédent lors d’une régénération', async () => {
     const { db, bottleId } = await setupBottle();
-    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: null, drinkUntil: null, region: null }, analysis);
+    await saveBottleAiAnalysis(db, { ...emptyBottleRef, id: bottleId }, analysis);
 
     const secondAnalysis = {
       ...analysis,
@@ -144,19 +168,29 @@ describe('saveBottleAiAnalysis', () => {
       drinkFromYear: 2035,
       drinkUntilYear: 2040,
       region: 'Alsace',
+      grapeVarieties: ['Grenache'],
+      appellation: 'Châteauneuf-du-Pape',
     };
     await saveBottleAiAnalysis(
       db,
-      { id: bottleId, drinkFrom: 2027, drinkUntil: 2032, region: 'Bordeaux' },
+      {
+        id: bottleId,
+        category: 'wine',
+        drinkFrom: 2027,
+        drinkUntil: 2032,
+        region: 'Bordeaux',
+        details: { grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' },
+      },
       secondAnalysis,
     );
 
     const after = await getBottle(db, bottleId);
     expect(after?.aiAnalysis).toBe('Nouvelle analyse.');
     expect(after?.aiPairings).toEqual(['Volaille', 'Poisson', 'Fromage']);
-    // La garde et la région étaient déjà remplies par le premier appel : pas réécrasées par le second.
+    // La garde, la région, les cépages et l'appellation étaient déjà remplis par le premier appel : pas réécrasés par le second.
     expect(after?.drinkFrom).toBe(2027);
     expect(after?.drinkUntil).toBe(2032);
     expect(after?.region).toBe('Bordeaux');
+    expect(after?.details).toEqual({ grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' });
   });
 });

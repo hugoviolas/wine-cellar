@@ -14,6 +14,8 @@ export interface PhotoExtractionResult {
   category: 'wine' | 'sparkling' | 'cider' | 'beer' | 'spirit' | null;
   color: 'rouge' | 'blanc' | 'rose' | 'autre' | null;
   region: string | null;
+  grapeVarieties: string[] | null;
+  appellation: string | null;
 }
 
 function isAcceptedMediaType(type: string): type is AcceptedMediaType {

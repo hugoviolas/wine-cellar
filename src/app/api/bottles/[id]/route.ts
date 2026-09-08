@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/requireApiUser';
 import { db } from '@/db/client';
-import { updateBottle, deleteBottle, updateBottleBodySchema } from '@/domain/bottles';
+import { updateBottle, deleteBottle, updateBottleBodySchema, type UpdateBottleInput } from '@/domain/bottles';
 import { getCrateById } from '@/domain/crates';
 import { canEditCellarContent } from '@/domain/permissions';
 import { resolveBottleAccess, type BottleAccessResult } from '@/domain/bottleAccess';
+import { parseBottleDetails } from '@/domain/bottleCategories';
 
 type BottleAccessOutcome =
   | { bottle: Extract<BottleAccessResult, { status: 'ok' }>['bottle']; role: Extract<BottleAccessResult, { status: 'ok' }>['role']; error: null }
@@ -75,7 +76,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
   }
 
-  await updateBottle(db, id, parsed.data);
+  const patch: UpdateBottleInput = { ...parsed.data };
+  if (parsed.data.details !== undefined) {
+    try {
+      patch.details = parseBottleDetails(bottle.category, parsed.data.details);
+    } catch {
+      return NextResponse.json({ error: 'Détails invalides pour cette catégorie.' }, { status: 400 });
+    }
+  }
+
+  await updateBottle(db, id, patch);
   return NextResponse.json({ ok: true });
 }
 

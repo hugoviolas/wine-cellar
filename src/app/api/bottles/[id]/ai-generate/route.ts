@@ -6,7 +6,8 @@ import { canEditCellarContent } from '@/domain/permissions';
 import { getCrateById } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
-import { buildBottleAnalysisPrompt, saveBottleAiAnalysis } from '@/domain/ai/bottleAnalysis';
+import { buildBottleAnalysisPrompt, saveBottleAiAnalysis, type BottleAnalysisInput } from '@/domain/ai/bottleAnalysis';
+import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
 import { aiBottleAnalysisSchema } from '@/domain/ai/schemas';
 import { callClaudeForJson, AiResponseError } from '@/domain/ai/client';
 
@@ -33,7 +34,17 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Fonction IA indisponible pour cette cave.' }, { status: 403 });
   }
 
-  const { system, content } = buildBottleAnalysisPrompt(access.bottle, new Date().getFullYear());
+  const bottleForPrompt: BottleAnalysisInput = {
+    name: access.bottle.name,
+    producer: access.bottle.producer,
+    vintage: access.bottle.vintage,
+    category: access.bottle.category,
+    region: access.bottle.region,
+    color: access.bottle.color,
+    grapeVarieties: getGrapeVarieties(access.bottle.category, access.bottle.details),
+    appellation: getAppellation(access.bottle.category, access.bottle.details),
+  };
+  const { system, content } = buildBottleAnalysisPrompt(bottleForPrompt, new Date().getFullYear());
 
   let analysis;
   try {

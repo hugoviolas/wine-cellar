@@ -8,6 +8,8 @@ export const aiBottleAnalysisSchema = z.object({
   drinkFromYear: z.number().int().nullable(),
   drinkUntilYear: z.number().int().nullable(),
   region: z.string().min(1).nullable(),
+  grapeVarieties: z.array(z.string().min(1)).nullable(),
+  appellation: z.string().min(1).nullable(),
 });
 export type AiBottleAnalysis = z.infer<typeof aiBottleAnalysisSchema>;
 
@@ -19,6 +21,8 @@ export const aiPhotoExtractionSchema = z.object({
   category: z.enum(['wine', 'sparkling', 'cider', 'beer', 'spirit']).nullable(),
   color: z.enum(['rouge', 'blanc', 'rose', 'autre']).nullable(),
   region: z.string().min(1).nullable(),
+  grapeVarieties: z.array(z.string().min(1)).nullable(),
+  appellation: z.string().min(1).nullable(),
 });
 export type AiPhotoExtraction = z.infer<typeof aiPhotoExtractionSchema>;
 

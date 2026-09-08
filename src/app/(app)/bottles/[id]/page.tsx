@@ -7,6 +7,7 @@ import { computeGardeStatus, computeGardeProgress } from '@/domain/gardeStatus';
 import { getCrateById, listCrates } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
+import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
 import { crateLabel } from '@/lib/crateLabel';
 import { GardeBadge } from '@/components/GardeBadge';
 import { GardeGauge } from '@/components/GardeGauge';
@@ -119,6 +120,8 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
             color: bottle.color,
             abv: bottle.abv,
             volumeMl: bottle.volumeMl,
+            grapeVarieties: getGrapeVarieties(bottle.category, bottle.details),
+            appellation: getAppellation(bottle.category, bottle.details),
           }}
         />
       </section>

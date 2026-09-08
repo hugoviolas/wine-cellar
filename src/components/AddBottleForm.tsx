@@ -32,6 +32,8 @@ export function AddBottleForm({
   const [name, setName] = useState('');
   const [producer, setProducer] = useState('');
   const [region, setRegion] = useState('');
+  const [grapeVarieties, setGrapeVarieties] = useState('');
+  const [appellation, setAppellation] = useState('');
   const [vintage, setVintage] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +42,8 @@ export function AddBottleForm({
     if (data.name) setName(data.name);
     if (data.producer) setProducer(data.producer);
     if (data.region) setRegion(data.region);
+    if (data.grapeVarieties && data.grapeVarieties.length > 0) setGrapeVarieties(data.grapeVarieties.join(', '));
+    if (data.appellation) setAppellation(data.appellation);
     if (data.vintage) setVintage(String(data.vintage));
     if (data.category) {
       setCategory(data.category);
@@ -50,6 +54,23 @@ export function AddBottleForm({
         setColor('');
       }
     }
+  }
+
+  function buildDetails(): Record<string, unknown> {
+    const grapeVarietiesArray = grapeVarieties
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (category === 'wine') {
+      return {
+        grapeVarieties: grapeVarietiesArray,
+        appellation: appellation.trim() || undefined,
+      };
+    }
+    if (category === 'sparkling') {
+      return { grapeVarieties: grapeVarietiesArray };
+    }
+    return {};
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -67,7 +88,7 @@ export function AddBottleForm({
         color: (category === 'wine' || category === 'sparkling') && color ? color : undefined,
         vintage: vintage ? Number(vintage) : undefined,
         quantity,
-        details: {},
+        details: buildDetails(),
       }),
     });
     if (!response.ok) {
@@ -163,6 +184,30 @@ export function AddBottleForm({
       </div>
 
       <RegionInput value={region} onChange={setRegion} />
+
+      {(category === 'wine' || category === 'sparkling') && (
+        <div>
+          <label className="block text-xs uppercase tracking-wide mb-1">Cépages</label>
+          <input
+            value={grapeVarieties}
+            onChange={(e) => setGrapeVarieties(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            placeholder="Niellucciu, Syrah"
+          />
+        </div>
+      )}
+
+      {category === 'wine' && (
+        <div>
+          <label className="block text-xs uppercase tracking-wide mb-1">Appellation</label>
+          <input
+            value={appellation}
+            onChange={(e) => setAppellation(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            placeholder="Patrimonio"
+          />
+        </div>
+      )}
 
       <div className="flex gap-4">
         <div>

@@ -13,18 +13,22 @@ describe('aiBottleAnalysisSchema', () => {
     drinkFromYear: 2027,
     drinkUntilYear: 2032,
     region: 'Bordeaux',
+    grapeVarieties: ['Cabernet Sauvignon', 'Merlot'],
+    appellation: 'Margaux',
   };
 
   it('accepte une réponse conforme', () => {
     expect(aiBottleAnalysisSchema.safeParse(valid).success).toBe(true);
   });
 
-  it('accepte drinkFromYear, drinkUntilYear et region nuls', () => {
+  it('accepte drinkFromYear, drinkUntilYear, region, grapeVarieties et appellation nuls', () => {
     const result = aiBottleAnalysisSchema.safeParse({
       ...valid,
       drinkFromYear: null,
       drinkUntilYear: null,
       region: null,
+      grapeVarieties: null,
+      appellation: null,
     });
     expect(result.success).toBe(true);
   });
@@ -63,6 +67,8 @@ describe('aiPhotoExtractionSchema', () => {
     category: 'wine' as const,
     color: 'rouge' as const,
     region: 'Bordeaux',
+    grapeVarieties: ['Cabernet Sauvignon', 'Merlot'],
+    appellation: 'Margaux',
   };
 
   it('accepte une réponse conforme', () => {
@@ -77,6 +83,8 @@ describe('aiPhotoExtractionSchema', () => {
       category: null,
       color: null,
       region: null,
+      grapeVarieties: null,
+      appellation: null,
     };
     expect(aiPhotoExtractionSchema.safeParse(allNull).success).toBe(true);
   });

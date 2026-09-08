@@ -49,3 +49,15 @@ export function parseBottleDetails<C extends BottleCategory>(
 ): z.infer<(typeof detailsSchemaByCategory)[C]> {
   return detailsSchemaByCategory[category].parse(details) as z.infer<(typeof detailsSchemaByCategory)[C]>;
 }
+
+/** `grapeVarieties` n'existe que pour wine et sparkling — [] pour les autres catégories. */
+export function getGrapeVarieties(category: BottleCategory, details: unknown): string[] {
+  if (category !== 'wine' && category !== 'sparkling') return [];
+  return parseBottleDetails(category, details).grapeVarieties;
+}
+
+/** `appellation` n'existe que pour wine — null pour les autres catégories. */
+export function getAppellation(category: BottleCategory, details: unknown): string | null {
+  if (category !== 'wine') return null;
+  return parseBottleDetails('wine', details).appellation ?? null;
+}
