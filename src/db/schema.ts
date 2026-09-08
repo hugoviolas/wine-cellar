@@ -110,3 +110,24 @@ export const appSettings = sqliteTable('app_settings', {
   id: text('id').primaryKey(),
   registrationEnabled: integer('registration_enabled', { mode: 'boolean' }).notNull().default(true),
 });
+
+export const wishlistItems = sqliteTable('wishlist_items', {
+  id: text('id').primaryKey(),
+  // Nullable + set null, même raison que cellars.ownerId : deleteUser ne
+  // supprime jamais ce qu'un compte possède, seulement la ligne users.
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  category: text('category', {
+    enum: ['wine', 'sparkling', 'cider', 'beer', 'spirit'],
+  }).notNull(),
+  name: text('name').notNull(),
+  producer: text('producer'),
+  vintage: integer('vintage'),
+  region: text('region'),
+  color: text('color'),
+  abv: real('abv'),
+  volumeMl: integer('volume_ml'),
+  details: text('details', { mode: 'json' }).notNull(),
+  status: text('status', { enum: ['pending', 'promoted'] }).notNull().default('pending'),
+  promotedBottleId: text('promoted_bottle_id').references(() => bottles.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').notNull(),
+});
