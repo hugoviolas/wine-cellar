@@ -29,7 +29,9 @@ export type AiImageMediaType = z.infer<typeof aiImageMediaTypeSchema>;
 export const extractFromPhotoRequestSchema = z
   .object({
     cellarId: z.string().min(1),
-    imageBase64: z.string().min(1),
+    // 7 000 000 ≈ 5 Mo (limite client, voir MAX_BYTES dans PhotoFillButton.tsx) × 4/3
+    // pour l'inflation du base64, arrondi légèrement au-dessus.
+    imageBase64: z.string().min(1).max(7_000_000),
     mediaType: aiImageMediaTypeSchema,
   })
   .strict();

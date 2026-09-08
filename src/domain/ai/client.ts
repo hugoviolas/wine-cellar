@@ -45,13 +45,24 @@ export async function callClaudeForJson<T>({ system, content, schema }: ClaudeJs
   const client = getClient();
   const message = await client.messages.create({
     model: MODEL,
-    max_tokens: 1024,
+    // 2048 : de la marge pour les payloads JSON des deux chantiers (tableau
+    // d'accords, texte d'analyse plus long) — le thinking étant désactivé,
+    // ce budget n'est consommé que par la réponse elle-même.
+    max_tokens: 2048,
+    // Les modèles Claude 5 pensent de façon adaptative par défaut (effort
+    // "high" par défaut : le modèle décide seul de réfléchir ou non). Aucun
+    // des deux chantiers (extraction structurée courte) n'a besoin de
+    // raisonnement étendu, donc on le désactive explicitement — ça évite
+    // aussi qu'un bloc `thinking` précède le bloc texte dans la réponse.
+    thinking: { type: 'disabled' },
     system,
     messages: [{ role: 'user', content }],
   });
 
-  const block = message.content[0];
-  if (!block || block.type !== 'text') {
+  // On cherche le premier bloc texte plutôt que d'indexer [0] : même avec
+  // le thinking désactivé ci-dessus, mieux vaut ne pas supposer sa position.
+  const block = message.content.find((b) => b.type === 'text');
+  if (!block) {
     throw new AiResponseError('Réponse Claude sans contenu texte.');
   }
 

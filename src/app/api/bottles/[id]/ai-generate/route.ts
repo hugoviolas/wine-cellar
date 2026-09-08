@@ -40,8 +40,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     analysis = await callClaudeForJson({ system, content, schema: aiBottleAnalysisSchema });
   } catch (err) {
     if (err instanceof AiResponseError) {
+      console.error('[ai-generate]', err);
       return NextResponse.json({ error: 'Réponse IA invalide, réessaie.' }, { status: 502 });
     }
+    console.error('[ai-generate]', err);
     return NextResponse.json({ error: 'Appel IA impossible pour le moment.' }, { status: 502 });
   }
 

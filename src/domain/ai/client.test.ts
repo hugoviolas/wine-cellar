@@ -38,8 +38,22 @@ describe('callClaudeForJson', () => {
         model: 'claude-sonnet-5',
         system: 'sys',
         messages: [{ role: 'user', content: 'hello' }],
+        thinking: { type: 'disabled' },
       }),
     );
+  });
+
+  it('parse la réponse même quand un bloc thinking précède le bloc texte', async () => {
+    createMock.mockResolvedValue({
+      content: [
+        { type: 'thinking', thinking: 'internal reasoning...' },
+        { type: 'text', text: JSON.stringify({ ok: true }) },
+      ],
+    });
+
+    const result = await callClaudeForJson({ system: 'sys', content: 'hello', schema });
+
+    expect(result).toEqual({ ok: true });
   });
 
   it('lève AiResponseError si le texte n’est pas du JSON valide', async () => {

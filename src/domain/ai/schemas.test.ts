@@ -42,7 +42,9 @@ describe('aiBottleAnalysisSchema', () => {
   });
 
   it('refuse un champ manquant', () => {
-    const { tastingAdvice: _omit, ...incomplete } = valid;
+    const incomplete = Object.fromEntries(
+      Object.entries(valid).filter(([key]) => key !== 'tastingAdvice'),
+    );
     expect(aiBottleAnalysisSchema.safeParse(incomplete).success).toBe(false);
   });
 });

@@ -11,16 +11,21 @@ export function AiAnalysisButton({ bottleId, hasAnalysis }: { bottleId: string; 
 
   async function generate() {
     setBusy(true);
-    const response = await fetch(`/api/bottles/${bottleId}/ai-generate`, { method: 'POST' });
-    setBusy(false);
-    if (!response.ok) {
-      const data = await response.json().catch(() => null);
-      const message = typeof data?.error === 'string' ? data.error : 'Impossible de générer l\'analyse IA.';
-      toast.error(message);
-      return;
+    try {
+      const response = await fetch(`/api/bottles/${bottleId}/ai-generate`, { method: 'POST' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message = typeof data?.error === 'string' ? data.error : 'Impossible de générer l\'analyse IA.';
+        toast.error(message);
+        return;
+      }
+      toast.success('Analyse IA générée.');
+      router.refresh();
+    } catch {
+      toast.error('Impossible de générer l\'analyse IA.');
+    } finally {
+      setBusy(false);
     }
-    toast.success('Analyse IA générée.');
-    router.refresh();
   }
 
   return (

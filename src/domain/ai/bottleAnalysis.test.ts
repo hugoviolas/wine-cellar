@@ -36,8 +36,10 @@ describe('buildBottleAnalysisPrompt', () => {
       region: null,
     });
 
-    expect(content as string).toContain('Cidre mystère');
-    expect(content as string).toContain('inconnu');
+    const text = content as string;
+    expect(text).toContain('Cidre mystère');
+    expect(text).toContain('Producteur : inconnu');
+    expect(text).toContain('Région : inconnue');
   });
 });
 
@@ -102,7 +104,13 @@ describe('saveBottleAiAnalysis', () => {
     const { db, bottleId } = await setupBottle();
     await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: null, drinkUntil: null }, analysis);
 
-    const secondAnalysis = { ...analysis, analysis: 'Nouvelle analyse.', pairings: ['Volaille', 'Poisson', 'Fromage'] };
+    const secondAnalysis = {
+      ...analysis,
+      analysis: 'Nouvelle analyse.',
+      pairings: ['Volaille', 'Poisson', 'Fromage'],
+      drinkFromYear: 2035,
+      drinkUntilYear: 2040,
+    };
     await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: 2027, drinkUntil: 2032 }, secondAnalysis);
 
     const after = await getBottle(db, bottleId);

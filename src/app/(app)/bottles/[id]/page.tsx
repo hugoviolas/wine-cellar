@@ -78,8 +78,8 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
         <section className="mb-6">
           <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Accords mets-vin</h4>
           <div className="flex flex-wrap gap-2">
-            {pairings.map((pairing) => (
-              <span key={pairing} className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
+            {pairings.map((pairing, index) => (
+              <span key={`${index}-${pairing}`} className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
                 {pairing}
               </span>
             ))}

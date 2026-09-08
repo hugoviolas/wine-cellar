@@ -16,6 +16,9 @@ cp .env.example .env
 #   BOOTSTRAP_EMAIL      -> l'e-mail du compte super-admin à créer
 #   BOOTSTRAP_PASSWORD   -> son mot de passe
 #   BOOTSTRAP_CELLAR_NAME-> le nom de la cave initiale
+#   ANTHROPIC_API_KEY    -> active les fonctions IA (analyse de bouteille, extraction
+#                           par photo) ; l'app fonctionne sans, ces fonctions restent
+#                           simplement masquées
 
 mkdir -p data        # dossier de la base SQLite (DATABASE_URL=file:./data/cave.db)
 yarn install

@@ -39,8 +39,10 @@ export async function POST(request: Request) {
     return NextResponse.json(extracted);
   } catch (err) {
     if (err instanceof AiResponseError) {
+      console.error('[extract-from-photo]', err);
       return NextResponse.json({ error: 'Réponse IA invalide, réessaie avec une autre photo.' }, { status: 502 });
     }
+    console.error('[extract-from-photo]', err);
     return NextResponse.json({ error: 'Appel IA impossible pour le moment.' }, { status: 502 });
   }
 }
