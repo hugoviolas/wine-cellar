@@ -34,6 +34,18 @@ export interface ClaudeJsonCallParams<T> {
 }
 
 /**
+ * Claude entoure parfois sa réponse d'un bloc de code markdown (```json ...
+ * ``` ou ``` ... ```) même quand le prompt demande explicitement du JSON
+ * seul, sans texte autour — constaté en usage réel malgré la consigne.
+ * Retire cet entourage s'il est présent avant le `JSON.parse`.
+ */
+function stripMarkdownCodeFence(text: string): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/);
+  return match ? match[1] : trimmed;
+}
+
+/**
  * Envoie un message à Claude, extrait le premier bloc texte de la réponse,
  * le parse en JSON et le valide avec le schéma Zod fourni. Sortie
  * structurée par prompt + validation (pas de tool-use), voir le spec IA.
@@ -68,7 +80,7 @@ export async function callClaudeForJson<T>({ system, content, schema }: ClaudeJs
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(block.text);
+    parsed = JSON.parse(stripMarkdownCodeFence(block.text));
   } catch {
     throw new AiResponseError('Réponse Claude non conforme (JSON invalide).');
   }

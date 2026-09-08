@@ -56,6 +56,26 @@ describe('callClaudeForJson', () => {
     expect(result).toEqual({ ok: true });
   });
 
+  it('parse le JSON même entouré d’un bloc de code markdown ```json ... ```', async () => {
+    createMock.mockResolvedValue({
+      content: [{ type: 'text', text: '```json\n' + JSON.stringify({ ok: true }) + '\n```' }],
+    });
+
+    const result = await callClaudeForJson({ system: 'sys', content: 'hello', schema });
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('parse le JSON même entouré d’un bloc de code markdown sans langage (``` ... ```)', async () => {
+    createMock.mockResolvedValue({
+      content: [{ type: 'text', text: '```\n' + JSON.stringify({ ok: true }) + '\n```' }],
+    });
+
+    const result = await callClaudeForJson({ system: 'sys', content: 'hello', schema });
+
+    expect(result).toEqual({ ok: true });
+  });
+
   it('lève AiResponseError si le texte n’est pas du JSON valide', async () => {
     createMock.mockResolvedValue({ content: [{ type: 'text', text: 'pas du json' }] });
 
