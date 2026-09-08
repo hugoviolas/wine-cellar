@@ -42,9 +42,10 @@ export function AddBottleForm({
     if (data.vintage) setVintage(String(data.vintage));
     if (data.category) {
       setCategory(data.category);
-      if (data.category === 'wine' && data.color) {
+      const hasColor = data.category === 'wine' || data.category === 'sparkling';
+      if (hasColor && data.color) {
         setColor(data.color);
-      } else if (data.category !== 'wine') {
+      } else if (!hasColor) {
         setColor('');
       }
     }
@@ -62,7 +63,7 @@ export function AddBottleForm({
         name,
         producer: producer || undefined,
         region: region || undefined,
-        color: category === 'wine' && color ? color : undefined,
+        color: (category === 'wine' || category === 'sparkling') && color ? color : undefined,
         vintage: vintage ? Number(vintage) : undefined,
         quantity,
         details: {},
@@ -114,7 +115,7 @@ export function AddBottleForm({
           value={category}
           onChange={(e) => {
             setCategory(e.target.value);
-            if (e.target.value !== 'wine') setColor('');
+            if (e.target.value !== 'wine' && e.target.value !== 'sparkling') setColor('');
           }}
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
         >
@@ -124,7 +125,7 @@ export function AddBottleForm({
         </select>
       </div>
 
-      {category === 'wine' && (
+      {(category === 'wine' || category === 'sparkling') && (
         <div>
           <label className="block text-xs uppercase tracking-wide mb-1">Couleur</label>
           <select

@@ -25,7 +25,7 @@ export function buildPhotoExtractionPrompt(
   "region": "string | null"
 }
 
-"category" est une supposition parmi ces 5 valeurs exactement : "wine", "sparkling", "cider", "beer", "spirit" — choisis celle qui correspond le mieux à ce que tu vois sur l'étiquette. "color" n'est pertinent que si "category" vaut "wine" (valeurs possibles : "rouge", "blanc", "rose", "autre", ou null si indéterminable). Tous les champs sont nullable : si tu ne détectes pas une information avec certitude, laisse-la à null plutôt que d'inventer une valeur.`,
+"category" est une supposition parmi ces 5 valeurs exactement : "wine", "sparkling", "cider", "beer", "spirit" — choisis celle qui correspond le mieux à ce que tu vois sur l'étiquette. "color" est pertinent si "category" vaut "wine" ou "sparkling" (un champagne ou effervescent peut être blanc ou rosé, pas seulement le vin tranquille) — valeurs possibles : "rouge", "blanc", "rose", "autre", ou null si indéterminable. Tous les champs sont nullable : si tu ne détectes pas une information avec certitude, laisse-la à null plutôt que d'inventer une valeur.`,
   };
 
   return { system, content: [imageBlock, textBlock] };

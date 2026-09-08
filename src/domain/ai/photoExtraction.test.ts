@@ -31,6 +31,14 @@ describe('buildPhotoExtractionPrompt', () => {
     expect(text).toContain('autre');
   });
 
+  it('indique que la couleur est pertinente pour le vin ET le champagne/effervescent', () => {
+    const { content } = buildPhotoExtractionPrompt('AAAA', 'image/png');
+    const blocks = content as Array<{ type: string; text?: string }>;
+    const text = blocks[1].text as string;
+
+    expect(text).toContain('"wine" ou "sparkling"');
+  });
+
   it('utilise un system prompt demandant du JSON seul', () => {
     const { system } = buildPhotoExtractionPrompt('AAAA', 'image/jpeg');
     expect(system.toLowerCase()).toContain('json');

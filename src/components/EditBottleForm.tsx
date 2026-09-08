@@ -98,7 +98,7 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
         />
       </div>
 
-      {bottle.category === 'wine' && (
+      {(bottle.category === 'wine' || bottle.category === 'sparkling') && (
         <div>
           <label className="block text-xs uppercase tracking-wide mb-1">Couleur</label>
           <select
