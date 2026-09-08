@@ -3,6 +3,7 @@ import {
   aiBottleAnalysisSchema,
   aiPhotoExtractionSchema,
   extractFromPhotoRequestSchema,
+  wishlistExtractFromPhotoRequestSchema,
 } from './schemas';
 
 describe('aiBottleAnalysisSchema', () => {
@@ -120,5 +121,22 @@ describe('extractFromPhotoRequestSchema', () => {
   it('refuse un imageBase64 vide', () => {
     const result = extractFromPhotoRequestSchema.safeParse({ ...valid, imageBase64: '' });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('wishlistExtractFromPhotoRequestSchema', () => {
+  const valid = { imageBase64: 'AAAA', mediaType: 'image/jpeg' as const };
+
+  it('accepte un corps conforme (sans cellarId)', () => {
+    expect(wishlistExtractFromPhotoRequestSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("refuse un cellarId (n'a pas sa place ici)", () => {
+    const result = wishlistExtractFromPhotoRequestSchema.safeParse({ ...valid, cellarId: 'x' });
+    expect(result.success).toBe(false);
+  });
+
+  it('refuse un imageBase64 vide', () => {
+    expect(wishlistExtractFromPhotoRequestSchema.safeParse({ ...valid, imageBase64: '' }).success).toBe(false);
   });
 });

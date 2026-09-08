@@ -41,3 +41,12 @@ export const extractFromPhotoRequestSchema = z
   })
   .strict();
 export type ExtractFromPhotoRequest = z.infer<typeof extractFromPhotoRequestSchema>;
+
+/** Corps de `POST /api/wishlist/extract-from-photo` — pas de cellarId, la wishlist n'appartient à aucune cave. */
+export const wishlistExtractFromPhotoRequestSchema = z
+  .object({
+    imageBase64: z.string().min(1).max(7_000_000),
+    mediaType: aiImageMediaTypeSchema,
+  })
+  .strict();
+export type WishlistExtractFromPhotoRequest = z.infer<typeof wishlistExtractFromPhotoRequestSchema>;
