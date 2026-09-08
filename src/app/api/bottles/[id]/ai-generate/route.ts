@@ -33,7 +33,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Fonction IA indisponible pour cette cave.' }, { status: 403 });
   }
 
-  const { system, content } = buildBottleAnalysisPrompt(access.bottle);
+  const { system, content } = buildBottleAnalysisPrompt(access.bottle, new Date().getFullYear());
 
   let analysis;
   try {

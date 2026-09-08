@@ -9,14 +9,17 @@ import { buildBottleAnalysisPrompt, saveBottleAiAnalysis } from './bottleAnalysi
 
 describe('buildBottleAnalysisPrompt', () => {
   it('inclut les champs de la bouteille dans le prompt', () => {
-    const { content } = buildBottleAnalysisPrompt({
-      name: 'Château Margaux',
-      producer: 'Château Margaux SA',
-      vintage: 2015,
-      category: 'wine',
-      region: 'Bordeaux',
-      color: 'rouge',
-    });
+    const { content } = buildBottleAnalysisPrompt(
+      {
+        name: 'Château Margaux',
+        producer: 'Château Margaux SA',
+        vintage: 2015,
+        category: 'wine',
+        region: 'Bordeaux',
+        color: 'rouge',
+      },
+      2026,
+    );
 
     expect(typeof content).toBe('string');
     const text = content as string;
@@ -26,24 +29,46 @@ describe('buildBottleAnalysisPrompt', () => {
     expect(text).toContain('wine');
     expect(text).toContain('Bordeaux');
     expect(text).toContain('Couleur : rouge');
+    expect(text).toContain('Année actuelle : 2026');
     expect(text).toContain('3 à 5');
   });
 
   it('gère les champs absents sans planter', () => {
-    const { content } = buildBottleAnalysisPrompt({
-      name: 'Cidre mystère',
-      producer: null,
-      vintage: null,
-      category: 'cider',
-      region: null,
-      color: null,
-    });
+    const { content } = buildBottleAnalysisPrompt(
+      {
+        name: 'Cidre mystère',
+        producer: null,
+        vintage: null,
+        category: 'cider',
+        region: null,
+        color: null,
+      },
+      2026,
+    );
 
     const text = content as string;
     expect(text).toContain('Cidre mystère');
     expect(text).toContain('Producteur : inconnu');
     expect(text).toContain('Région : inconnue');
     expect(text).toContain('Couleur : inconnue');
+  });
+
+  it('demande une estimation best-effort même pour un vin ancien probablement en fin de vie', () => {
+    const { content } = buildBottleAnalysisPrompt(
+      {
+        name: 'Côtes du Rhône',
+        producer: null,
+        vintage: 1998,
+        category: 'wine',
+        region: null,
+        color: 'rouge',
+      },
+      2026,
+    );
+
+    const text = content as string;
+    expect(text).toContain('même si la fenêtre est déjà passée');
+    expect(text).toContain('vin de collection');
   });
 });
 

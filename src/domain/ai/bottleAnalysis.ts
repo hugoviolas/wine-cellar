@@ -13,7 +13,10 @@ export interface BottleAnalysisInput {
   color: string | null;
 }
 
-export function buildBottleAnalysisPrompt(bottle: BottleAnalysisInput): { system: string; content: AiMessageContent } {
+export function buildBottleAnalysisPrompt(
+  bottle: BottleAnalysisInput,
+  currentYear: number,
+): { system: string; content: AiMessageContent } {
   const system =
     'Tu es un sommelier expert. Tu réponds uniquement avec un objet JSON valide, sans texte avant ni après, correspondant exactement au schéma demandé.';
   const content = `Analyse cette bouteille et réponds avec un objet JSON de cette forme exacte :
@@ -25,7 +28,7 @@ export function buildBottleAnalysisPrompt(bottle: BottleAnalysisInput): { system
   "drinkUntilYear": 2032
 }
 
-"pairings" contient 3 à 5 suggestions d'accords mets-vin. "drinkFromYear" et "drinkUntilYear" sont des entiers (années) ou null si tu n'as pas assez d'éléments pour estimer une fenêtre de garde (par exemple une bouteille sans millésime, ou une catégorie sans notion de garde comme la bière).
+"pairings" contient 3 à 5 suggestions d'accords mets-vin. "drinkFromYear" et "drinkUntilYear" sont des entiers (années) : donne toujours une estimation best-effort dès que tu connais le millésime et que la catégorie a une notion de garde (vin, effervescent, cidre...), même si la fenêtre est déjà passée — dans ce cas, propose une fenêtre déjà entamée ou terminée plutôt que d'abandonner, et signale l'incertitude dans "analysis" ou "tastingAdvice" si pertinent (certaines bouteilles anciennes sont gardées comme vin de collection sans objectif immédiat de consommation, d'autres sont probablement passées leur optimum : les deux sont possibles, tu ne peux pas savoir laquelle s'applique). Réserve "null" aux cas où il n'y a vraiment aucun ancrage possible : pas de millésime connu, ou une catégorie sans notion de garde (par exemple la bière).
 
 Bouteille :
 - Nom : ${bottle.name}
@@ -33,7 +36,8 @@ Bouteille :
 - Millésime : ${bottle.vintage ?? 'inconnu'}
 - Catégorie : ${bottle.category}
 - Région : ${bottle.region ?? 'inconnue'}
-- Couleur : ${bottle.color ?? 'inconnue'}`;
+- Couleur : ${bottle.color ?? 'inconnue'}
+- Année actuelle : ${currentYear}`;
   return { system, content };
 }
 
