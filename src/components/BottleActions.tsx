@@ -92,6 +92,7 @@ export function BottleActions({
 
   return (
     <section className="mb-6 space-y-4">
+      <h3 className="text-sm text-gray-600 mb-1">Gérer le stock</h3>
       {error && <p className="text-sm text-red-700">{error}</p>}
 
       <div>
@@ -110,7 +111,7 @@ export function BottleActions({
             disabled={busy || quantity === initialQuantity || quantity < 0}
             className="border border-forest text-forest rounded px-3 py-2 text-sm"
           >
-            Mettre à jour
+            Mettre à jour la quantité
           </button>
         </div>
       </div>

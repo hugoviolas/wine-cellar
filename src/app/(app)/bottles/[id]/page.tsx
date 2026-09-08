@@ -7,6 +7,7 @@ import { computeGardeStatus, computeGardeProgress } from '@/domain/gardeStatus';
 import { getCrateById, listCrates } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
+import { crateLabel } from '@/lib/crateLabel';
 import { GardeBadge } from '@/components/GardeBadge';
 import { GardeGauge } from '@/components/GardeGauge';
 import { UserNoteEditor } from '@/components/UserNoteEditor';
@@ -42,7 +43,8 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
       <div className={`pl-4 ${wineColorStripeClass(bottle.color)}`}>
       <h2 className="text-xl mb-1">{bottle.name}</h2>
       <p className="text-xs text-gray-500 mb-4">
-        {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} · {bottle.category}
+        {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} · {bottle.category} ·{' '}
+        {currentCrate ? crateLabel(currentCrate.number, currentCrate.name) : '—'}
       </p>
 
       <div className="flex gap-2 mb-6">
