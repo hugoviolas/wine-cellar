@@ -1,32 +1,31 @@
 import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
-import { cellarMemberships } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { resolveViewedCellarId } from '@/domain/viewedCellar';
 import { listCrates } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
 import { AddBottleForm } from '@/components/AddBottleForm';
 
-export default async function AddBottlePage() {
+export default async function AddBottlePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cellarId?: string }>;
+}) {
   const user = await requireUser();
-  const [membership] = await db
-    .select()
-    .from(cellarMemberships)
-    .where(eq(cellarMemberships.userId, user.id))
-    .orderBy(cellarMemberships.createdAt)
-    .limit(1);
+  const { cellarId: requestedCellarId } = await searchParams;
+  const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
 
-  const crates = membership ? await listCrates(db, membership.cellarId) : [];
-  const cellar = membership ? await getCellarById(db, membership.cellarId) : null;
+  const crates = cellarId ? await listCrates(db, cellarId) : [];
+  const cellar = cellarId ? await getCellarById(db, cellarId) : null;
   const aiAvailable = cellar ? isAiAvailable(cellar) : false;
 
   return (
     <div>
       <h2 className="text-lg mb-4">Ajouter une bouteille</h2>
-      {crates.length === 0 || !membership ? (
+      {crates.length === 0 || !cellarId ? (
         <p className="text-sm">Crée d’abord une clayette avant d’ajouter une bouteille.</p>
       ) : (
-        <AddBottleForm crates={crates} cellarId={membership.cellarId} aiAvailable={aiAvailable} />
+        <AddBottleForm crates={crates} cellarId={cellarId} aiAvailable={aiAvailable} />
       )}
     </div>
   );

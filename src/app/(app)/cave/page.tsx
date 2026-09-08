@@ -3,38 +3,43 @@ import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
 import { checkCellarAccess } from '@/domain/access';
 import { canManageCellar, canEditCellarContent } from '@/domain/permissions';
-import { cellarMemberships } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { resolveViewedCellarId } from '@/domain/viewedCellar';
 import { listCrates } from '@/domain/crates';
 import { listActiveBottlesByCellar } from '@/domain/bottles';
 import { getCellarById } from '@/domain/cellars';
 import { CaveBoard } from '@/components/CaveBoard';
 import type { BottleRow } from '@/components/CrateCard';
 
-export default async function CavePage() {
+export default async function CavePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cellarId?: string }>;
+}) {
   const user = await requireUser();
-  const [membership] = await db
-    .select()
-    .from(cellarMemberships)
-    .where(eq(cellarMemberships.userId, user.id))
-    .orderBy(cellarMemberships.createdAt)
-    .limit(1);
+  const { cellarId: requestedCellarId } = await searchParams;
+  const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
 
-  if (!membership) {
+  if (!cellarId) {
     return <p className="text-sm">Aucune cave associée à ce compte.</p>;
   }
 
-  const access = await checkCellarAccess(db, user.id, membership.cellarId);
+  const access = await checkCellarAccess(db, user.id, cellarId);
   const canManage = access.allowed && canManageCellar(access.role);
   const canEdit = access.allowed && canEditCellarContent(access.role);
 
-  const crates = await listCrates(db, membership.cellarId);
-  const bottleRows = await listActiveBottlesByCellar(db, membership.cellarId);
-  const cellar = await getCellarById(db, membership.cellarId);
+  const crates = await listCrates(db, cellarId);
+  const bottleRows = await listActiveBottlesByCellar(db, cellarId);
+  const cellar = await getCellarById(db, cellarId);
 
   const totalBottles = bottleRows.reduce((sum, row) => sum + row.bottle.quantity, 0);
   const totalCapacity = crates.reduce((sum, crate) => sum + crate.capacity, 0);
   const cellarSubtitle = [cellar?.brand, cellar?.model].filter(Boolean).join(' ');
+
+  // Propagé aux sous-liens uniquement quand cette page a elle-même été
+  // ouverte avec un cellarId explicite (ex. lien "Ouvrir" du dashboard
+  // admin) — la navigation normale d'un utilisateur sur sa propre cave
+  // garde des URLs sans paramètre.
+  const cellarQuery = requestedCellarId ? `?cellarId=${cellarId}` : '';
 
   const bottlesByCrate: Record<string, BottleRow[]> = {};
   for (const crate of crates) {
@@ -61,10 +66,10 @@ export default async function CavePage() {
           </p>
         </div>
         <div className="flex gap-3 text-sm">
-          <Link href="/cave/vins" className="text-forest underline">Liste des vins</Link>
-          <Link href="/cave/clayettes" className="text-forest underline">Gérer les clayettes</Link>
-          {canManage && <Link href="/cave/parametres" className="text-forest underline">Réglages</Link>}
-          <Link href="/cave/ajouter" className="bg-forest text-cream rounded px-3 py-1.5">+ Ajouter</Link>
+          <Link href={`/cave/vins${cellarQuery}`} className="text-forest underline">Liste des vins</Link>
+          <Link href={`/cave/clayettes${cellarQuery}`} className="text-forest underline">Gérer les clayettes</Link>
+          {canManage && <Link href={`/cave/parametres${cellarQuery}`} className="text-forest underline">Réglages</Link>}
+          <Link href={`/cave/ajouter${cellarQuery}`} className="bg-forest text-cream rounded px-3 py-1.5">+ Ajouter</Link>
         </div>
       </div>
       <CaveBoard crates={crates} initialBottlesByCrate={bottlesByCrate} canEdit={canEdit} />

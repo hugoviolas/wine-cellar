@@ -1,25 +1,24 @@
 import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
-import { cellarMemberships } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { resolveViewedCellarId } from '@/domain/viewedCellar';
 import { listActiveBottlesByCellar } from '@/domain/bottles';
 import { computeGardeStatus } from '@/domain/gardeStatus';
 import { WineListView, type WineListRow } from '@/components/WineListView';
 
-export default async function VinsPage() {
+export default async function VinsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cellarId?: string }>;
+}) {
   const user = await requireUser();
-  const [membership] = await db
-    .select()
-    .from(cellarMemberships)
-    .where(eq(cellarMemberships.userId, user.id))
-    .orderBy(cellarMemberships.createdAt)
-    .limit(1);
+  const { cellarId: requestedCellarId } = await searchParams;
+  const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
 
-  if (!membership) {
+  if (!cellarId) {
     return <p className="text-sm">Aucune cave associée à ce compte.</p>;
   }
 
-  const bottleRows = await listActiveBottlesByCellar(db, membership.cellarId);
+  const bottleRows = await listActiveBottlesByCellar(db, cellarId);
   const currentYear = new Date().getFullYear();
 
   const rows: WineListRow[] = bottleRows.map((row) => ({
