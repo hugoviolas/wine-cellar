@@ -77,6 +77,8 @@ export function PhotoFillButton({
       const extracted: PhotoExtractionResult = await response.json();
       onExtracted(extracted);
       toast.success('Champs pré-remplis depuis la photo — vérifie-les avant d’ajouter.');
+    } catch {
+      toast.error('Impossible d’analyser cette photo.');
     } finally {
       setBusy(false);
     }
