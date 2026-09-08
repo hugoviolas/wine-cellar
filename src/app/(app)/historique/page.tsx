@@ -3,7 +3,10 @@ import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
 import { cellarMemberships } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { checkCellarAccess } from '@/domain/access';
+import { canEditCellarContent } from '@/domain/permissions';
 import { listConsumptionHistory } from '@/domain/history';
+import { HistoryEntryActions } from '@/components/HistoryEntryActions';
 
 export default async function HistoriquePage() {
   const user = await requireUser();
@@ -15,6 +18,8 @@ export default async function HistoriquePage() {
     .limit(1);
 
   const entries = membership ? await listConsumptionHistory(db, membership.cellarId) : [];
+  const access = membership ? await checkCellarAccess(db, user.id, membership.cellarId) : { allowed: false as const };
+  const canEdit = access.allowed && canEditCellarContent(access.role);
 
   return (
     <div>
@@ -36,13 +41,25 @@ export default async function HistoriquePage() {
             </>
           );
           return (
-            <li key={entry.id} className="text-sm">
+            <li key={entry.id} className="text-sm px-4 py-3">
               {entry.bottleId && entry.bottleReachable ? (
-                <Link href={`/bottles/${entry.bottleId}`} className="block px-4 py-3 hover:bg-gray-50">
+                <Link href={`/bottles/${entry.bottleId}`} className="block hover:bg-gray-50 -mx-4 -my-3 px-4 py-3">
                   {content}
                 </Link>
               ) : (
-                <div className="px-4 py-3">{content}</div>
+                <div>{content}</div>
+              )}
+              {canEdit && (
+                <HistoryEntryActions
+                  entryId={entry.id}
+                  initial={{
+                    consumedAt: entry.consumedAt,
+                    quantity: entry.quantity,
+                    rating: entry.rating,
+                    occasion: entry.occasion,
+                    comment: entry.comment,
+                  }}
+                />
               )}
             </li>
           );

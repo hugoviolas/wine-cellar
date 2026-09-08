@@ -16,6 +16,8 @@ export function AdminUserDetail({ user }: { user: UserDetail }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(user.isSuperAdmin);
   const [resetLink, setResetLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   async function readError(response: Response, fallback: string): Promise<string> {
     const data = await response.json().catch(() => null);
@@ -47,6 +49,19 @@ export function AdminUserDetail({ user }: { user: UserDetail }) {
     }
     const data = await response.json();
     setResetLink(`${window.location.origin}/reset-password/${data.token}`);
+  }
+
+  async function removeUser() {
+    setError(null);
+    setBusy(true);
+    const response = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
+    setBusy(false);
+    if (!response.ok) {
+      setError(await readError(response, 'Impossible de supprimer ce compte.'));
+      return;
+    }
+    router.push('/admin/utilisateurs');
+    router.refresh();
   }
 
   return (
@@ -87,6 +102,37 @@ export function AdminUserDetail({ user }: { user: UserDetail }) {
             onFocus={(e) => e.target.select()}
             className="w-full border border-gray-300 rounded px-3 py-2 text-xs bg-gray-50 mt-2"
           />
+        )}
+      </div>
+
+      <div>
+        {confirmingDelete ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Supprimer définitivement ce compte ?</span>
+            <button
+              type="button"
+              onClick={removeUser}
+              disabled={busy}
+              className="text-xs text-red-700 underline"
+            >
+              Confirmer
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="text-xs text-gray-500 underline"
+            >
+              Annuler
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="text-xs text-red-700 underline"
+          >
+            Supprimer ce compte
+          </button>
         )}
       </div>
     </div>

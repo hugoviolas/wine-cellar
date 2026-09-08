@@ -3,6 +3,7 @@ import { db } from '@/db/client';
 import { listAllCellarsWithOwner, countMembersByCellarId, listAllUsers } from '@/domain/admin';
 import { getDbFileSizeBytes, hasApiKeyConfigured } from '@/domain/supervision';
 import { CreateCellarForm } from '@/components/CreateCellarForm';
+import { AdminCellarActions } from '@/components/AdminCellarActions';
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) return 'fichier introuvable';
@@ -32,12 +33,13 @@ export default async function AdminCellarsPage() {
       <ul className="bg-white rounded divide-y divide-gray-100">
         {cellarsList.map((cellar) => (
           <li key={cellar.id} className="flex items-center justify-between px-4 py-3 text-sm">
-            <span>{cellar.name} — propriétaire {cellar.ownerEmail}</span>
+            <span>{cellar.name} — propriétaire {cellar.ownerEmail ?? 'compte supprimé'}</span>
             <div className="flex items-center gap-3 text-xs text-gray-500">
               <span>{memberCounts[cellar.id] ?? 0} membre(s)</span>
               <Link href={`/cave?cellarId=${cellar.id}`} className="text-forest underline">
                 Ouvrir
               </Link>
+              <AdminCellarActions cellarId={cellar.id} initialAiEnabled={cellar.aiEnabled} />
             </div>
           </li>
         ))}
