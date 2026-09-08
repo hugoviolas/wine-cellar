@@ -17,3 +17,16 @@ export function wineColorStripeClass(color: string | null): string {
   if (!color) return '';
   return WINE_COLOR_STRIPE[color] ?? '';
 }
+
+const WINE_COLOR_DOT: Record<string, string> = {
+  rouge: 'bg-[#7a2331]',
+  blanc: 'bg-[#d4af37]',
+  rose: 'bg-[#e0a3ad]',
+  autre: 'bg-gray-400',
+};
+
+/** Tailwind background class for a small color marker (ex. une puce de bouteille), gris clair si couleur inconnue. */
+export function wineColorDotClass(color: string | null): string {
+  if (!color) return 'bg-gray-200';
+  return WINE_COLOR_DOT[color] ?? 'bg-gray-200';
+}

@@ -132,7 +132,7 @@ export function CaveBoard({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid sm:grid-cols-2 gap-6">
+        <div className="bg-white rounded shadow-sm px-4">
           {crates.map((crate) => (
             <CrateCard
               key={crate.id}

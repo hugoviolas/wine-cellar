@@ -7,6 +7,7 @@ import { cellarMemberships } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { listCrates } from '@/domain/crates';
 import { listActiveBottlesByCellar } from '@/domain/bottles';
+import { getCellarById } from '@/domain/cellars';
 import { CaveBoard } from '@/components/CaveBoard';
 import type { BottleRow } from '@/components/CrateCard';
 
@@ -29,6 +30,11 @@ export default async function CavePage() {
 
   const crates = await listCrates(db, membership.cellarId);
   const bottleRows = await listActiveBottlesByCellar(db, membership.cellarId);
+  const cellar = await getCellarById(db, membership.cellarId);
+
+  const totalBottles = bottleRows.reduce((sum, row) => sum + row.bottle.quantity, 0);
+  const totalCapacity = crates.reduce((sum, crate) => sum + crate.capacity, 0);
+  const cellarSubtitle = [cellar?.brand, cellar?.model].filter(Boolean).join(' ');
 
   const bottlesByCrate: Record<string, BottleRow[]> = {};
   for (const crate of crates) {
@@ -46,8 +52,14 @@ export default async function CavePage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg">Ma Cave</h2>
+      <div className="flex justify-between items-start mb-6 pb-4 border-b border-gray-200">
+        <div>
+          <h2 className="text-2xl">{cellar?.name ?? 'Ma Cave'}</h2>
+          <p className="text-xs text-sage mt-1">
+            {cellarSubtitle && `${cellarSubtitle} · `}
+            {totalBottles} bouteille{totalBottles > 1 ? 's' : ''} sur {totalCapacity} emplacements
+          </p>
+        </div>
         <div className="flex gap-3 text-sm">
           <Link href="/cave/vins" className="text-forest underline">Liste des vins</Link>
           <Link href="/cave/clayettes" className="text-forest underline">Gérer les clayettes</Link>

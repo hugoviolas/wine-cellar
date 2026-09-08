@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useDroppable } from '@dnd-kit/core';
-import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useSortable, SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { wineColorStripeClass } from '@/lib/wineColor';
+import { wineColorDotClass } from '@/lib/wineColor';
 import { crateLabel } from '@/lib/crateLabel';
 import { CATEGORY_SHORT_LABELS } from '@/lib/bottleCategory';
 
@@ -17,7 +17,7 @@ export interface BottleRow {
   color: string | null;
 }
 
-function SortableBottleRow({ bottle, crateId, canEdit }: { bottle: BottleRow; crateId: string; canEdit: boolean }) {
+function SortableBottleChip({ bottle, crateId, canEdit }: { bottle: BottleRow; crateId: string; canEdit: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: bottle.id,
     data: { crateId },
@@ -28,31 +28,29 @@ function SortableBottleRow({ bottle, crateId, canEdit }: { bottle: BottleRow; cr
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
-      className={`flex items-center hover:bg-gray-50 ${wineColorStripeClass(bottle.color)}`}
+      className="flex items-center gap-1.5 bg-white rounded px-2.5 py-1.5 text-xs"
     >
       {canEdit && (
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab touch-none text-gray-400 pl-2 pr-1 select-none"
+          className="cursor-grab touch-none text-gray-300 select-none -ml-1"
           aria-label={`Déplacer ${bottle.name}`}
         >
           ⋮⋮
         </button>
       )}
-      <Link
-        href={`/bottles/${bottle.id}`}
-        className={`flex-1 flex items-center gap-3 py-2 text-sm ${canEdit ? 'pr-3' : 'px-3'}`}
-      >
-        <span className="flex-1">{bottle.name}</span>
+      <span className={`w-[3px] h-3.5 rounded-sm shrink-0 ${wineColorDotClass(bottle.color)}`} />
+      <Link href={`/bottles/${bottle.id}`} className="flex items-center gap-1.5 hover:underline">
+        <span>{bottle.name}</span>
         {bottle.category !== 'wine' && (
           <span className="text-[10px] uppercase tracking-wide text-gray-400">
             {CATEGORY_SHORT_LABELS[bottle.category] ?? bottle.category}
           </span>
         )}
-        <span className="text-xs text-gray-500">{bottle.vintage ?? 'NV'}</span>
-        <span className="text-xs bg-green-50 text-green-800 rounded-full px-2 py-0.5">×{bottle.quantity}</span>
+        {bottle.vintage && <span className="text-gray-400">{bottle.vintage}</span>}
+        <span className="text-gray-400">×{bottle.quantity}</span>
       </Link>
     </div>
   );
@@ -74,22 +72,28 @@ export function CrateCard({
   canEdit: boolean;
 }) {
   const occupied = bottles.reduce((sum, b) => sum + b.quantity, 0);
+  const fillPercent = capacity > 0 ? Math.min(100, Math.round((occupied / capacity) * 100)) : 0;
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
-    <div className="mb-6">
-      <div className="flex justify-between items-baseline mb-2">
-        <h4 className="text-sm italic">{crateLabel(number, name)}</h4>
-        <span className="text-xs text-gray-500">{occupied}/{capacity}</span>
+    <div className="border-b border-gray-200 py-4 last:border-b-0">
+      <div className="flex items-baseline justify-between gap-3 mb-2.5">
+        <h4 className="text-base italic">{crateLabel(number, name)}</h4>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-gold" style={{ width: `${fillPercent}%` }} />
+          </div>
+          <span className="text-xs text-gray-500 tabular-nums">{occupied}/{capacity}</span>
+        </div>
       </div>
       <div
         ref={setNodeRef}
-        className={`bg-white rounded shadow-sm divide-y divide-gray-100 ${isOver ? 'ring-2 ring-sage' : ''}`}
+        className={`flex flex-wrap gap-2 min-h-10 rounded ${isOver ? 'ring-2 ring-sage' : ''}`}
       >
-        {bottles.length === 0 && <p className="text-xs text-gray-400 px-3 py-3">Aucune bouteille</p>}
-        <SortableContext items={bottles.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+        {bottles.length === 0 && <p className="text-xs text-gray-400 italic py-1.5">Aucune bouteille</p>}
+        <SortableContext items={bottles.map((b) => b.id)} strategy={rectSortingStrategy}>
           {bottles.map((bottle) => (
-            <SortableBottleRow key={bottle.id} bottle={bottle} crateId={id} canEdit={canEdit} />
+            <SortableBottleChip key={bottle.id} bottle={bottle} crateId={id} canEdit={canEdit} />
           ))}
         </SortableContext>
       </div>
