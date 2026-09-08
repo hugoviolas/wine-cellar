@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
-import { resolveWishlistItemAccess } from '@/domain/wishlist';
+import { resolveWishlistItemAccess, listPromotionTargets } from '@/domain/wishlist';
 import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { WishlistEditForm } from '@/components/WishlistEditForm';
+import { WishlistPromoteForm } from '@/components/WishlistPromoteForm';
 
 export default async function WishlistItemPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -13,6 +14,7 @@ export default async function WishlistItemPage({ params }: { params: Promise<{ i
   const access = await resolveWishlistItemAccess(db, user.id, id);
   if (access.status !== 'ok') notFound();
   const item = access.item;
+  const promotionTargets = item.status === 'pending' ? await listPromotionTargets(db, user.id) : [];
 
   return (
     <div className="max-w-md">
@@ -34,7 +36,13 @@ export default async function WishlistItemPage({ params }: { params: Promise<{ i
       ) : (
         <section className="mb-6">
           <h3 className="text-sm mb-2">Ajouter à ma cave</h3>
-          <p className="text-sm text-gray-500">(à venir)</p>
+          {promotionTargets.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Tu n&apos;as pas les droits pour ajouter des bouteilles dans une cave pour le moment.
+            </p>
+          ) : (
+            <WishlistPromoteForm itemId={item.id} targets={promotionTargets} />
+          )}
         </section>
       )}
 
