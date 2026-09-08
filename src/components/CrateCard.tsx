@@ -6,10 +6,12 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { wineColorStripeClass } from '@/lib/wineColor';
 import { crateLabel } from '@/lib/crateLabel';
+import { CATEGORY_SHORT_LABELS } from '@/lib/bottleCategory';
 
 export interface BottleRow {
   id: string;
   name: string;
+  category: string;
   vintage: number | null;
   quantity: number;
   color: string | null;
@@ -44,6 +46,11 @@ function SortableBottleRow({ bottle, crateId, canEdit }: { bottle: BottleRow; cr
         className={`flex-1 flex items-center gap-3 py-2 text-sm ${canEdit ? 'pr-3' : 'px-3'}`}
       >
         <span className="flex-1">{bottle.name}</span>
+        {bottle.category !== 'wine' && (
+          <span className="text-[10px] uppercase tracking-wide text-gray-400">
+            {CATEGORY_SHORT_LABELS[bottle.category] ?? bottle.category}
+          </span>
+        )}
         <span className="text-xs text-gray-500">{bottle.vintage ?? 'NV'}</span>
         <span className="text-xs bg-green-50 text-green-800 rounded-full px-2 py-0.5">×{bottle.quantity}</span>
       </Link>

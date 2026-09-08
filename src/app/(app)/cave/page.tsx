@@ -37,6 +37,7 @@ export default async function CavePage() {
       .map((row) => ({
         id: row.bottle.id,
         name: row.bottle.name,
+        category: row.bottle.category,
         vintage: row.bottle.vintage,
         quantity: row.bottle.quantity,
         color: row.bottle.color,
