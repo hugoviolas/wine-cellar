@@ -23,6 +23,20 @@ export interface CreateWishlistItemInput {
   details: unknown;
 }
 
+export const createWishlistItemBodySchema = z
+  .object({
+    category: z.enum(['wine', 'sparkling', 'cider', 'beer', 'spirit']),
+    name: z.string().min(1),
+    producer: z.string().optional(),
+    vintage: z.number().int().optional(),
+    region: z.string().optional(),
+    color: z.string().optional(),
+    abv: z.number().optional(),
+    volumeMl: z.number().int().optional(),
+    details: z.unknown(),
+  })
+  .strict();
+
 export async function createWishlistItem(db: Db, input: CreateWishlistItemInput): Promise<string> {
   const details = parseBottleDetails(input.category, input.details);
   const id = newId();

@@ -10,6 +10,7 @@ import {
   updateWishlistItem,
   updateWishlistItemBodySchema,
   deleteWishlistItem,
+  createWishlistItemBodySchema,
 } from './wishlist';
 import { createCrate } from './crates';
 import { getBottle } from './bottles';
@@ -46,6 +47,24 @@ describe('createWishlistItem / getWishlistItem', () => {
     await expect(
       createWishlistItem(db, { userId, category: 'cider', name: 'Cidre', details: { method: 'industriel' } }),
     ).rejects.toThrow();
+  });
+});
+
+describe('createWishlistItemBodySchema', () => {
+  it('rejette une catégorie hors énumération', () => {
+    expect(
+      createWishlistItemBodySchema.safeParse({ category: 'digestif', name: 'X', details: {} }).success,
+    ).toBe(false);
+  });
+
+  it('accepte un corps minimal valide', () => {
+    expect(
+      createWishlistItemBodySchema.safeParse({ category: 'wine', name: 'Clos Poggiale', details: {} }).success,
+    ).toBe(true);
+  });
+
+  it('rejette un nom vide', () => {
+    expect(createWishlistItemBodySchema.safeParse({ category: 'wine', name: '', details: {} }).success).toBe(false);
   });
 });
 
