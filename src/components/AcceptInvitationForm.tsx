@@ -24,19 +24,24 @@ export function AcceptInvitationForm({
   async function submit(mode: 'login' | 'signup') {
     setError(null);
     setBusy(true);
-    const response = await fetch(`/api/invitations/${token}/accept`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(mode === 'login' ? { mode } : { mode, password }),
-    });
-    setBusy(false);
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      setError(data.error ?? 'Impossible d’accepter l’invitation.');
-      return;
+    try {
+      const response = await fetch(`/api/invitations/${token}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mode === 'login' ? { mode } : { mode, password }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error ?? 'Impossible d’accepter l’invitation.');
+        return;
+      }
+      router.push('/cave');
+      router.refresh();
+    } catch {
+      setError('Impossible de contacter le serveur — vérifie ta connexion et réessaie.');
+    } finally {
+      setBusy(false);
     }
-    router.push('/cave');
-    router.refresh();
   }
 
   if (currentUserEmail === email) {
@@ -46,7 +51,7 @@ export function AcceptInvitationForm({
         <button
           onClick={() => submit('login')}
           disabled={busy}
-          className="bg-forest text-cream rounded px-4 py-2 text-sm"
+          className="bg-forest text-cream rounded px-4 py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Rejoindre la cave
         </button>
@@ -92,10 +97,13 @@ export function AcceptInvitationForm({
       {confirmPassword.length > 0 && !passwordsMatch && (
         <p className="text-xs text-red-700 mb-2">Les mots de passe ne correspondent pas.</p>
       )}
+      {password.length > 0 && password.length < 8 && (
+        <p className="text-xs text-red-700 mb-2">Le mot de passe doit faire au moins 8 caractères.</p>
+      )}
       <button
         onClick={() => submit('signup')}
         disabled={busy || password.length < 8 || !passwordsMatch}
-        className="bg-forest text-cream rounded px-4 py-2 text-sm mt-2"
+        className="bg-forest text-cream rounded px-4 py-2 text-sm mt-2 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         Créer mon compte et rejoindre
       </button>
