@@ -1,10 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { createTestDb } from '../db/testDb';
 import { bootstrapSuperAdmin } from './bootstrap';
+import { createUserAccount } from './accounts';
 import { createCrate, deleteCrate } from './crates';
 import { createBottle } from './bottles';
 import { consumeBottle } from './consume';
-import { listConsumptionHistory } from './history';
+import {
+  listConsumptionHistory,
+  resolveHistoryEntryAccess,
+  updateHistoryEntry,
+  deleteHistoryEntry,
+  updateHistoryEntryBodySchema,
+} from './history';
 
 describe('listConsumptionHistory', () => {
   it('retourne uniquement l’historique de la cave demandée, du plus récent au plus ancien', async () => {
@@ -54,5 +61,88 @@ describe('listConsumptionHistory', () => {
 
     const history = await listConsumptionHistory(db, cellarId);
     expect(history[0].bottleReachable).toBe(crateId);
+  });
+});
+
+async function setupHistoryEntry() {
+  const db = await createTestDb();
+  const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+  const crateId = await createCrate(db, { cellarId, name: 'Clayette', capacity: 6 });
+  const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 2, details: {} });
+  await consumeBottle(db, {
+    bottleId,
+    consumedByUserId: userId,
+    consumedAt: '2026-01-01',
+    quantity: 1,
+    rating: 3,
+    comment: 'Correct',
+    occasion: 'Repas',
+  });
+  const [entry] = await listConsumptionHistory(db, cellarId);
+  return { db, userId, cellarId, entry };
+}
+
+describe('resolveHistoryEntryAccess', () => {
+  it('autorise un membre de la cave', async () => {
+    const { db, userId, entry } = await setupHistoryEntry();
+
+    const result = await resolveHistoryEntryAccess(db, userId, entry.id);
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') throw new Error('accès inattendu');
+    expect(result.entry.id).toBe(entry.id);
+    expect(result.role).toBe('super_admin');
+  });
+
+  it('refuse un utilisateur sans lien avec la cave', async () => {
+    const { db, entry } = await setupHistoryEntry();
+    const outsiderId = await createUserAccount(db, 'outsider@example.com', 'x');
+
+    const result = await resolveHistoryEntryAccess(db, outsiderId, entry.id);
+    expect(result).toEqual({ status: 'forbidden' });
+  });
+
+  it('retourne not_found pour une entrée inconnue', async () => {
+    const { db, userId } = await setupHistoryEntry();
+
+    const result = await resolveHistoryEntryAccess(db, userId, 'entree-inconnue');
+    expect(result).toEqual({ status: 'not_found' });
+  });
+});
+
+describe('updateHistoryEntryBodySchema', () => {
+  it('accepte un patch partiel', () => {
+    expect(updateHistoryEntryBodySchema.safeParse({ comment: 'Excellent' }).success).toBe(true);
+  });
+
+  it('refuse un champ inconnu (.strict())', () => {
+    expect(updateHistoryEntryBodySchema.safeParse({ bottleNameSnapshot: 'Triché' }).success).toBe(false);
+  });
+
+  it('refuse une note hors 0-5', () => {
+    expect(updateHistoryEntryBodySchema.safeParse({ rating: 6 }).success).toBe(false);
+  });
+});
+
+describe('updateHistoryEntry', () => {
+  it('met à jour les champs modifiables sans toucher aux snapshots', async () => {
+    const { db, entry } = await setupHistoryEntry();
+
+    await updateHistoryEntry(db, entry.id, { comment: 'Finalement excellent', rating: 5, occasion: 'Anniversaire' });
+
+    const [updated] = await listConsumptionHistory(db, entry.cellarId);
+    expect(updated.comment).toBe('Finalement excellent');
+    expect(updated.rating).toBe(5);
+    expect(updated.occasion).toBe('Anniversaire');
+    expect(updated.bottleNameSnapshot).toBe('Vin');
+  });
+});
+
+describe('deleteHistoryEntry', () => {
+  it('supprime l’entrée', async () => {
+    const { db, entry } = await setupHistoryEntry();
+
+    await deleteHistoryEntry(db, entry.id);
+
+    expect(await listConsumptionHistory(db, entry.cellarId)).toHaveLength(0);
   });
 });

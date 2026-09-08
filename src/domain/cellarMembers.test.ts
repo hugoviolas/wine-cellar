@@ -5,6 +5,7 @@ import { bootstrapSuperAdmin } from './bootstrap';
 import { createUserAccount } from './accounts';
 import { newId } from '../db/id';
 import { cellarMemberships } from '../db/schema';
+import { deleteUser } from './admin';
 import {
   listCellarMembersWithEmail,
   getMembershipById,
@@ -36,6 +37,20 @@ describe('listCellarMembersWithEmail', () => {
     expect(members).toHaveLength(2);
     const emails = members.map((m) => m.email).sort();
     expect(emails).toEqual(['editeur@example.com', 'owner@example.com']);
+  });
+
+  it('conserve le membership avec un email nul quand le membre est supprimé', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await addMember(db, cellarId, 'editeur@example.com', 'editor');
+
+    await deleteUser(db, userId);
+
+    const members = await listCellarMembersWithEmail(db, cellarId);
+    expect(members).toHaveLength(2);
+    const deletedMember = members.find((m) => m.userId === null);
+    expect(deletedMember).toBeDefined();
+    expect(deletedMember?.email).toBeNull();
   });
 });
 

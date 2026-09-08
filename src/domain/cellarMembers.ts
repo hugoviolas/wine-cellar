@@ -4,6 +4,13 @@ import { cellarMemberships, users } from '../db/schema';
 
 export class CannotModifyOwnerError extends Error {}
 
+/**
+ * `leftJoin` (pas `innerJoin`) : un membre peut avoir été supprimé via
+ * `deleteUser`, qui ne touche jamais aux memberships (voir domain/admin.ts)
+ * — une jointure stricte ferait disparaître silencieusement la ligne de
+ * cette liste. `email` vaut alors `null`, à afficher comme "compte
+ * supprimé" côté UI.
+ */
 export async function listCellarMembersWithEmail(db: Db, cellarId: string) {
   return db
     .select({
@@ -14,7 +21,7 @@ export async function listCellarMembersWithEmail(db: Db, cellarId: string) {
       createdAt: cellarMemberships.createdAt,
     })
     .from(cellarMemberships)
-    .innerJoin(users, eq(cellarMemberships.userId, users.id))
+    .leftJoin(users, eq(cellarMemberships.userId, users.id))
     .where(eq(cellarMemberships.cellarId, cellarId));
 }
 

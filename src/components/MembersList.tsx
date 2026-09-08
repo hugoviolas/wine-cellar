@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface Member {
   membershipId: string;
-  email: string;
+  email: string | null;
   role: 'owner' | 'editor' | 'reader';
 }
 
@@ -51,7 +51,9 @@ export function MembersList({ initialMembers }: { initialMembers: Member[] }) {
       <ul className="divide-y divide-gray-100">
         {members.map((member) => (
           <li key={member.membershipId} className="flex items-center justify-between px-4 py-3 text-sm">
-            <span>{member.email}</span>
+            <span className={member.email ? undefined : 'italic text-gray-400'}>
+              {member.email ?? 'Compte supprimé'}
+            </span>
             {member.role === 'owner' ? (
               <span className="text-xs text-gray-500">Propriétaire</span>
             ) : (
