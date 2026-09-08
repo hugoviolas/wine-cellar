@@ -7,6 +7,7 @@ import { WINE_COLOR_LABELS } from '@/lib/wineColor';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { useToast } from '@/components/Toast';
 import { PhotoFillButton, type PhotoExtractionResult } from '@/components/PhotoFillButton';
+import { RegionInput } from '@/components/RegionInput';
 
 interface Crate {
   id: string;
@@ -161,15 +162,7 @@ export function AddBottleForm({
         />
       </div>
 
-      <div>
-        <label className="block text-xs uppercase tracking-wide mb-1">Région</label>
-        <input
-          value={region}
-          onChange={(e) => setRegion(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-          placeholder="Bordeaux"
-        />
-      </div>
+      <RegionInput value={region} onChange={setRegion} />
 
       <div className="flex gap-4">
         <div>
