@@ -25,10 +25,13 @@ export function buildBottleAnalysisPrompt(
   "pairings": ["string", "..."],
   "tastingAdvice": "string — conseils de service (température, carafage, verre...)",
   "drinkFromYear": 2027,
-  "drinkUntilYear": 2032
+  "drinkUntilYear": 2032,
+  "region": "string | null"
 }
 
-"pairings" contient 3 à 5 suggestions d'accords mets-vin. "drinkFromYear" et "drinkUntilYear" sont des entiers (années) : donne toujours une estimation best-effort dès que tu connais le millésime et que la catégorie a une notion de garde (vin, effervescent, cidre...), même si la fenêtre est déjà passée — dans ce cas, propose une fenêtre déjà entamée ou terminée plutôt que d'abandonner, et signale l'incertitude dans "analysis" ou "tastingAdvice" si pertinent (certaines bouteilles anciennes sont gardées comme vin de collection sans objectif immédiat de consommation, d'autres sont probablement passées leur optimum : les deux sont possibles, tu ne peux pas savoir laquelle s'applique). Réserve "null" aux cas où il n'y a vraiment aucun ancrage possible : pas de millésime connu, ou une catégorie sans notion de garde (par exemple la bière).
+"pairings" contient 3 à 5 suggestions d'accords mets-vin. "drinkFromYear" et "drinkUntilYear" sont des entiers (années) : donne toujours une estimation best-effort dès que tu connais le millésime et que la catégorie a une notion de garde (vin, effervescent, cidre...), même si la fenêtre est déjà passée — dans ce cas, propose une fenêtre déjà entamée ou terminée plutôt que d'abandonner, et signale l'incertitude dans "analysis" ou "tastingAdvice" si pertinent (certaines bouteilles anciennes sont gardées comme vin de collection sans objectif immédiat de consommation, d'autres sont probablement passées leur optimum : les deux sont possibles, tu ne peux pas savoir laquelle s'applique). Réserve "null" (pour la garde) aux cas où il n'y a vraiment aucun ancrage possible : pas de millésime connu, ou une catégorie sans notion de garde (par exemple la bière).
+
+"region" est ta meilleure estimation de la région ou appellation viticole, déduite du nom, du producteur et de tes connaissances œnologiques (même si la "Région" indiquée ci-dessous est déjà "inconnue") — laisse null seulement si tu n'as vraiment aucun indice permettant de la déduire.
 
 Bouteille :
 - Nom : ${bottle.name}
@@ -45,14 +48,16 @@ export interface BottleForAiSave {
   id: string;
   drinkFrom: number | null;
   drinkUntil: number | null;
+  region: string | null;
 }
 
 /**
  * `aiAnalysis`/`aiPairings`/`aiTastingAdvice`/`aiGeneratedAt` sont toujours
- * écrasés, y compris à la régénération. `drinkFrom`/`drinkUntil` ne sont
- * écrits que si la bouteille n'a actuellement pas de valeur — une fenêtre
- * de garde déjà renseignée (manuellement ou par une génération précédente)
- * n'est jamais écrasée (voir le spec IA, section Chantier A).
+ * écrasés, y compris à la régénération. `drinkFrom`/`drinkUntil`/`region` ne
+ * sont écrits que si la bouteille n'a actuellement pas de valeur — une
+ * fenêtre de garde ou une région déjà renseignées (manuellement ou par une
+ * génération précédente) ne sont jamais écrasées (voir le spec IA, section
+ * Chantier A).
  */
 export async function saveBottleAiAnalysis(
   db: Db,
@@ -66,6 +71,7 @@ export async function saveBottleAiAnalysis(
     aiGeneratedAt: string;
     drinkFrom?: number;
     drinkUntil?: number;
+    region?: string;
   } = {
     aiAnalysis: analysis.analysis,
     aiPairings: analysis.pairings,
@@ -74,6 +80,7 @@ export async function saveBottleAiAnalysis(
   };
   if (bottle.drinkFrom === null && analysis.drinkFromYear !== null) set.drinkFrom = analysis.drinkFromYear;
   if (bottle.drinkUntil === null && analysis.drinkUntilYear !== null) set.drinkUntil = analysis.drinkUntilYear;
+  if (bottle.region === null && analysis.region !== null) set.region = analysis.region;
 
   await db.update(bottles).set(set).where(eq(bottles.id, bottle.id));
 }

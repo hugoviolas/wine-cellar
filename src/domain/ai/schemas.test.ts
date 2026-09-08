@@ -12,14 +12,20 @@ describe('aiBottleAnalysisSchema', () => {
     tastingAdvice: 'Servir à 16-18°C, carafer 1h avant dégustation.',
     drinkFromYear: 2027,
     drinkUntilYear: 2032,
+    region: 'Bordeaux',
   };
 
   it('accepte une réponse conforme', () => {
     expect(aiBottleAnalysisSchema.safeParse(valid).success).toBe(true);
   });
 
-  it('accepte drinkFromYear et drinkUntilYear nuls', () => {
-    const result = aiBottleAnalysisSchema.safeParse({ ...valid, drinkFromYear: null, drinkUntilYear: null });
+  it('accepte drinkFromYear, drinkUntilYear et region nuls', () => {
+    const result = aiBottleAnalysisSchema.safeParse({
+      ...valid,
+      drinkFromYear: null,
+      drinkUntilYear: null,
+      region: null,
+    });
     expect(result.success).toBe(true);
   });
 

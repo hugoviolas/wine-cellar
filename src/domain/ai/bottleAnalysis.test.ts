@@ -97,15 +97,17 @@ describe('saveBottleAiAnalysis', () => {
     tastingAdvice: 'Servir à 16°C.',
     drinkFromYear: 2027,
     drinkUntilYear: 2032,
+    region: 'Bordeaux',
   };
 
-  it('écrit les champs IA et la fenêtre de garde quand elle est vide', async () => {
+  it('écrit les champs IA, la fenêtre de garde et la région quand elles sont vides', async () => {
     const { db, bottleId } = await setupBottle();
     const before = await getBottle(db, bottleId);
     expect(before?.drinkFrom).toBeNull();
     expect(before?.drinkUntil).toBeNull();
+    expect(before?.region).toBeNull();
 
-    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: null, drinkUntil: null }, analysis);
+    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: null, drinkUntil: null, region: null }, analysis);
 
     const after = await getBottle(db, bottleId);
     expect(after?.aiAnalysis).toBe(analysis.analysis);
@@ -114,24 +116,26 @@ describe('saveBottleAiAnalysis', () => {
     expect(after?.aiGeneratedAt).toBeTruthy();
     expect(after?.drinkFrom).toBe(2027);
     expect(after?.drinkUntil).toBe(2032);
+    expect(after?.region).toBe('Bordeaux');
   });
 
-  it('n’écrase pas une fenêtre de garde déjà renseignée', async () => {
+  it('n’écrase pas une fenêtre de garde ou une région déjà renseignées', async () => {
     const { db, bottleId } = await setupBottle();
-    await db.update(bottles).set({ drinkFrom: 2020, drinkUntil: 2024 }).where(eq(bottles.id, bottleId));
+    await db.update(bottles).set({ drinkFrom: 2020, drinkUntil: 2024, region: 'Bourgogne' }).where(eq(bottles.id, bottleId));
 
-    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: 2020, drinkUntil: 2024 }, analysis);
+    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: 2020, drinkUntil: 2024, region: 'Bourgogne' }, analysis);
 
     const after = await getBottle(db, bottleId);
     expect(after?.drinkFrom).toBe(2020);
     expect(after?.drinkUntil).toBe(2024);
+    expect(after?.region).toBe('Bourgogne');
     // Les champs IA eux sont toujours écrasés, y compris à la régénération.
     expect(after?.aiAnalysis).toBe(analysis.analysis);
   });
 
   it('remplace le contenu IA précédent lors d’une régénération', async () => {
     const { db, bottleId } = await setupBottle();
-    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: null, drinkUntil: null }, analysis);
+    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: null, drinkUntil: null, region: null }, analysis);
 
     const secondAnalysis = {
       ...analysis,
@@ -139,14 +143,20 @@ describe('saveBottleAiAnalysis', () => {
       pairings: ['Volaille', 'Poisson', 'Fromage'],
       drinkFromYear: 2035,
       drinkUntilYear: 2040,
+      region: 'Alsace',
     };
-    await saveBottleAiAnalysis(db, { id: bottleId, drinkFrom: 2027, drinkUntil: 2032 }, secondAnalysis);
+    await saveBottleAiAnalysis(
+      db,
+      { id: bottleId, drinkFrom: 2027, drinkUntil: 2032, region: 'Bordeaux' },
+      secondAnalysis,
+    );
 
     const after = await getBottle(db, bottleId);
     expect(after?.aiAnalysis).toBe('Nouvelle analyse.');
     expect(after?.aiPairings).toEqual(['Volaille', 'Poisson', 'Fromage']);
-    // La garde était déjà remplie par le premier appel : pas réécrasée par le second.
+    // La garde et la région étaient déjà remplies par le premier appel : pas réécrasées par le second.
     expect(after?.drinkFrom).toBe(2027);
     expect(after?.drinkUntil).toBe(2032);
+    expect(after?.region).toBe('Bordeaux');
   });
 });

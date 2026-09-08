@@ -7,6 +7,7 @@ export const aiBottleAnalysisSchema = z.object({
   tastingAdvice: z.string().min(1),
   drinkFromYear: z.number().int().nullable(),
   drinkUntilYear: z.number().int().nullable(),
+  region: z.string().min(1).nullable(),
 });
 export type AiBottleAnalysis = z.infer<typeof aiBottleAnalysisSchema>;
 
