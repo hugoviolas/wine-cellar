@@ -1,0 +1,73 @@
+import { eq } from 'drizzle-orm';
+import type { Db } from '../../db/client';
+import { bottles } from '../../db/schema';
+import type { AiMessageContent } from './client';
+import type { AiBottleAnalysis } from './schemas';
+
+export interface BottleAnalysisInput {
+  name: string;
+  producer: string | null;
+  vintage: number | null;
+  category: string;
+  region: string | null;
+}
+
+export function buildBottleAnalysisPrompt(bottle: BottleAnalysisInput): { system: string; content: AiMessageContent } {
+  const system =
+    'Tu es un sommelier expert. Tu réponds uniquement avec un objet JSON valide, sans texte avant ni après, correspondant exactement au schéma demandé.';
+  const content = `Analyse cette bouteille et réponds avec un objet JSON de cette forme exacte :
+{
+  "analysis": "string — 2 à 4 phrases d'analyse du profil du vin",
+  "pairings": ["string", "..."],
+  "tastingAdvice": "string — conseils de service (température, carafage, verre...)",
+  "drinkFromYear": 2027,
+  "drinkUntilYear": 2032
+}
+
+"pairings" contient 3 à 5 suggestions d'accords mets-vin. "drinkFromYear" et "drinkUntilYear" sont des entiers (années) ou null si tu n'as pas assez d'éléments pour estimer une fenêtre de garde (par exemple une bouteille sans millésime, ou une catégorie sans notion de garde comme la bière).
+
+Bouteille :
+- Nom : ${bottle.name}
+- Producteur : ${bottle.producer ?? 'inconnu'}
+- Millésime : ${bottle.vintage ?? 'inconnu'}
+- Catégorie : ${bottle.category}
+- Région : ${bottle.region ?? 'inconnue'}`;
+  return { system, content };
+}
+
+export interface BottleForAiSave {
+  id: string;
+  drinkFrom: number | null;
+  drinkUntil: number | null;
+}
+
+/**
+ * `aiAnalysis`/`aiPairings`/`aiTastingAdvice`/`aiGeneratedAt` sont toujours
+ * écrasés, y compris à la régénération. `drinkFrom`/`drinkUntil` ne sont
+ * écrits que si la bouteille n'a actuellement pas de valeur — une fenêtre
+ * de garde déjà renseignée (manuellement ou par une génération précédente)
+ * n'est jamais écrasée (voir le spec IA, section Chantier A).
+ */
+export async function saveBottleAiAnalysis(
+  db: Db,
+  bottle: BottleForAiSave,
+  analysis: AiBottleAnalysis,
+): Promise<void> {
+  const set: {
+    aiAnalysis: string;
+    aiPairings: string[];
+    aiTastingAdvice: string;
+    aiGeneratedAt: string;
+    drinkFrom?: number;
+    drinkUntil?: number;
+  } = {
+    aiAnalysis: analysis.analysis,
+    aiPairings: analysis.pairings,
+    aiTastingAdvice: analysis.tastingAdvice,
+    aiGeneratedAt: new Date().toISOString(),
+  };
+  if (bottle.drinkFrom === null && analysis.drinkFromYear !== null) set.drinkFrom = analysis.drinkFromYear;
+  if (bottle.drinkUntil === null && analysis.drinkUntilYear !== null) set.drinkUntil = analysis.drinkUntilYear;
+
+  await db.update(bottles).set(set).where(eq(bottles.id, bottle.id));
+}
