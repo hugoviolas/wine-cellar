@@ -14,7 +14,9 @@ export default async function WishlistItemPage({ params }: { params: Promise<{ i
   const access = await resolveWishlistItemAccess(db, user.id, id);
   if (access.status !== 'ok') notFound();
   const item = access.item;
-  const promotionTargets = item.status === 'pending' ? await listPromotionTargets(db, user.id) : [];
+  const promotionTargets = (item.status === 'pending' ? await listPromotionTargets(db, user.id) : []).filter(
+    (target) => target.crates.length > 0,
+  );
 
   return (
     <div className="max-w-md">
@@ -38,7 +40,7 @@ export default async function WishlistItemPage({ params }: { params: Promise<{ i
           <h3 className="text-sm mb-2">Ajouter à ma cave</h3>
           {promotionTargets.length === 0 ? (
             <p className="text-sm text-gray-500">
-              Tu n&apos;as pas les droits pour ajouter des bouteilles dans une cave pour le moment.
+              Tu n&apos;as pas encore de clayette disponible dans une cave où tu peux ajouter des bouteilles.
             </p>
           ) : (
             <WishlistPromoteForm itemId={item.id} targets={promotionTargets} />

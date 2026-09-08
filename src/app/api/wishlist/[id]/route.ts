@@ -24,6 +24,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!parsed.success) {
     return NextResponse.json({ error: 'Champs de mise à jour invalides.' }, { status: 400 });
   }
+  const patchKeys = Object.keys(parsed.data);
+  if (patchKeys.length === 0) {
+    return NextResponse.json({ error: 'Aucun champ à mettre à jour.' }, { status: 400 });
+  }
 
   const patch: UpdateWishlistItemInput = { ...parsed.data };
   if (parsed.data.details !== undefined) {
