@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
 import { resolveViewedCellarId } from '@/domain/viewedCellar';
@@ -12,11 +13,13 @@ export default async function ClayettesPage({
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
   const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
+  const cellarQuery = requestedCellarId ? `?cellarId=${cellarId}` : '';
 
   const crates = cellarId ? await listCrates(db, cellarId) : [];
 
   return (
     <div>
+      <Link href={`/cave${cellarQuery}`} className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
       <h2 className="text-lg mb-4">Gérer les clayettes</h2>
       {cellarId ? (
         <CrateManager cellarId={cellarId} initialCrates={crates} />

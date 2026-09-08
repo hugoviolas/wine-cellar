@@ -6,17 +6,20 @@ import { useToast } from '@/components/Toast';
 
 export function CellarInfoForm({
   cellarId,
+  initialName,
   initialBrand,
   initialModel,
   initialNotes,
 }: {
   cellarId: string;
+  initialName: string;
   initialBrand: string | null;
   initialModel: string | null;
   initialNotes: string | null;
 }) {
   const router = useRouter();
   const toast = useToast();
+  const [name, setName] = useState(initialName);
   const [brand, setBrand] = useState(initialBrand ?? '');
   const [model, setModel] = useState(initialModel ?? '');
   const [notes, setNotes] = useState(initialNotes ?? '');
@@ -25,12 +28,16 @@ export function CellarInfoForm({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (!name.trim()) {
+      setError('Le nom de la cave ne peut pas être vide.');
+      return;
+    }
     setError(null);
     setBusy(true);
     const response = await fetch(`/api/cellars/${cellarId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand, model, notes }),
+      body: JSON.stringify({ name, brand, model, notes }),
     });
     setBusy(false);
     if (!response.ok) {
@@ -48,6 +55,16 @@ export function CellarInfoForm({
     <form onSubmit={handleSubmit} className="bg-white rounded p-4 mb-6 space-y-3">
       <h3 className="text-sm">Infos de la cave</h3>
       {error && <p className="text-sm text-red-700">{error}</p>}
+
+      <div>
+        <label className="block text-xs uppercase tracking-wide mb-1">Nom</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          placeholder="Ma Cave"
+        />
+      </div>
 
       <div className="flex gap-3">
         <div className="flex-1">

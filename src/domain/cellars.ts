@@ -8,14 +8,16 @@ export async function getCellarById(db: Db, cellarId: string) {
 }
 
 export interface UpdateCellarInfoInput {
+  name?: string;
   brand?: string | null;
   model?: string | null;
   notes?: string | null;
 }
 
-/** Une chaîne vide efface le champ (stocké `null`), comme pour le nom d'une clayette. */
+/** Une chaîne vide efface le champ (stocké `null`), comme pour le nom d'une clayette. `name` est requis (non nullable) et déjà validé non-vide par le schéma zod appelant. */
 export async function updateCellarInfo(db: Db, cellarId: string, input: UpdateCellarInfoInput): Promise<void> {
   const set: Record<string, string | null> = {};
+  if (input.name !== undefined) set.name = input.name.trim();
   if (input.brand !== undefined) set.brand = input.brand?.trim() || null;
   if (input.model !== undefined) set.model = input.model?.trim() || null;
   if (input.notes !== undefined) set.notes = input.notes?.trim() || null;

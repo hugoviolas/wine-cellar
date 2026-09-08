@@ -23,6 +23,7 @@ export default async function HistoriquePage() {
 
   return (
     <div>
+      <Link href="/cave" className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
       <h2 className="text-lg mb-4">Historique</h2>
       <ul className="bg-white rounded divide-y divide-gray-100">
         {entries.map((entry) => {

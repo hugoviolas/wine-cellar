@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
@@ -18,6 +19,7 @@ export default async function CaveParametresPage({
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
   const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
+  const cellarQuery = requestedCellarId ? `?cellarId=${cellarId}` : '';
 
   if (!cellarId) {
     return <p className="text-sm">Aucune cave associée à ce compte.</p>;
@@ -33,10 +35,12 @@ export default async function CaveParametresPage({
 
   return (
     <div className="max-w-xl">
+      <Link href={`/cave${cellarQuery}`} className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
       <h2 className="text-lg mb-4">Gérer la cave</h2>
       {cellar && (
         <CellarInfoForm
           cellarId={cellarId}
+          initialName={cellar.name}
           initialBrand={cellar.brand}
           initialModel={cellar.model}
           initialNotes={cellar.notes}

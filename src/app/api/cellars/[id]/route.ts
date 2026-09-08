@@ -8,6 +8,7 @@ import { updateCellarInfo } from '@/domain/cellars';
 
 const updateCellarInfoBodySchema = z
   .object({
+    name: z.string().trim().min(1, 'Le nom de la cave ne peut pas être vide.').optional(),
     brand: z.string().nullable().optional(),
     model: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
