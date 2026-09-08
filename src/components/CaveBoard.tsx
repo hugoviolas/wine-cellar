@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
+  pointerWithin,
+  rectIntersection,
   PointerSensor,
   KeyboardSensor,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
@@ -43,6 +45,17 @@ export function CaveBoard({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  // closestCenter compare les centres des rectangles, pas la position du
+  // pointeur — avec des clayettes de hauteurs très différentes (une vide ne
+  // fait que quelques px, une pleine peut être bien plus haute), ça pouvait
+  // résoudre la mauvaise clayette cible. pointerWithin (position réelle du
+  // pointeur) est plus fiable ici ; rectIntersection en repli pour les cas
+  // où le pointeur sort de tout rectangle (ex. relâché juste en dehors).
+  const collisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    return pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args);
+  };
 
   function findCrateId(bottleId: string): string | undefined {
     return Object.keys(bottlesByCrate).find((crateId) =>
@@ -128,7 +141,7 @@ export function CaveBoard({
       <DndContext
         id="cave-board"
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
