@@ -15,6 +15,7 @@ describe('buildBottleAnalysisPrompt', () => {
       vintage: 2015,
       category: 'wine',
       region: 'Bordeaux',
+      color: 'rouge',
     });
 
     expect(typeof content).toBe('string');
@@ -24,6 +25,7 @@ describe('buildBottleAnalysisPrompt', () => {
     expect(text).toContain('2015');
     expect(text).toContain('wine');
     expect(text).toContain('Bordeaux');
+    expect(text).toContain('Couleur : rouge');
     expect(text).toContain('3 à 5');
   });
 
@@ -34,12 +36,14 @@ describe('buildBottleAnalysisPrompt', () => {
       vintage: null,
       category: 'cider',
       region: null,
+      color: null,
     });
 
     const text = content as string;
     expect(text).toContain('Cidre mystère');
     expect(text).toContain('Producteur : inconnu');
     expect(text).toContain('Région : inconnue');
+    expect(text).toContain('Couleur : inconnue');
   });
 });
 

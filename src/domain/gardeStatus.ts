@@ -14,7 +14,13 @@ export function computeGardeStatus(
 ): GardeStatus {
   if (drinkFrom == null || drinkUntil == null) return 'unknown';
   if (currentYear < drinkFrom) return 'too_young';
-  if (currentYear >= drinkUntil - 2) return 'closing_window';
+  // Seuil proportionnel à la largeur de la fenêtre (derniers ~20%, au moins
+  // 1 an) plutôt qu'un seuil fixe de 2 ans : sur une fenêtre courte (ex. une
+  // estimation IA de 4 ans), un seuil fixe déclenchait "fin de fenêtre" dès
+  // la moitié de la fenêtre — absurde pour un vin encore jeune.
+  const windowWidth = drinkUntil - drinkFrom;
+  const closingThreshold = Math.max(1, Math.round(windowWidth * 0.2));
+  if (currentYear >= drinkUntil - closingThreshold) return 'closing_window';
   return 'ready';
 }
 

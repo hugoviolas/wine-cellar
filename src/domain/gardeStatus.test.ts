@@ -21,6 +21,17 @@ describe('computeGardeStatus', () => {
   it('retourne "closing_window" apres la fin de la fenetre', () => {
     expect(computeGardeStatus(2010, 2020, 2026)).toBe('closing_window');
   });
+
+  it('ne signale pas "fin de fenetre" au milieu d\'une fenetre courte (ex. fenetre IA de 4 ans)', () => {
+    // Cas reel : Clos Poggiale 2023, fenetre IA 2024-2028, aujourd'hui 2026 —
+    // le seuil fixe de 2 ans declenchait a tort "fin de fenetre" a mi-parcours
+    // d'une fenetre de seulement 4 ans.
+    expect(computeGardeStatus(2024, 2028, 2026)).toBe('ready');
+  });
+
+  it('signale "closing_window" pres de la fin d\'une fenetre courte', () => {
+    expect(computeGardeStatus(2024, 2028, 2027)).toBe('closing_window');
+  });
 });
 
 describe('computeGardeProgress', () => {

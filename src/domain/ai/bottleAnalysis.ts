@@ -10,6 +10,7 @@ export interface BottleAnalysisInput {
   vintage: number | null;
   category: string;
   region: string | null;
+  color: string | null;
 }
 
 export function buildBottleAnalysisPrompt(bottle: BottleAnalysisInput): { system: string; content: AiMessageContent } {
@@ -31,7 +32,8 @@ Bouteille :
 - Producteur : ${bottle.producer ?? 'inconnu'}
 - Millésime : ${bottle.vintage ?? 'inconnu'}
 - Catégorie : ${bottle.category}
-- Région : ${bottle.region ?? 'inconnue'}`;
+- Région : ${bottle.region ?? 'inconnue'}
+- Couleur : ${bottle.color ?? 'inconnue'}`;
   return { system, content };
 }
 
