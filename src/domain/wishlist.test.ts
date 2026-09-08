@@ -11,6 +11,13 @@ import {
   updateWishlistItemBodySchema,
   deleteWishlistItem,
 } from './wishlist';
+import { createCrate } from './crates';
+import { getBottle } from './bottles';
+import {
+  promoteWishlistItem,
+  promoteWishlistItemBodySchema,
+  listPromotionTargets,
+} from './wishlist';
 
 describe('createWishlistItem / getWishlistItem', () => {
   it('creates item with valid details for category', async () => {
@@ -133,5 +140,95 @@ describe('deleteWishlistItem', () => {
 
     await deleteWishlistItem(db, id);
     expect(await getWishlistItem(db, id)).toBeNull();
+  });
+});
+
+describe('promoteWishlistItemBodySchema', () => {
+  it('rejette une quantité nulle', () => {
+    expect(promoteWishlistItemBodySchema.safeParse({ crateId: 'x', quantity: 0 }).success).toBe(false);
+  });
+
+  it('accepte crateId et quantity valides', () => {
+    expect(promoteWishlistItemBodySchema.safeParse({ crateId: 'x', quantity: 2 }).success).toBe(true);
+  });
+});
+
+describe('promoteWishlistItem', () => {
+  it("crée une vraie bouteille et marque l'item promu", async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const itemId = await createWishlistItem(db, {
+      userId,
+      category: 'wine',
+      name: 'Clos Poggiale',
+      producer: 'Domaine Poggiale',
+      vintage: 2023,
+      region: 'Corse',
+      color: 'rouge',
+      details: { grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' },
+    });
+    const item = await getWishlistItem(db, itemId);
+
+    const { bottleId } = await promoteWishlistItem(db, item!, { crateId, quantity: 3 });
+
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.name).toBe('Clos Poggiale');
+    expect(bottle?.producer).toBe('Domaine Poggiale');
+    expect(bottle?.vintage).toBe(2023);
+    expect(bottle?.color).toBe('rouge');
+    expect(bottle?.quantity).toBe(3);
+    expect(bottle?.crateId).toBe(crateId);
+    expect(bottle?.details).toEqual({ grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' });
+
+    const promotedItem = await getWishlistItem(db, itemId);
+    expect(promotedItem?.status).toBe('promoted');
+    expect(promotedItem?.promotedBottleId).toBe(bottleId);
+  });
+
+  it('refuse de promouvoir un item déjà promu', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+    const itemId = await createWishlistItem(db, { userId, category: 'wine', name: 'Vin', details: {} });
+    const item = await getWishlistItem(db, itemId);
+    await promoteWishlistItem(db, item!, { crateId, quantity: 1 });
+
+    const promotedItem = await getWishlistItem(db, itemId);
+    await expect(promoteWishlistItem(db, promotedItem!, { crateId, quantity: 1 })).rejects.toThrow();
+  });
+});
+
+describe('listPromotionTargets', () => {
+  it("liste les caves où l'utilisateur peut éditer, avec leurs clayettes", async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave A' });
+    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
+
+    const targets = await listPromotionTargets(db, userId);
+
+    expect(targets).toHaveLength(1);
+    expect(targets[0].cellarId).toBe(cellarId);
+    expect(targets[0].cellarName).toBe('Cave A');
+    expect(targets[0].crates.map((c) => c.id)).toEqual([crateId]);
+  });
+
+  it("exclut les caves où l'utilisateur n'a qu'un rôle lecteur", async () => {
+    const db = await createTestDb();
+    const owner = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
+    const readerId = await createUserAccount(db, 'reader@example.com', 'password123');
+    // owner ajoute readerId comme lecteur — insertion directe pour ce test,
+    // la logique d'invitation n'est pas testée ici.
+    const { cellarMemberships } = await import('../db/schema');
+    await db.insert(cellarMemberships).values({
+      id: 'membership-test',
+      cellarId: owner.cellarId,
+      userId: readerId,
+      role: 'reader',
+      createdAt: new Date().toISOString(),
+    });
+
+    const targets = await listPromotionTargets(db, readerId);
+    expect(targets).toHaveLength(0);
   });
 });
