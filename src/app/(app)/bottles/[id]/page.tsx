@@ -94,6 +94,12 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
         </section>
       )}
 
+      {(bottle.aiAnalysis || pairings.length > 0 || bottle.aiTastingAdvice) && (
+        <p className="text-xs text-gray-400 mb-6">
+          Analyse générée par IA — à vérifier, notamment sur les détails pointus (appellation, cépages...).
+        </p>
+      )}
+
       <section className="mb-6">
         <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Ta note</h4>
         <UserNoteEditor bottleId={bottle.id} initialNote={bottle.userNote} initialRating={bottle.rating} />

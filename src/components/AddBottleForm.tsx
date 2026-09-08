@@ -30,6 +30,7 @@ export function AddBottleForm({
   const [color, setColor] = useState('');
   const [name, setName] = useState('');
   const [producer, setProducer] = useState('');
+  const [region, setRegion] = useState('');
   const [vintage, setVintage] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export function AddBottleForm({
   function applyExtraction(data: PhotoExtractionResult) {
     if (data.name) setName(data.name);
     if (data.producer) setProducer(data.producer);
+    if (data.region) setRegion(data.region);
     if (data.vintage) setVintage(String(data.vintage));
     if (data.category) {
       setCategory(data.category);
@@ -59,6 +61,7 @@ export function AddBottleForm({
         category,
         name,
         producer: producer || undefined,
+        region: region || undefined,
         color: category === 'wine' && color ? color : undefined,
         vintage: vintage ? Number(vintage) : undefined,
         quantity,
@@ -154,6 +157,16 @@ export function AddBottleForm({
           value={producer}
           onChange={(e) => setProducer(e.target.value)}
           className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs uppercase tracking-wide mb-1">Région</label>
+        <input
+          value={region}
+          onChange={(e) => setRegion(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          placeholder="Bordeaux"
         />
       </div>
 
