@@ -33,7 +33,7 @@ export default async function CaveParametresPage({
 
   return (
     <div className="max-w-xl">
-      <h2 className="text-lg mb-4">Réglages de la cave</h2>
+      <h2 className="text-lg mb-4">Gérer la cave</h2>
       {cellar && (
         <CellarInfoForm
           cellarId={cellarId}

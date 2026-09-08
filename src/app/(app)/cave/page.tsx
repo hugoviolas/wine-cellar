@@ -66,9 +66,9 @@ export default async function CavePage({
           </p>
         </div>
         <div className="flex gap-3 text-sm">
-          <Link href={`/cave/vins${cellarQuery}`} className="text-forest underline">Liste des vins</Link>
-          <Link href={`/cave/clayettes${cellarQuery}`} className="text-forest underline">Gérer les clayettes</Link>
-          {canManage && <Link href={`/cave/parametres${cellarQuery}`} className="text-forest underline">Réglages</Link>}
+          <Link href={`/cave/vins${cellarQuery}`} className="text-forest hover:underline">Liste des vins</Link>
+          <Link href={`/cave/clayettes${cellarQuery}`} className="text-forest hover:underline">Gérer les clayettes</Link>
+          {canManage && <Link href={`/cave/parametres${cellarQuery}`} className="text-forest hover:underline">Gérer la cave</Link>}
           <Link href={`/cave/ajouter${cellarQuery}`} className="bg-forest text-cream rounded px-3 py-1.5">+ Ajouter</Link>
         </div>
       </div>
