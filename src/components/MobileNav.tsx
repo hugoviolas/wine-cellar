@@ -14,6 +14,7 @@ export function MobileNav({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const links: NavLink[] = [
     { href: '/accueil', label: 'Accueil' },
     { href: '/cave', label: 'Cave' },
+    { href: '/wishlist', label: 'Wishlist' },
     { href: '/historique', label: 'Historique' },
     ...(isSuperAdmin ? [{ href: '/admin/utilisateurs', label: 'Admin' }] : []),
   ];
