@@ -57,7 +57,7 @@ export default async function CavePage({
 
   return (
     <div>
-      <div className="flex justify-between items-start mb-6 pb-4 border-b border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6 pb-4 border-b border-gray-200">
         <div>
           <h2 className="text-2xl">{cellar?.name ?? 'Ma Cave'}</h2>
           <p className="text-xs text-sage mt-1">
@@ -65,28 +65,28 @@ export default async function CavePage({
             {totalBottles} bouteille{totalBottles > 1 ? 's' : ''} sur {totalCapacity} emplacements
           </p>
         </div>
-        <div className="flex gap-3 text-sm">
+        <div className="flex flex-wrap gap-3 text-sm">
           <Link
             href={`/cave/vins${cellarQuery}`}
-            className="border border-gray-300 text-forest rounded px-3 py-1.5 hover:bg-white"
+            className="border border-gray-300 text-forest rounded px-3 py-1.5 hover:bg-white whitespace-nowrap"
           >
             Liste des vins
           </Link>
           <Link
             href={`/cave/clayettes${cellarQuery}`}
-            className="border border-gray-300 text-forest rounded px-3 py-1.5 hover:bg-white"
+            className="border border-gray-300 text-forest rounded px-3 py-1.5 hover:bg-white whitespace-nowrap"
           >
             Gérer les clayettes
           </Link>
           {canManage && (
             <Link
               href={`/cave/parametres${cellarQuery}`}
-              className="border border-gray-300 text-forest rounded px-3 py-1.5 hover:bg-white"
+              className="border border-gray-300 text-forest rounded px-3 py-1.5 hover:bg-white whitespace-nowrap"
             >
               Gérer la cave
             </Link>
           )}
-          <Link href={`/cave/ajouter${cellarQuery}`} className="bg-forest text-cream rounded px-3 py-1.5">+ Ajouter</Link>
+          <Link href={`/cave/ajouter${cellarQuery}`} className="bg-forest text-cream rounded px-3 py-1.5 whitespace-nowrap">+ Ajouter</Link>
         </div>
       </div>
       <CaveBoard crates={crates} initialBottlesByCrate={bottlesByCrate} canEdit={canEdit} />
