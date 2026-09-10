@@ -50,6 +50,9 @@ export default function LoginPage() {
         <button type="submit" className="w-full bg-forest text-cream rounded py-2 text-sm">
           Se connecter
         </button>
+        <p className="text-xs text-gray-500 mt-4 text-center">
+          Pas de compte ? <a href="/signup" className="underline">Crée-en un</a>
+        </p>
       </form>
     </div>
   );
