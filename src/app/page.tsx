@@ -1,6 +1,12 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/domain/session';
 
+// Cette page lit la session — jamais de pré-rendu statique à la
+// construction (qui l'exécuterait sans requête réelle, avant même qu'un
+// SESSION_SECRET soit disponible dans un environnement comme une image
+// Docker construite sans .env).
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   const session = await getSession();
   if (session.userId) redirect('/accueil');
