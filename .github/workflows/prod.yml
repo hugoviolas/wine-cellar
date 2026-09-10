@@ -1,0 +1,72 @@
+name: Prod (build, test, deploy)
+
+# Déclenché uniquement par un push sur master — donc en pratique par le
+# merge de la PR dev → master.
+on:
+  push:
+    branches: [master]
+
+concurrency:
+  group: prod-deploy
+  # Ne jamais annuler un déploiement prod en cours.
+  cancel-in-progress: false
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Activer corepack
+        run: corepack enable
+
+      - name: Installer les dépendances
+        run: yarn install --frozen-lockfile
+
+      - name: Vérification des types
+        run: yarn tsc --noEmit
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Tests
+        run: yarn test
+
+      - name: Connexion à GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build et push de l'image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:prod
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-prod:
+    needs: build-and-test
+    runs-on: self-hosted
+    # `environment: production` est ce qui déclenche la protection GitHub
+    # (approbation manuelle) — configurée une fois dans Settings > Environments,
+    # voir docs/deployment/README.md. Le job reste en attente tant que
+    # personne n'a approuvé.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Synchroniser le fichier compose
+        run: cp docker-compose.prod.yml /opt/cave-vin-prod/docker-compose.yml
+
+      - name: Déployer la stack prod
+        working-directory: /opt/cave-vin-prod
+        run: |
+          export IMAGE_TAG=${{ github.sha }}
+          docker compose pull
+          docker compose up -d

@@ -1,0 +1,76 @@
+name: Préprod (build, test, deploy)
+
+# Déclenché par un push direct sur dev, ou par toute activité sur une PR
+# ciblant master (ouverture, nouveaux commits) — les deux mènent au même
+# résultat : build + tests, puis déploiement en préprod si le code vient
+# bien de dev.
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [master]
+
+# Un nouveau push annule le déploiement préprod en cours pour la même
+# ref — inutile de finir de déployer une version déjà dépassée.
+concurrency:
+  group: preprod-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Activer corepack
+        run: corepack enable
+
+      - name: Installer les dépendances
+        run: yarn install --frozen-lockfile
+
+      - name: Vérification des types
+        run: yarn tsc --noEmit
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Tests
+        run: yarn test
+
+      - name: Connexion à GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build et push de l'image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:preprod
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-preprod:
+    needs: build-and-test
+    runs-on: self-hosted
+    # Ne déploie que pour un vrai push à dev, ou une PR dont la branche
+    # source est dev — une PR depuis une autre branche construit et teste
+    # sans déployer.
+    if: github.event_name == 'push' || github.head_ref == 'dev'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Synchroniser le fichier compose
+        run: cp docker-compose.preprod.yml /opt/cave-vin-preprod/docker-compose.yml
+
+      - name: Déployer la stack préprod
+        working-directory: /opt/cave-vin-preprod
+        run: |
+          export IMAGE_TAG=${{ github.sha }}
+          docker compose pull
+          docker compose up -d

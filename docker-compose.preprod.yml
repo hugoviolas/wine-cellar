@@ -1,0 +1,14 @@
+services:
+  app:
+    image: ghcr.io/hugoviolas/wine-cellar:${IMAGE_TAG:-preprod}
+    container_name: cave-vin-preprod
+    restart: unless-stopped
+    # Uniquement sur le réseau local du Pi — pas de route Cloudflare pour
+    # la préprod. Accessible depuis un autre appareil du réseau via
+    # http://<ip-locale-du-pi>:3001.
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
