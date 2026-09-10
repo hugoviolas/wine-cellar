@@ -40,6 +40,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Pas de cache-from/cache-to: type=gha : le cache GitHub Actions sert
+      # les runners cloud éphémères, sans état entre deux runs. Ici le
+      # runner self-hosted tourne sur une machine permanente — son démon
+      # Docker garde déjà son cache de couches localement d'un run à
+      # l'autre, sans rien exporter nulle part. Le cache GHA en mode=max
+      # exporte en plus TOUTES les couches (pas seulement l'image finale)
+      # vers le service de cache GitHub, ce qui a bloqué un run entier sur
+      # la connexion résidentielle du Pi (voir historique de commits).
       - name: Build et push de l'image
         uses: docker/build-push-action@v6
         with:
@@ -48,8 +56,6 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.sha }}
             ghcr.io/${{ github.repository }}:prod
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   deploy-prod:
     needs: build-and-test
