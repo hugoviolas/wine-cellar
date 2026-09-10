@@ -27,7 +27,7 @@ describe('createUserAccount', () => {
 });
 
 describe('registerSelfServeUser', () => {
-  it('cree un compte, une cave "Ma Cave" avec l IA desactivee, et une adhesion owner', async () => {
+  it('crée un compte, une cave "Ma Cave" avec l\'IA désactivée, et une adhésion owner', async () => {
     const db = await createTestDb();
     const { userId, cellarId } = await registerSelfServeUser(db, 'nouveau@example.com', 'mot-de-passe-solide');
 
@@ -50,7 +50,7 @@ describe('registerSelfServeUser', () => {
     expect(membership.role).toBe('owner');
   });
 
-  it('refuse un email deja utilise', async () => {
+  it('refuse un email déjà utilisé', async () => {
     const db = await createTestDb();
     await registerSelfServeUser(db, 'nouveau@example.com', 'x'.repeat(8));
     await expect(registerSelfServeUser(db, 'nouveau@example.com', 'y'.repeat(8))).rejects.toBeInstanceOf(
@@ -58,7 +58,7 @@ describe('registerSelfServeUser', () => {
     );
   });
 
-  it('normalise l email en minuscules', async () => {
+  it('normalise l\'email en minuscules', async () => {
     const db = await createTestDb();
     const { userId } = await registerSelfServeUser(db, 'Nouveau@Example.com', 'x'.repeat(8));
     const [user] = await db.select().from(users).where(eq(users.id, userId));

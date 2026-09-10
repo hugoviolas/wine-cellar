@@ -2,6 +2,12 @@ import { db } from '@/db/client';
 import { getAppSettings } from '@/domain/appSettings';
 import { SignupForm } from '@/components/SignupForm';
 
+// Cette page lit les paramètres de l'application en base — jamais de
+// pré-rendu statique à la construction (qui exécuterait cette page sans
+// requête réelle, avant même que le répertoire data/ existe dans un
+// environnement comme une image Docker construite sans data/).
+export const dynamic = 'force-dynamic';
+
 export default async function SignupPage() {
   const settings = await getAppSettings(db);
 
