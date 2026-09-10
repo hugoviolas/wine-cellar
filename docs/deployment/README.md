@@ -42,6 +42,15 @@ sudo usermod -aG docker $USER
 # se reconnecter (ou `newgrp docker`) pour que ça prenne effet
 ```
 
+Corepack (Yarn) doit être activé une fois pour toutes au niveau machine —
+si Node vient du gestionnaire de paquets du système, ses binaires
+appartiennent à root et un `corepack enable` lancé par le runner (utilisateur
+normal) échoue avec `EACCES`. D'où ce `sudo`, une seule fois :
+
+```bash
+sudo corepack enable
+```
+
 Crée les deux dossiers persistants, séparés de tout checkout git — c'est
 là que vivent les vraies données et les secrets, jamais dans le repo :
 

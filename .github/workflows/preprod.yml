@@ -22,9 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Activer corepack
-        run: corepack enable
-
+      # corepack enable est une étape machine, faite une fois pour toutes sur
+      # le runner (voir docs/deployment/README.md) — pas la répéter ici,
+      # `corepack enable` échoue sans sudo si le Node système appartient à
+      # root (cas d'une install via le gestionnaire de paquets du Pi).
       - name: Installer les dépendances
         run: yarn install --frozen-lockfile
 
