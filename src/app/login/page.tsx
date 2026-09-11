@@ -9,22 +9,30 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      setError(data.error ?? 'Une erreur est survenue');
-      return;
+    setBusy(true);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error ?? 'Une erreur est survenue');
+        return;
+      }
+      router.push('/accueil');
+      router.refresh();
+    } catch {
+      setError('Impossible de contacter le serveur — vérifie ta connexion et réessaie.');
+    } finally {
+      setBusy(false);
     }
-    router.push('/accueil');
-    router.refresh();
   }
 
   return (
@@ -47,7 +55,11 @@ export default function LoginPage() {
           className="mb-6"
           required
         />
-        <button type="submit" className="w-full bg-forest text-cream rounded py-2 text-sm">
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full bg-forest text-cream rounded py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+        >
           Se connecter
         </button>
         <p className="text-xs text-gray-500 mt-4 text-center">
