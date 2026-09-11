@@ -38,6 +38,7 @@ export async function POST(request: Request) {
 
   const session = await getSession();
   session.userId = user.id;
+  session.issuedAt = new Date().toISOString();
   await session.save();
 
   return NextResponse.json({ ok: true });
