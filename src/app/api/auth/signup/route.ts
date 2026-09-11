@@ -6,6 +6,17 @@ import { getAppSettings } from '@/domain/appSettings';
 import { registerSelfServeUser, EmailAlreadyExistsError } from '@/domain/accounts';
 import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
 
+/**
+ * Sur l'énumération de comptes : tant que l'inscription est ouverte et
+ * qu'aucun email de confirmation n'est envoyé, elle reste possible par
+ * construction — le simple fait qu'une inscription réussisse prouve que
+ * l'adresse était libre. Uniformiser le message d'erreur (voir plus bas)
+ * ne fait que retirer la confirmation explicite ; ce qui borne réellement
+ * un balayage d'adresses, c'est la limitation de débit ci-dessous. La
+ * correction complète supposerait une inscription validée par email, donc
+ * un envoi d'emails que l'app n'a pas aujourd'hui.
+ */
+
 /** Route publique : borne la création de comptes en masse depuis une même origine. */
 const PER_IP = { limit: 5, windowMs: 60 * 60 * 1000 };
 
@@ -44,8 +55,15 @@ export async function POST(request: Request) {
     ({ userId } = await registerSelfServeUser(db, parsed.data.email, parsed.data.password));
   } catch (err) {
     if (err instanceof EmailAlreadyExistsError) {
+      // Message volontairement muet sur l'existence du compte : confirmer
+      // qu'un email est déjà pris permet de tester une liste d'adresses.
+      // Atténuation seulement, pas une correction complète — voir le
+      // commentaire en tête de fichier.
       return NextResponse.json(
-        { error: 'Un compte existe déjà pour cet email — connecte-toi plutôt.' },
+        {
+          error:
+            'Impossible de créer un compte avec cet email. S’il t’appartient déjà, connecte-toi ou demande un lien de réinitialisation.',
+        },
         { status: 409 },
       );
     }
@@ -54,6 +72,7 @@ export async function POST(request: Request) {
 
   const session = await getSession();
   session.userId = userId;
+  session.issuedAt = new Date().toISOString();
   await session.save();
 
   return NextResponse.json({ ok: true });

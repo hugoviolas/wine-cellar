@@ -6,6 +6,12 @@ export const users = sqliteTable('users', {
   passwordHash: text('password_hash').notNull(),
   isSuperAdmin: integer('is_super_admin', { mode: 'boolean' }).notNull().default(false),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  // Horodatage ISO du dernier geste qui doit invalider les sessions déjà
+  // ouvertes de ce compte (aujourd'hui : une réinitialisation de mot de
+  // passe). Une session émise avant cette date est refusée — voir
+  // domain/sessionValidity.ts. `null` = aucun geste de ce type depuis la
+  // création du compte, donc toutes ses sessions restent valides.
+  sessionsValidFrom: text('sessions_valid_from'),
   createdAt: text('created_at').notNull(),
 });
 

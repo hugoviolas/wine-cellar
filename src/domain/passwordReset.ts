@@ -43,9 +43,15 @@ export async function resetPasswordWithToken(db: Db, token: string, newPassword:
   if (lookup.status !== 'valid') {
     throw new Error('Lien de réinitialisation invalide.');
   }
+  // `sessionsValidFrom` en même temps que le hash : sans ça, changer le mot
+  // de passe d'un compte compromis laisserait les sessions déjà ouvertes de
+  // l'attaquant parfaitement valides (voir domain/sessionValidity.ts).
   await db
     .update(users)
-    .set({ passwordHash: await hashPassword(newPassword) })
+    .set({
+      passwordHash: await hashPassword(newPassword),
+      sessionsValidFrom: new Date().toISOString(),
+    })
     .where(eq(users.id, lookup.userId));
   await db
     .update(passwordResetTokens)
