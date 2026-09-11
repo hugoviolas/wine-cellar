@@ -38,6 +38,9 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
   const status = computeGardeStatus(bottle.drinkFrom, bottle.drinkUntil, currentYear);
   const progress = computeGardeProgress(bottle.vintage, bottle.drinkUntil, currentYear);
 
+  const grapeVarieties = getGrapeVarieties(bottle.category, bottle.details);
+  const appellation = getAppellation(bottle.category, bottle.details);
+
   return (
     <div className="max-w-lg">
       <Link href="/cave" className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
@@ -47,6 +50,14 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
         {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} · {bottle.category} ·{' '}
         {currentCrate ? crateLabel(currentCrate.number, currentCrate.name) : '—'}
       </p>
+
+      {(appellation || grapeVarieties.length > 0) && (
+        <p className="text-xs text-gray-500 mb-4">
+          {appellation}
+          {appellation && grapeVarieties.length > 0 ? ' · ' : ''}
+          {grapeVarieties.join(', ')}
+        </p>
+      )}
 
       <div className="flex gap-2 mb-6">
         <GardeBadge status={status} />
@@ -120,8 +131,8 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
             color: bottle.color,
             abv: bottle.abv,
             volumeMl: bottle.volumeMl,
-            grapeVarieties: getGrapeVarieties(bottle.category, bottle.details),
-            appellation: getAppellation(bottle.category, bottle.details),
+            grapeVarieties,
+            appellation,
           }}
         />
       </section>
