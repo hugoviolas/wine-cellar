@@ -4,7 +4,7 @@ import { requireApiUser } from '@/lib/requireApiUser';
 import { checkCellarAccess } from '@/domain/access';
 import { canEditCellarContent } from '@/domain/permissions';
 import { getCrateById } from '@/domain/crates';
-import { createBottle, listActiveBottlesByCellar } from '@/domain/bottles';
+import { createBottle, createBottleBodySchema, listActiveBottlesByCellar } from '@/domain/bottles';
 
 export async function GET(request: Request) {
   const auth = await requireApiUser();
@@ -23,10 +23,12 @@ export async function POST(request: Request) {
   const auth = await requireApiUser();
   if ('error' in auth) return auth.error;
   const { user } = auth;
-  const body = await request.json().catch(() => null);
-  if (!body) {
+  const rawBody = await request.json().catch(() => null);
+  const parsed = createBottleBodySchema.safeParse(rawBody);
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });
   }
+  const body = parsed.data;
 
   const crate = await getCrateById(db, body.crateId);
   if (!crate) return NextResponse.json({ error: 'Clayette introuvable' }, { status: 404 });

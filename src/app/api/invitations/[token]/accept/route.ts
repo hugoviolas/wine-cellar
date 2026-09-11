@@ -7,6 +7,10 @@ import { getInvitationByToken, acceptInvitation } from '@/domain/invitations';
 import { createUserAccount, EmailAlreadyExistsError } from '@/domain/accounts';
 import { getAppSettings } from '@/domain/appSettings';
 import { authenticateUser } from '@/domain/authenticate';
+import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
+
+/** Route publique : même raisonnement que la réinitialisation de mot de passe. */
+const PER_IP = { limit: 10, windowMs: 15 * 60 * 1000 };
 
 const acceptBodySchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('login') }).strict(),
@@ -14,6 +18,14 @@ const acceptBodySchema = z.discriminatedUnion('mode', [
 ]);
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
+  const limit = checkRateLimit(`invitation:ip:${clientKeyFromHeaders(request.headers)}`, PER_IP);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Trop de tentatives. Réessaie dans quelques minutes.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+    );
+  }
+
   const { token } = await params;
   const lookup = await getInvitationByToken(db, token);
   if (lookup.status !== 'valid') {

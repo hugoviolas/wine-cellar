@@ -71,9 +71,13 @@ jobs:
       - name: Synchroniser le fichier compose
         run: cp docker-compose.prod.yml /opt/cave-vin-prod/docker-compose.yml
 
+      # `env:` plutôt qu'une interpolation dans le `run:` — voir le commentaire
+      # détaillé dans rollback-prod.yml. Ici `github.sha` ne peut pas contenir
+      # de métacaractère shell, mais autant garder un seul et même motif.
       - name: Déployer la stack prod
         working-directory: /opt/cave-vin-prod
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          export IMAGE_TAG=${{ github.sha }}
           docker compose pull
           docker compose up -d
