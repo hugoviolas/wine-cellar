@@ -1,8 +1,14 @@
 import Link from 'next/link';
 import { db } from '@/db/client';
+import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { listAllUsers } from '@/domain/admin';
 
 export default async function AdminUsersPage() {
+  // Garde répétée dans chaque page /admin (et pas seulement dans le layout) :
+  // layout et page sont rendus en parallèle, et le `redirect()` du layout
+  // n'empêche pas le rendu de la page — son payload RSC part quand même dans
+  // le corps de la réponse 307, lisible par n'importe quel compte connecté.
+  await requireSuperAdmin();
   const usersList = await listAllUsers(db);
 
   return (
