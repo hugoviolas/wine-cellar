@@ -23,12 +23,29 @@ function getSessionSecret(): string {
   return secret;
 }
 
+/**
+ * Un cookie `Secure` n'est jamais stocké par le navigateur sur une connexion
+ * non chiffrée — or `NODE_ENV` vaut toujours "production" une fois l'image
+ * buildée, que le déploiement soit servi en HTTPS (prod, derrière le tunnel
+ * Cloudflare — le navigateur ne voit que du HTTPS jusqu'à Cloudflare, même
+ * si le tunnel relaie ensuite en HTTP en interne) ou en HTTP simple
+ * (préprod, LAN uniquement, sans tunnel). D'où `COOKIE_SECURE`, explicite
+ * par environnement plutôt que déduit de `NODE_ENV` : `false` en préprod,
+ * sinon le comportement historique (vrai en production) reste le défaut.
+ */
+function isCookieSecure(): boolean {
+  if (process.env.COOKIE_SECURE !== undefined) {
+    return process.env.COOKIE_SECURE === 'true';
+  }
+  return process.env.NODE_ENV === 'production';
+}
+
 export async function getSession(): Promise<IronSession<SessionData>> {
   const sessionOptions = {
     password: getSessionSecret(),
     cookieName: 'cave_session',
     cookieOptions: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: isCookieSecure(),
       maxAge: 60 * 60 * 24 * 90,
     },
   };

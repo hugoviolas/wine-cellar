@@ -70,6 +70,7 @@ BOOTSTRAP_EMAIL=toi@example.com
 BOOTSTRAP_PASSWORD=<mot de passe temporaire>
 BOOTSTRAP_CELLAR_NAME=Préprod
 ANTHROPIC_API_KEY=
+COOKIE_SECURE=false
 ```
 
 `/opt/cave-vin-prod/.env` :
@@ -85,6 +86,16 @@ TUNNEL_TOKEN=<rempli à l'étape 5>
 
 `ANTHROPIC_API_KEY` vide en préprod est volontaire — pas besoin d'exposer
 la clé à un environnement de test.
+
+`COOKIE_SECURE=false` en préprod est indispensable : le navigateur
+n'accède à cette cave qu'en HTTP simple sur le réseau local (pas de
+tunnel Cloudflare), et un cookie marqué `Secure` n'est jamais stocké par
+le navigateur sur une connexion non chiffrée — sans ce réglage, la
+connexion échoue silencieusement (login accepté côté serveur, mais aucune
+session réellement posée côté navigateur). Pas besoin de l'équivalent en
+prod : le navigateur y accède en HTTPS via Cloudflare, même si le tunnel
+relaie ensuite vers l'app en HTTP en interne — seule la connexion vue par
+le navigateur compte pour le cookie.
 
 Génère un `SESSION_SECRET` avec :
 ```bash
