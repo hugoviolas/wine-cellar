@@ -5,7 +5,7 @@ faire eux-mêmes : configurer le Raspberry Pi, GitHub, et Cloudflare, une
 fois. Les fichiers concernés :
 
 - `.github/workflows/preprod.yml` — build + tests + déploiement préprod,
-  sur push à `dev` ou activité sur une PR vers `master`.
+  sur push à `dev`.
 - `.github/workflows/prod.yml` — build + tests + déploiement prod
   (approbation manuelle), sur push à `master`.
 - `.github/workflows/rollback-preprod.yml` /
