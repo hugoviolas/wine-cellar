@@ -1,0 +1,1 @@
+ALTER TABLE `bottles` ADD `rating` integer;

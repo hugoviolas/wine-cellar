@@ -1,0 +1,26 @@
+name: Rollback préprod
+
+# Déclenchement manuel uniquement, depuis l'onglet Actions du repo.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "SHA du commit à redéployer (ex. a1b2c3d4...)"
+        required: true
+        type: string
+
+jobs:
+  rollback:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Synchroniser le fichier compose
+        run: cp docker-compose.preprod.yml /opt/cave-vin-preprod/docker-compose.yml
+
+      - name: Redéployer le tag choisi
+        working-directory: /opt/cave-vin-preprod
+        run: |
+          export IMAGE_TAG=${{ inputs.image_tag }}
+          docker compose pull
+          docker compose up -d

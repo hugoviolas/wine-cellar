@@ -1,0 +1,27 @@
+services:
+  app:
+    image: ghcr.io/hugoviolas/wine-cellar:${IMAGE_TAG:-prod}
+    container_name: cave-vin-prod
+    restart: unless-stopped
+    # Pas de port publié vers l'hôte : seul le conteneur cloudflared, sur
+    # le même réseau compose, doit atteindre l'app (via http://app:3000).
+    # Rien n'expose ce service directement, ni sur le LAN ni sur internet.
+    expose:
+      - "3000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cave-vin-prod-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    # TUNNEL_TOKEN dans .env (créé une fois depuis le dashboard Cloudflare
+    # Zero Trust — voir docs/deployment/README.md). cloudflared le lit
+    # automatiquement, pas besoin de le passer en argument.
+    env_file:
+      - .env
+    depends_on:
+      - app

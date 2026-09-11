@@ -1,0 +1,76 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { db } from '@/db/client';
+import { requireSuperAdminApi } from '@/lib/requireSuperAdminApi';
+import { getUserById, setUserActive, setUserSuperAdmin, hasOtherActiveSuperAdmin, deleteUser } from '@/domain/admin';
+
+const updateUserBodySchema = z
+  .object({
+    isActive: z.boolean().optional(),
+    isSuperAdmin: z.boolean().optional(),
+  })
+  .strict();
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireSuperAdminApi();
+  if ('error' in auth) return auth.error;
+  const { id } = await params;
+
+  const target = await getUserById(db, id);
+  if (!target) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+
+  const rawBody = await request.json().catch(() => null);
+  const parsed = updateUserBodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
+  }
+  if (Object.keys(parsed.data).length === 0) {
+    return NextResponse.json({ error: 'Aucun champ à mettre à jour.' }, { status: 400 });
+  }
+
+  if (parsed.data.isActive === false && target.id === auth.user.id) {
+    return NextResponse.json({ error: 'Tu ne peux pas désactiver ton propre compte.' }, { status: 400 });
+  }
+  if (parsed.data.isSuperAdmin === false && target.isSuperAdmin === true) {
+    const hasOther = await hasOtherActiveSuperAdmin(db, target.id);
+    if (!hasOther) {
+      return NextResponse.json(
+        { error: 'Impossible de rétrograder le dernier super-admin actif.' },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (parsed.data.isActive !== undefined) {
+    await setUserActive(db, id, parsed.data.isActive);
+  }
+  if (parsed.data.isSuperAdmin !== undefined) {
+    await setUserSuperAdmin(db, id, parsed.data.isSuperAdmin);
+  }
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireSuperAdminApi();
+  if ('error' in auth) return auth.error;
+  const { id } = await params;
+
+  const target = await getUserById(db, id);
+  if (!target) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+
+  if (target.id === auth.user.id) {
+    return NextResponse.json({ error: 'Tu ne peux pas supprimer ton propre compte.' }, { status: 400 });
+  }
+  if (target.isSuperAdmin) {
+    const hasOther = await hasOtherActiveSuperAdmin(db, target.id);
+    if (!hasOther) {
+      return NextResponse.json(
+        { error: 'Impossible de supprimer le dernier super-admin actif.' },
+        { status: 400 },
+      );
+    }
+  }
+
+  await deleteUser(db, id);
+  return NextResponse.json({ ok: true });
+}

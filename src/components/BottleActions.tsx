@@ -1,0 +1,178 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { crateLabel } from '@/lib/crateLabel';
+import { useToast } from '@/components/Toast';
+
+interface CrateOption {
+  id: string;
+  number: number;
+  name: string | null;
+}
+
+export function BottleActions({
+  bottleId,
+  otherCrates,
+  initialQuantity,
+}: {
+  bottleId: string;
+  otherCrates: CrateOption[];
+  initialQuantity: number;
+}) {
+  const router = useRouter();
+  const toast = useToast();
+  const [targetCrateId, setTargetCrateId] = useState(otherCrates[0]?.id ?? '');
+  const [quantity, setQuantity] = useState(initialQuantity);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function readError(response: Response, fallback: string): Promise<string> {
+    const data = await response.json().catch(() => null);
+    return typeof data?.error === 'string' ? data.error : fallback;
+  }
+
+  async function updateQuantity() {
+    if (quantity === initialQuantity || quantity < 0) return;
+    setError(null);
+    setBusy(true);
+    const response = await fetch(`/api/bottles/${bottleId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity }),
+    });
+    setBusy(false);
+    if (!response.ok) {
+      const message = await readError(response, 'Impossible de mettre à jour la quantité.');
+      setError(message);
+      toast.error(message);
+      return;
+    }
+    toast.success('Quantité mise à jour.');
+    router.refresh();
+  }
+
+  async function moveBottle() {
+    if (!targetCrateId) return;
+    setError(null);
+    setBusy(true);
+    const response = await fetch(`/api/bottles/${bottleId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ crateId: targetCrateId }),
+    });
+    setBusy(false);
+    if (!response.ok) {
+      const message = await readError(response, 'Impossible de déplacer cette bouteille.');
+      setError(message);
+      toast.error(message);
+      return;
+    }
+    toast.success('Bouteille déplacée.');
+    router.push('/cave');
+    router.refresh();
+  }
+
+  async function removeBottle() {
+    setError(null);
+    setBusy(true);
+    const response = await fetch(`/api/bottles/${bottleId}`, { method: 'DELETE' });
+    setBusy(false);
+    if (!response.ok) {
+      const message = await readError(response, 'Impossible de supprimer cette bouteille.');
+      setError(message);
+      toast.error(message);
+      return;
+    }
+    toast.success('Bouteille supprimée.');
+    router.push('/cave');
+    router.refresh();
+  }
+
+  return (
+    <section className="mb-6 space-y-4">
+      <h3 className="text-sm text-gray-600 mb-1">Gérer le stock</h3>
+      {error && <p className="text-sm text-red-700">{error}</p>}
+
+      <div>
+        <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Quantité en stock</h4>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min={0}
+            value={quantity}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+            className="border border-gray-300 rounded px-3 py-2 text-sm w-24"
+          />
+          <button
+            type="button"
+            onClick={updateQuantity}
+            disabled={busy || quantity === initialQuantity || quantity < 0}
+            className="border border-forest text-forest rounded px-3 py-2 text-sm"
+          >
+            Mettre à jour la quantité
+          </button>
+        </div>
+      </div>
+
+      {otherCrates.length > 0 && (
+        <div>
+          <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Déplacer vers</h4>
+          <div className="flex gap-2">
+            <select
+              value={targetCrateId}
+              onChange={(e) => setTargetCrateId(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm flex-1"
+            >
+              {otherCrates.map((crate) => (
+                <option key={crate.id} value={crate.id}>
+                  {crateLabel(crate.number, crate.name)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={moveBottle}
+              disabled={busy}
+              className="border border-forest text-forest rounded px-3 py-2 text-sm"
+            >
+              Déplacer
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div>
+        {confirmingDelete ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Supprimer définitivement cette bouteille ?</span>
+            <button
+              type="button"
+              onClick={removeBottle}
+              disabled={busy}
+              className="text-xs text-red-700 underline"
+            >
+              Confirmer
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="text-xs text-gray-500 underline"
+            >
+              Annuler
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="text-xs text-red-700 underline"
+          >
+            Supprimer cette bouteille
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}

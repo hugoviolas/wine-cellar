@@ -1,0 +1,1 @@
+ALTER TABLE `consumption_history` ADD `quantity` integer DEFAULT 1 NOT NULL;

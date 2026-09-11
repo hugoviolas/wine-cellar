@@ -1,0 +1,46 @@
+services:
+  # Lance l'application. `dcup start` (ou `docker compose up start`).
+  # `yarn dev` (pas `build`+`start`) : le serveur de dev de Next.js recharge
+  # déjà tout seul à chaque modification de fichier — c'est ce qui donne le
+  # "rebuild à chaque changement" recherché, sans rien orchestrer en plus.
+  start:
+    image: node:24
+    container_name: wine-cellar-start
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      # Code monté en direct depuis l'hôte pour que `yarn dev` voie tes
+      # modifications. `node_modules` reste un volume anonyme séparé :
+      # celui de l'hôte (macOS) contient des binaires natifs (@libsql)
+      # compilés pour macOS, incompatibles avec ce conteneur Linux — d'où
+      # le `yarn install` dans la commande, exécuté à l'intérieur.
+      - .:/app
+      - /app/node_modules
+      # Volume anonyme aussi pour `.next` : sinon le cache Turbopack de ce
+      # conteneur (mode dev) partage le dossier `.next` de l'hôte, où un
+      # `yarn build` local (mode production) a pu laisser un cache
+      # incompatible — ça a produit une erreur de parsing incompréhensible
+      # ("Unexpected character '\0'") avant l'ajout de cette ligne.
+      - /app/.next
+      # La base SQLite vit hors du conteneur : elle survit aux redémarrages.
+      - ./data:/app/data
+    command: sh -c "corepack enable && yarn install && yarn dev"
+
+  # Vérification de types en continu (tsc --watch) pendant que tu codes —
+  # ne redémarre pas `start`, c'est juste un retour rapide sur les erreurs
+  # TypeScript. `/app/node_modules` est un volume anonyme vide au premier
+  # démarrage (même raison que `start` : binaires natifs macOS vs conteneur
+  # Linux), d'où le `yarn install` avant `npm run build:watch`.
+  # `dcup build` (ou `docker compose up build`).
+  build:
+    image: node:24
+    container_name: wine-cellar-build
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "corepack enable && yarn install && npm run build:watch"
