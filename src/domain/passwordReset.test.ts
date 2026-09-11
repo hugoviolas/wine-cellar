@@ -65,3 +65,27 @@ describe('resetPasswordWithToken', () => {
     await expect(resetPasswordWithToken(db, 'inconnu', 'x')).rejects.toThrow();
   });
 });
+
+describe('resetPasswordWithToken et les sessions ouvertes', () => {
+  it('horodate sessionsValidFrom pour invalider les sessions existantes', async () => {
+    const db = await createTestDb();
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'ancien-mot-de-passe',
+      cellarName: 'Cave',
+    });
+
+    const [before] = await db.select().from(users).where(eq(users.id, userId));
+    expect(before.sessionsValidFrom).toBeNull();
+
+    const startedAt = Date.now();
+    const token = await createResetToken(db, userId);
+    await resetPasswordWithToken(db, token, 'nouveau-mot-de-passe');
+
+    const [after] = await db.select().from(users).where(eq(users.id, userId));
+    expect(after.sessionsValidFrom).not.toBeNull();
+    // Postérieur au début du test : c'est cette date qui sera comparée à
+    // l'issuedAt des sessions déjà ouvertes, qui lui sont antérieures.
+    expect(new Date(after.sessionsValidFrom as string).getTime()).toBeGreaterThanOrEqual(startedAt);
+  });
+});

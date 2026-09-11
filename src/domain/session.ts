@@ -3,7 +3,17 @@ import { cookies } from 'next/headers';
 
 export interface SessionData {
   userId?: string;
+  /**
+   * Date d'émission ISO, posée à chaque ouverture de session (connexion,
+   * inscription, acceptation d'invitation). Comparée à
+   * `users.sessionsValidFrom` pour refuser une session antérieure à une
+   * réinitialisation de mot de passe — voir domain/sessionValidity.ts.
+   */
+  issuedAt?: string;
 }
+
+/** Durée de vie d'une session, en secondes. */
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 90;
 
 /**
  * Vérifiée à l'appel (pas au chargement du module) : `next build` importe
@@ -41,12 +51,18 @@ function isCookieSecure(): boolean {
 }
 
 export async function getSession(): Promise<IronSession<SessionData>> {
+  // `ttl` autant que `cookieOptions.maxAge` : le premier borne la validité
+  // du sceau chiffré, le second la durée de conservation du cookie par le
+  // navigateur. iron-session ne déduit pas l'un de l'autre — fournir
+  // `maxAge` seul laissait le `ttl` à son défaut de 14 jours, et la session
+  // expirait donc bien avant les 90 jours annoncés par le cookie.
   const sessionOptions = {
     password: getSessionSecret(),
     cookieName: 'cave_session',
+    ttl: SESSION_TTL_SECONDS,
     cookieOptions: {
       secure: isCookieSecure(),
-      maxAge: 60 * 60 * 24 * 90,
+      maxAge: SESSION_TTL_SECONDS,
     },
   };
   return getIronSession<SessionData>(await cookies(), sessionOptions);

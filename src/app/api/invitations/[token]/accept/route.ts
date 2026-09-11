@@ -73,6 +73,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     if (!authedUser) throw new Error('Échec inattendu de connexion après création du compte.');
     const session = await getSession();
     session.userId = authedUser.id;
+    session.issuedAt = new Date().toISOString();
     await session.save();
   }
 
