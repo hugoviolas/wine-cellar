@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { db } from '@/db/client';
+import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { listAllCellarsWithOwner, countMembersByCellarId, listAllUsers } from '@/domain/admin';
 import { getDbFileSizeBytes, hasApiKeyConfigured } from '@/domain/supervision';
 import { CreateCellarForm } from '@/components/CreateCellarForm';
@@ -13,6 +14,9 @@ function formatBytes(bytes: number | null): string {
 }
 
 export default async function AdminCellarsPage() {
+  // Voir le commentaire dans /admin/utilisateurs : la garde du layout ne
+  // suffit pas à empêcher le rendu de cette page.
+  await requireSuperAdmin();
   const [cellarsList, memberCounts, usersList] = await Promise.all([
     listAllCellarsWithOwner(db),
     countMembersByCellarId(db),

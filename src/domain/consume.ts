@@ -1,9 +1,28 @@
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import type { Db } from '../db/client';
 import { bottles, crates, consumptionHistory } from '../db/schema';
 import { newId } from '../db/id';
 
 export class BottleUnavailableError extends Error {}
+
+/**
+ * Corps attendu par `POST /api/bottles/[id]/consume`. Tous les champs sont
+ * optionnels (la route applique ses propres valeurs par défaut), mais leur
+ * type ne l'est pas : sans ce schéma, `rating`, `comment` et `occasion`
+ * partaient bruts en base, où SQLite acceptait n'importe quel type.
+ * `quantity` est aussi revérifié dans `consumeBottle`, qui reste appelable
+ * hors route.
+ */
+export const consumeBottleBodySchema = z
+  .object({
+    consumedAt: z.string().min(1).optional(),
+    quantity: z.number().int().min(1).optional(),
+    rating: z.number().int().min(0).max(5).optional(),
+    comment: z.string().optional(),
+    occasion: z.string().optional(),
+  })
+  .strict();
 
 export interface ConsumeBottleInput {
   bottleId: string;

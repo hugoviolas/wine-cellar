@@ -21,9 +21,15 @@ jobs:
       - name: Synchroniser le fichier compose
         run: cp docker-compose.prod.yml /opt/cave-vin-prod/docker-compose.yml
 
+      # Le tag passe par `env:` et non par une interpolation `${{ }}` dans le
+      # `run:` : une interpolation est substituée dans le script *avant* que
+      # le shell le lise, donc une saisie contenant `;` ou `$(...)` s'y
+      # exécuterait comme une commande — sur un runner self-hosted, avec les
+      # droits du runner sur la machine.
       - name: Redéployer le tag choisi
         working-directory: /opt/cave-vin-prod
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          export IMAGE_TAG=${{ inputs.image_tag }}
           docker compose pull
           docker compose up -d

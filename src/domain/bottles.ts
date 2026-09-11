@@ -21,6 +21,32 @@ export interface CreateBottleInput {
   details: unknown;
 }
 
+/**
+ * Corps attendu par `POST /api/bottles`. `.strict()` + typage explicite :
+ * sans ça la route insérait le corps brut, et SQLite (typage dynamique)
+ * acceptait sans broncher une `quantity` négative ou un `abv` textuel dans
+ * une colonne `real`. `details` reste `unknown` ici — sa forme dépend de la
+ * catégorie et n'est validée que par `parseBottleDetails`, appelé dans
+ * `createBottle`.
+ */
+export const createBottleBodySchema = z
+  .object({
+    crateId: z.string().min(1),
+    category: z.enum(['wine', 'sparkling', 'cider', 'beer', 'spirit']),
+    name: z.string().min(1),
+    producer: z.string().optional(),
+    vintage: z.number().int().optional(),
+    region: z.string().optional(),
+    color: z.string().optional(),
+    abv: z.number().nonnegative().optional(),
+    volumeMl: z.number().int().positive().optional(),
+    quantity: z.number().int().min(0),
+    drinkFrom: z.number().int().optional(),
+    drinkUntil: z.number().int().optional(),
+    details: z.unknown(),
+  })
+  .strict();
+
 export async function createBottle(db: Db, input: CreateBottleInput): Promise<string> {
   const details = parseBottleDetails(input.category, input.details);
   const id = newId();
