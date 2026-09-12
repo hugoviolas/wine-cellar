@@ -169,6 +169,10 @@ export async function promoteWishlistItem(
     volumeMl: item.volumeMl ?? undefined,
     quantity: input.quantity,
     details: item.details,
+    // Le commentaire de l'item devient la note de la bouteille : sans ça
+    // il resterait visible seulement dans la wishlist, alors que c'est sur
+    // la fiche bouteille qu'on le relira. L'item le conserve de son côté.
+    userNote: item.comment ?? undefined,
   });
 
   await db

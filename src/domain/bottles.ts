@@ -19,6 +19,13 @@ export interface CreateBottleInput {
   drinkFrom?: number;
   drinkUntil?: number;
   details: unknown;
+  /**
+   * Note personnelle posée dès la création. Volontairement absente de
+   * `createBottleBodySchema` : le formulaire d'ajout ne la propose pas
+   * (elle s'édite ensuite depuis la fiche). Sert à la promotion d'un item
+   * de wishlist, qui y reverse son commentaire.
+   */
+  userNote?: string;
 }
 
 /**
@@ -69,7 +76,7 @@ export async function createBottle(db: Db, input: CreateBottleInput): Promise<st
     drinkFrom: input.drinkFrom ?? null,
     drinkUntil: input.drinkUntil ?? null,
     details,
-    userNote: null,
+    userNote: input.userNote?.trim() || null,
     createdAt: new Date().toISOString(),
   });
   return id;

@@ -343,3 +343,50 @@ describe('commentaire d’un item de wishlist', () => {
     expect(updateWishlistItemBodySchema.safeParse({ comment: tooLong }).success).toBe(false);
   });
 });
+
+describe('promotion et commentaire', () => {
+  it('reverse le commentaire de l’item dans la note de la bouteille', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
+    const crateId = await createCrate(db, { cellarId, capacity: 12 });
+    const itemId = await createWishlistItem(db, {
+      userId,
+      category: 'wine',
+      name: 'Clos Poggiale',
+      details: { grapeVarieties: [] },
+      comment: 'Conseillée par Paul',
+    });
+    const item = await getWishlistItem(db, itemId);
+
+    const { bottleId } = await promoteWishlistItem(db, item!, { crateId, quantity: 2 });
+
+    expect((await getBottle(db, bottleId))?.userNote).toBe('Conseillée par Paul');
+    // L'item garde le sien : la wishlist reste lisible telle qu'elle était.
+    expect((await getWishlistItem(db, itemId))?.comment).toBe('Conseillée par Paul');
+  });
+
+  it('laisse la note à null quand l’item n’a pas de commentaire', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
+    const crateId = await createCrate(db, { cellarId, capacity: 12 });
+    const itemId = await createWishlistItem(db, {
+      userId,
+      category: 'beer',
+      name: 'Triple Karmeliet',
+      details: {},
+    });
+    const item = await getWishlistItem(db, itemId);
+
+    const { bottleId } = await promoteWishlistItem(db, item!, { crateId, quantity: 1 });
+
+    expect((await getBottle(db, bottleId))?.userNote).toBeNull();
+  });
+});
