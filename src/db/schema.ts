@@ -133,6 +133,10 @@ export const wishlistItems = sqliteTable('wishlist_items', {
   abv: real('abv'),
   volumeMl: integer('volume_ml'),
   details: text('details', { mode: 'json' }).notNull(),
+  // Note libre saisie à l'ajout : pourquoi cette bouteille est dans la
+  // wishlist (une recommandation, un prix vu chez un caviste...). Distincte
+  // de `bottles.userNote`, qui porte sur une bouteille qu'on possède.
+  comment: text('comment'),
   status: text('status', { enum: ['pending', 'promoted'] }).notNull().default('pending'),
   promotedBottleId: text('promoted_bottle_id').references(() => bottles.id, { onDelete: 'set null' }),
   createdAt: text('created_at').notNull(),

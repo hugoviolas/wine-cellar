@@ -21,6 +21,7 @@ export interface CreateWishlistItemInput {
   abv?: number;
   volumeMl?: number;
   details: unknown;
+  comment?: string;
 }
 
 export const createWishlistItemBodySchema = z
@@ -34,6 +35,7 @@ export const createWishlistItemBodySchema = z
     abv: z.number().optional(),
     volumeMl: z.number().int().optional(),
     details: z.unknown(),
+    comment: z.string().max(2000).optional(),
   })
   .strict();
 
@@ -52,6 +54,9 @@ export async function createWishlistItem(db: Db, input: CreateWishlistItemInput)
     abv: input.abv ?? null,
     volumeMl: input.volumeMl ?? null,
     details,
+    // Chaîne vide traitée comme absence de commentaire, comme partout
+    // ailleurs dans l'app (voir renameCrate, updateCellarInfo).
+    comment: input.comment?.trim() || null,
     status: 'pending',
     createdAt: new Date().toISOString(),
   });
@@ -101,6 +106,7 @@ export interface UpdateWishlistItemInput {
   abv?: number | null;
   volumeMl?: number | null;
   details?: unknown;
+  comment?: string | null;
 }
 
 /** category absente : immuable après création, comme sur bottles. */
@@ -114,6 +120,7 @@ export const updateWishlistItemBodySchema = z
     abv: z.number().nullable().optional(),
     volumeMl: z.number().int().nullable().optional(),
     details: z.unknown().optional(),
+    comment: z.string().max(2000).nullable().optional(),
   })
   .strict();
 
@@ -162,6 +169,10 @@ export async function promoteWishlistItem(
     volumeMl: item.volumeMl ?? undefined,
     quantity: input.quantity,
     details: item.details,
+    // Le commentaire de l'item devient la note de la bouteille : sans ça
+    // il resterait visible seulement dans la wishlist, alors que c'est sur
+    // la fiche bouteille qu'on le relira. L'item le conserve de son côté.
+    userNote: item.comment ?? undefined,
   });
 
   await db
