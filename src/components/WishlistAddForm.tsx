@@ -19,6 +19,7 @@ export function WishlistAddForm({ aiAvailable }: { aiAvailable: boolean }) {
   const [grapeVarieties, setGrapeVarieties] = useState('');
   const [appellation, setAppellation] = useState('');
   const [vintage, setVintage] = useState('');
+  const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function applyExtraction(data: PhotoExtractionResult) {
@@ -67,6 +68,7 @@ export function WishlistAddForm({ aiAvailable }: { aiAvailable: boolean }) {
         color: (category === 'wine' || category === 'sparkling') && color ? color : undefined,
         vintage: vintage ? Number(vintage) : undefined,
         details: buildDetails(),
+        comment: comment.trim() || undefined,
       }),
     });
     if (!response.ok) {
@@ -178,6 +180,17 @@ export function WishlistAddForm({ aiAvailable }: { aiAvailable: boolean }) {
             onChange={(e) => setVintage(e.target.value)}
             className="border border-gray-300 rounded px-3 py-2 text-sm w-28"
             placeholder="2015"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs uppercase tracking-wide mb-1">Commentaire</label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            rows={3}
+            placeholder="Conseillée par Paul, vue à 25 € chez le caviste…"
           />
         </div>
 

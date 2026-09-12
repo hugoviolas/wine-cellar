@@ -26,6 +26,10 @@ export default async function WishlistItemPage({ params }: { params: Promise<{ i
         {item.vintage ?? 'NV'} · {item.region ?? '—'} · {CATEGORY_LABELS[item.category] ?? item.category}
       </p>
 
+      {item.comment && (
+        <p className="bg-white rounded p-4 text-sm whitespace-pre-wrap mb-6">{item.comment}</p>
+      )}
+
       {item.status === 'promoted' ? (
         item.promotedBottleId && (
           <Link
@@ -59,6 +63,7 @@ export default async function WishlistItemPage({ params }: { params: Promise<{ i
           color: item.color,
           grapeVarieties: getGrapeVarieties(item.category, item.details),
           appellation: getAppellation(item.category, item.details),
+          comment: item.comment,
         }}
       />
     </div>

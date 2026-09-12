@@ -17,6 +17,7 @@ interface WishlistItemFields {
   color: string | null;
   grapeVarieties: string[];
   appellation: string | null;
+  comment: string | null;
 }
 
 export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
@@ -29,6 +30,7 @@ export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
   const [color, setColor] = useState(item.color ?? '');
   const [grapeVarieties, setGrapeVarieties] = useState(item.grapeVarieties.join(', '));
   const [appellation, setAppellation] = useState(item.appellation ?? '');
+  const [comment, setComment] = useState(item.comment ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -60,6 +62,7 @@ export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
         region: region.trim() || null,
         color: color || null,
         details: buildDetails(),
+        comment: comment.trim() || null,
       }),
     });
     setBusy(false);
@@ -164,6 +167,17 @@ export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
           onChange={(e) => setVintage(e.target.value)}
           className="border border-gray-300 rounded px-3 py-2 text-sm w-28"
           placeholder="2015"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs uppercase tracking-wide mb-1">Commentaire</label>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          rows={3}
+          placeholder="Conseillée par Paul, vue à 25 € chez le caviste…"
         />
       </div>
 
