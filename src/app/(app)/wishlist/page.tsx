@@ -28,12 +28,22 @@ export default async function WishlistPage() {
         <ul className="bg-white rounded divide-y divide-gray-100 mb-6">
           {pending.map((item) => (
             <li key={item.id} className="text-sm">
-              <Link href={`/wishlist/${item.id}`} className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50">
-                <span className={`w-[3px] h-3.5 rounded-sm shrink-0 ${wineColorDotClass(item.color)}`} />
-                <span className="font-serif italic">{item.name}</span>
-                <span className="text-xs text-gray-500">
-                  {item.vintage ?? 'NV'} · {CATEGORY_LABELS[item.category] ?? item.category}
+              <Link href={`/wishlist/${item.id}`} className="block px-4 py-3 hover:bg-gray-50">
+                <span className="flex items-center gap-2">
+                  <span className={`w-[3px] h-3.5 rounded-sm shrink-0 ${wineColorDotClass(item.color)}`} />
+                  <span className="font-serif italic">{item.name}</span>
+                  <span className="text-xs text-gray-500">
+                    {item.vintage ?? 'NV'} · {CATEGORY_LABELS[item.category] ?? item.category}
+                  </span>
                 </span>
+                {/* `line-clamp-1` plutôt qu'une troncature côté serveur : le
+                    commentaire complet reste dans le DOM pour la fiche, et la
+                    largeur disponible varie selon l'écran. */}
+                {item.comment && (
+                  <span className="block text-xs text-gray-500 line-clamp-1 mt-0.5 pl-[11px]">
+                    {item.comment}
+                  </span>
+                )}
               </Link>
             </li>
           ))}

@@ -251,3 +251,95 @@ describe('listPromotionTargets', () => {
     expect(targets).toHaveLength(0);
   });
 });
+
+describe('commentaire d’un item de wishlist', () => {
+  it('enregistre le commentaire saisi à l’ajout', async () => {
+    const db = await createTestDb();
+    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+
+    const id = await createWishlistItem(db, {
+      userId,
+      category: 'wine',
+      name: 'Clos Poggiale',
+      details: { grapeVarieties: [] },
+      comment: 'Conseillée par Paul, vue à 25 € chez le caviste',
+    });
+
+    expect((await getWishlistItem(db, id))?.comment).toBe('Conseillée par Paul, vue à 25 € chez le caviste');
+  });
+
+  it('laisse le commentaire à null quand il est absent', async () => {
+    const db = await createTestDb();
+    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+
+    const id = await createWishlistItem(db, {
+      userId,
+      category: 'beer',
+      name: 'Triple Karmeliet',
+      details: {},
+    });
+
+    expect((await getWishlistItem(db, id))?.comment).toBeNull();
+  });
+
+  it('traite un commentaire vide ou blanc comme une absence', async () => {
+    const db = await createTestDb();
+    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+
+    const id = await createWishlistItem(db, {
+      userId,
+      category: 'beer',
+      name: 'Triple Karmeliet',
+      details: {},
+      comment: '   ',
+    });
+
+    expect((await getWishlistItem(db, id))?.comment).toBeNull();
+  });
+
+  it('permet de modifier puis d’effacer le commentaire', async () => {
+    const db = await createTestDb();
+    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const id = await createWishlistItem(db, {
+      userId,
+      category: 'wine',
+      name: 'Clos Poggiale',
+      details: { grapeVarieties: [] },
+      comment: 'Première note',
+    });
+
+    await updateWishlistItem(db, id, { comment: 'Note corrigée' });
+    expect((await getWishlistItem(db, id))?.comment).toBe('Note corrigée');
+
+    await updateWishlistItem(db, id, { comment: null });
+    expect((await getWishlistItem(db, id))?.comment).toBeNull();
+  });
+
+  it('accepte le commentaire dans les deux schémas de corps de requête', () => {
+    const created = createWishlistItemBodySchema.safeParse({
+      category: 'wine',
+      name: 'Clos Poggiale',
+      details: { grapeVarieties: [] },
+      comment: 'Conseillée par Paul',
+    });
+    expect(created.success).toBe(true);
+
+    expect(updateWishlistItemBodySchema.safeParse({ comment: 'Note corrigée' }).success).toBe(true);
+    // `null` explicite : c'est ce que le formulaire d'édition envoie pour
+    // effacer le commentaire.
+    expect(updateWishlistItemBodySchema.safeParse({ comment: null }).success).toBe(true);
+  });
+
+  it('refuse un commentaire déraisonnablement long', () => {
+    const tooLong = 'x'.repeat(2001);
+    expect(
+      createWishlistItemBodySchema.safeParse({
+        category: 'beer',
+        name: 'Triple Karmeliet',
+        details: {},
+        comment: tooLong,
+      }).success,
+    ).toBe(false);
+    expect(updateWishlistItemBodySchema.safeParse({ comment: tooLong }).success).toBe(false);
+  });
+});
