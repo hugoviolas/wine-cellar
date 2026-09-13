@@ -173,6 +173,16 @@ export async function promoteWishlistItem(
     // il resterait visible seulement dans la wishlist, alors que c'est sur
     // la fiche bouteille qu'on le relira. L'item le conserve de son côté.
     userNote: item.comment ?? undefined,
+    // L'analyse et la fenêtre de garde suivent aussi : elles ont été
+    // produites sur cette bouteille-là, les régénérer coûterait un appel
+    // pour un résultat équivalent. La régénération reste possible depuis
+    // la fiche si le millésime ou la région ont été corrigés entre-temps.
+    drinkFrom: item.drinkFrom ?? undefined,
+    drinkUntil: item.drinkUntil ?? undefined,
+    aiAnalysis: item.aiAnalysis,
+    aiPairings: item.aiPairings,
+    aiTastingAdvice: item.aiTastingAdvice,
+    aiGeneratedAt: item.aiGeneratedAt,
   });
 
   await db
