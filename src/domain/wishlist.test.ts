@@ -13,6 +13,7 @@ import {
   createWishlistItemBodySchema,
 } from './wishlist';
 import { createCrate } from './crates';
+import { saveWishlistAiAnalysis } from './ai/wishlistAnalysis';
 import { getBottle } from './bottles';
 import {
   promoteWishlistItem,
@@ -388,5 +389,72 @@ describe('promotion et commentaire', () => {
     const { bottleId } = await promoteWishlistItem(db, item!, { crateId, quantity: 1 });
 
     expect((await getBottle(db, bottleId))?.userNote).toBeNull();
+  });
+});
+
+describe('promotion et analyse IA', () => {
+  it('reverse l’analyse et la fenêtre de garde dans la bouteille', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
+    const crateId = await createCrate(db, { cellarId, capacity: 12 });
+    const itemId = await createWishlistItem(db, {
+      userId,
+      category: 'wine',
+      name: 'Clos Poggiale',
+      details: { grapeVarieties: [] },
+    });
+    await saveWishlistAiAnalysis(
+      db,
+      { id: itemId, category: 'wine', drinkFrom: null, drinkUntil: null, region: null, details: { grapeVarieties: [] } },
+      {
+        analysis: 'Un rouge corsé.',
+        pairings: ['Agneau', 'Daube', 'Fromages'],
+        tastingAdvice: 'Carafer une heure.',
+        drinkFromYear: 2027,
+        drinkUntilYear: 2034,
+        region: 'Patrimonio',
+        grapeVarieties: ['Niellucciu'],
+        appellation: 'Patrimonio',
+      },
+    );
+    const item = await getWishlistItem(db, itemId);
+
+    const { bottleId } = await promoteWishlistItem(db, item!, { crateId, quantity: 1 });
+
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.aiAnalysis).toBe('Un rouge corsé.');
+    expect(bottle?.aiPairings).toEqual(['Agneau', 'Daube', 'Fromages']);
+    expect(bottle?.aiTastingAdvice).toBe('Carafer une heure.');
+    expect(bottle?.aiGeneratedAt).toBe(item!.aiGeneratedAt);
+    expect(bottle?.drinkFrom).toBe(2027);
+    expect(bottle?.drinkUntil).toBe(2034);
+  });
+
+  it('laisse les champs ai* à null quand l’item n’a pas été analysé', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
+    const crateId = await createCrate(db, { cellarId, capacity: 12 });
+    const itemId = await createWishlistItem(db, {
+      userId,
+      category: 'beer',
+      name: 'Triple Karmeliet',
+      details: {},
+    });
+    const item = await getWishlistItem(db, itemId);
+
+    const { bottleId } = await promoteWishlistItem(db, item!, { crateId, quantity: 1 });
+
+    const bottle = await getBottle(db, bottleId);
+    expect(bottle?.aiAnalysis).toBeNull();
+    expect(bottle?.aiGeneratedAt).toBeNull();
+    expect(bottle?.drinkFrom).toBeNull();
   });
 });
