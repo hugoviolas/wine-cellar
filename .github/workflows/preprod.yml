@@ -5,9 +5,12 @@ name: Préprod (build, test, deploy)
 # seule source de la PR vers master) — pur doublon qui se dispute le seul
 # runner self-hosted disponible. La PR reste à jour automatiquement dès que
 # dev bouge, sans avoir besoin de son propre déclencheur ici.
+# `workflow_dispatch` : même raison que dans prod.yml — rattraper un
+# déploiement dont l'événement `push` s'est perdu, sans commit vide.
 on:
   push:
     branches: [dev]
+  workflow_dispatch:
 
 # Un nouveau push annule le déploiement préprod en cours pour la même
 # ref — inutile de finir de déployer une version déjà dépassée.

@@ -1,10 +1,22 @@
 name: Prod (build, test, deploy)
 
-# Déclenché uniquement par un push sur master — donc en pratique par le
-# merge de la PR dev → master.
+# Déclenché par un push sur master — donc en pratique par le merge de la
+# PR dev → master.
+# `workflow_dispatch` en plus : un `push` peut aboutir côté dépôt sans que
+# l'événement n'atteigne Actions — vu le 2026-09-13, où le merge de la PR
+# #11 a bien écrit le commit sur `master` mais n'a déclenché aucun run,
+# laissant la prod sur la version précédente. Sans ce déclencheur manuel il
+# n'existait aucun moyen de rattraper le déploiement : `rollback-prod.yml`
+# redéploie une image existante, or l'image de ce commit n'avait jamais été
+# construite. Relancer depuis l'onglet Actions suffit désormais.
+#
+# L'approbation manuelle de l'environnement `production` s'applique aussi
+# aux exécutions lancées à la main : un déclenchement manuel ne raccourcit
+# pas le chemin vers la prod, il ne fait que recréer l'événement perdu.
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 concurrency:
   group: prod-deploy
