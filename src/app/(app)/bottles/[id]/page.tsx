@@ -78,7 +78,10 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
       </section>
 
       {aiAvailable && (
-        <AiAnalysisButton bottleId={bottle.id} hasAnalysis={Boolean(bottle.aiGeneratedAt)} />
+        <AiAnalysisButton
+          endpoint={`/api/bottles/${bottle.id}/ai-generate`}
+          hasAnalysis={Boolean(bottle.aiGeneratedAt)}
+        />
       )}
 
       {bottle.aiAnalysis && (

@@ -26,6 +26,16 @@ export interface CreateBottleInput {
    * de wishlist, qui y reverse son commentaire.
    */
   userNote?: string;
+  /**
+   * Analyse IA déjà produite, reprise telle quelle. Même raison que
+   * `userNote` : absente de `createBottleBodySchema`, elle ne sert qu'à la
+   * promotion d'un item de wishlist déjà analysé, pour éviter de repayer
+   * un appel sur la bouteille créée.
+   */
+  aiAnalysis?: string | null;
+  aiPairings?: unknown;
+  aiTastingAdvice?: string | null;
+  aiGeneratedAt?: string | null;
 }
 
 /**
@@ -77,6 +87,10 @@ export async function createBottle(db: Db, input: CreateBottleInput): Promise<st
     drinkUntil: input.drinkUntil ?? null,
     details,
     userNote: input.userNote?.trim() || null,
+    aiAnalysis: input.aiAnalysis ?? null,
+    aiPairings: input.aiPairings ?? null,
+    aiTastingAdvice: input.aiTastingAdvice ?? null,
+    aiGeneratedAt: input.aiGeneratedAt ?? null,
     createdAt: new Date().toISOString(),
   });
   return id;

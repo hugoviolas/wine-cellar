@@ -137,6 +137,16 @@ export const wishlistItems = sqliteTable('wishlist_items', {
   // wishlist (une recommandation, un prix vu chez un caviste...). Distincte
   // de `bottles.userNote`, qui porte sur une bouteille qu'on possède.
   comment: text('comment'),
+  // Mêmes colonnes que sur `bottles`, à dessein : l'analyse d'un item de
+  // wishlist a exactement la même forme que celle d'une bouteille, ce qui
+  // permet de la reverser telle quelle à la promotion plutôt que de payer
+  // un second appel à l'IA (voir promoteWishlistItem).
+  drinkFrom: integer('drink_from'),
+  drinkUntil: integer('drink_until'),
+  aiAnalysis: text('ai_analysis'),
+  aiPairings: text('ai_pairings', { mode: 'json' }),
+  aiTastingAdvice: text('ai_tasting_advice'),
+  aiGeneratedAt: text('ai_generated_at'),
   status: text('status', { enum: ['pending', 'promoted'] }).notNull().default('pending'),
   promotedBottleId: text('promoted_bottle_id').references(() => bottles.id, { onDelete: 'set null' }),
   createdAt: text('created_at').notNull(),
