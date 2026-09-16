@@ -21,15 +21,13 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { crateLabel } from '@/lib/crateLabel';
 import { useToast } from '@/components/Toast';
+import type { Crate } from './interfaces/crate.interface';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
+import { z } from 'zod';
+import { readJsonBody } from '@/lib/readJsonBody';
 
-interface Crate {
-  id: string;
-  number: number;
-  name: string | null;
-  capacity: number;
-}
-
-function SortableCrateRow({
+const SortableCrateRow = ({
   crate,
   onRemove,
   onSave,
@@ -37,7 +35,7 @@ function SortableCrateRow({
   crate: Crate;
   onRemove: (id: string) => void;
   onSave: (id: string, name: string, capacity: number) => void;
-}) {
+}): ReactElement => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: crate.id,
   });
@@ -98,9 +96,27 @@ function SortableCrateRow({
       </div>
     </li>
   );
-}
+};
 
-export function CrateManager({ cellarId, initialCrates }: { cellarId: string; initialCrates: Crate[] }) {
+/**
+ * La clayette renvoyée par l'API est relue ici plutôt qu'acceptée sur
+ * parole : `json()` ne garantit rien, et une forme inattendue se
+ * propagerait jusqu'à l'affichage.
+ */
+const crateSchema = z.object({
+  id: z.string(),
+  number: z.number(),
+  name: z.string().nullable(),
+  capacity: z.number(),
+});
+
+export const CrateManager = ({
+  cellarId,
+  initialCrates,
+}: {
+  cellarId: string;
+  initialCrates: Crate[];
+}): ReactElement => {
   const router = useRouter();
   const toast = useToast();
   const [crates, setCrates] = useState(initialCrates);
@@ -113,12 +129,7 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  async function readError(response: Response, fallback: string): Promise<string> {
-    const data = await response.json().catch(() => null);
-    return typeof data?.error === 'string' ? data.error : fallback;
-  }
-
-  async function addCrate(event: React.FormEvent) {
+  const addCrate = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
     const response = await fetch('/api/crates', {
@@ -127,19 +138,23 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
       body: JSON.stringify({ cellarId, name, capacity }),
     });
     if (!response.ok) {
-      const message = await readError(response, 'Impossible d’ajouter cette clayette.');
+      const message = await errorMessageFromResponse(response, 'Impossible d’ajouter cette clayette.');
       setError(message);
       toast.error(message);
       return;
     }
-    const created: Crate = await response.json();
-    setCrates([...crates, created]);
+    const created = crateSchema.safeParse(await readJsonBody(response));
+    if (!created.success) {
+      setError('Clayette créée, mais la réponse est illisible — recharge la page.');
+      return;
+    }
+    setCrates([...crates, created.data]);
     setName('');
     toast.success('Clayette ajoutée.');
     router.refresh();
-  }
+  };
 
-  async function saveCrate(id: string, name: string, capacity: number) {
+  const saveCrate = async (id: string, name: string, capacity: number): Promise<void> => {
     setError(null);
     const response = await fetch(`/api/crates/${id}`, {
       method: 'PATCH',
@@ -147,7 +162,7 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
       body: JSON.stringify({ name, capacity }),
     });
     if (!response.ok) {
-      const message = await readError(response, 'Impossible de mettre à jour cette clayette.');
+      const message = await errorMessageFromResponse(response, 'Impossible de mettre à jour cette clayette.');
       setError(message);
       toast.error(message);
       return;
@@ -162,13 +177,13 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
     setCrates(crates.map((c) => (c.id === id ? { ...c, name: trimmed || null, capacity } : c)));
     toast.success('Clayette mise à jour.');
     router.refresh();
-  }
+  };
 
-  async function removeCrate(id: string) {
+  const removeCrate = async (id: string): Promise<void> => {
     setError(null);
     const response = await fetch(`/api/crates/${id}`, { method: 'DELETE' });
     if (!response.ok) {
-      const message = await readError(response, 'Impossible de supprimer cette clayette.');
+      const message = await errorMessageFromResponse(response, 'Impossible de supprimer cette clayette.');
       setError(message);
       toast.error(message);
       return;
@@ -176,11 +191,13 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
     setCrates(crates.filter((c) => c.id !== id));
     toast.success('Clayette supprimée.');
     router.refresh();
-  }
+  };
 
-  async function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = async (event: DragEndEvent): Promise<void> => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id) {
+      return;
+    }
 
     const previousOrder = crates;
     const oldIndex = crates.findIndex((c) => c.id === active.id);
@@ -194,18 +211,18 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
       body: JSON.stringify({ cellarId, orderedIds: reordered.map((c) => c.id) }),
     });
     if (!response.ok) {
-      setError(await readError(response, 'Impossible d’enregistrer le nouvel ordre.'));
+      setError(await errorMessageFromResponse(response, 'Impossible d’enregistrer le nouvel ordre.'));
       setCrates(previousOrder);
       return;
     }
     router.refresh();
-  }
+  };
 
   return (
     <div className="space-y-6">
       {error && <p className="text-sm text-red-700">{error}</p>}
 
-      <form onSubmit={addCrate} className="flex gap-2 items-end">
+      <form onSubmit={(...args) => void addCrate(...args)} className="flex gap-2 items-end">
         <div>
           <label className="block text-xs uppercase tracking-wide mb-1">Nom</label>
           <input
@@ -231,15 +248,25 @@ export function CrateManager({ cellarId, initialCrates }: { cellarId: string; in
         </button>
       </form>
 
-      <DndContext id="crate-manager" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        id="crate-manager"
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={(...args) => void handleDragEnd(...args)}
+      >
         <SortableContext items={crates.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           <ul className="divide-y divide-gray-200 bg-white rounded">
             {crates.map((crate) => (
-              <SortableCrateRow key={crate.id} crate={crate} onRemove={removeCrate} onSave={saveCrate} />
+              <SortableCrateRow
+                key={crate.id}
+                crate={crate}
+                onRemove={(id) => void removeCrate(id)}
+                onSave={(id, name, capacity) => void saveCrate(id, name, capacity)}
+              />
             ))}
           </ul>
         </SortableContext>
       </DndContext>
     </div>
   );
-}
+};

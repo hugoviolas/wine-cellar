@@ -16,23 +16,25 @@ import { BottleActions } from '@/components/BottleActions';
 import { EditBottleForm } from '@/components/EditBottleForm';
 import { AiAnalysisButton } from '@/components/AiAnalysisButton';
 import { wineColorStripeClass } from '@/lib/wineColor';
+import type { ReactElement } from 'react';
+import { stringArrayOrEmpty } from '@/lib/stringArray';
 
-export default async function BottleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> }): Promise<ReactElement> => {
   const user = await requireUser();
   const { id } = await params;
   const access = await resolveBottleAccess(db, user.id, id);
-  if (access.status !== 'ok') notFound();
+  if (access.status !== 'ok') {
+    notFound();
+  }
   const bottle = access.bottle;
 
-  // bottle.crateId est garanti non nul : resolveBottleAccess exclut les
-  // bouteilles orphelines (voir bottleAccess.ts).
-  const currentCrate = await getCrateById(db, bottle.crateId as string);
+  const currentCrate = await getCrateById(db, bottle.crateId);
   const siblingCrates = currentCrate
     ? (await listCrates(db, currentCrate.cellarId)).filter((c) => c.id !== currentCrate.id)
     : [];
   const cellar = currentCrate ? await getCellarById(db, currentCrate.cellarId) : null;
   const aiAvailable = cellar ? isAiAvailable(cellar) : false;
-  const pairings = Array.isArray(bottle.aiPairings) ? (bottle.aiPairings as string[]) : [];
+  const pairings = stringArrayOrEmpty(bottle.aiPairings);
 
   const currentYear = new Date().getFullYear();
   const status = computeGardeStatus(bottle.drinkFrom, bottle.drinkUntil, currentYear);
@@ -43,28 +45,30 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="max-w-lg">
-      <Link href="/cave" className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
+      <Link href="/cave" className="text-xs text-forest mb-2 inline-block">
+        ← Retour à la cave
+      </Link>
       <div className={`pl-4 ${wineColorStripeClass(bottle.color)}`}>
-      <h2 className="text-xl mb-1">{bottle.name}</h2>
-      <p className="text-xs text-gray-500 mb-4">
-        {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} · {bottle.category} ·{' '}
-        {currentCrate ? crateLabel(currentCrate.number, currentCrate.name) : '—'}
-      </p>
-
-      {(appellation || grapeVarieties.length > 0) && (
+        <h2 className="text-xl mb-1">{bottle.name}</h2>
         <p className="text-xs text-gray-500 mb-4">
-          {appellation}
-          {appellation && grapeVarieties.length > 0 ? ' · ' : ''}
-          {grapeVarieties.join(', ')}
+          {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} · {bottle.category} ·{' '}
+          {currentCrate ? crateLabel(currentCrate.number, currentCrate.name) : '—'}
         </p>
-      )}
 
-      <div className="flex gap-2 mb-6">
-        <GardeBadge status={status} />
-        <span className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
-          {bottle.quantity} bouteille{bottle.quantity > 1 ? 's' : ''} en cave
-        </span>
-      </div>
+        {(appellation || grapeVarieties.length > 0) && (
+          <p className="text-xs text-gray-500 mb-4">
+            {appellation}
+            {appellation && grapeVarieties.length > 0 ? ' · ' : ''}
+            {grapeVarieties.join(', ')}
+          </p>
+        )}
+
+        <div className="flex gap-2 mb-6">
+          <GardeBadge status={status} />
+          <span className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
+            {bottle.quantity} bouteille{bottle.quantity > 1 ? 's' : ''} en cave
+          </span>
+        </div>
       </div>
 
       <section className="mb-6">
@@ -96,7 +100,10 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
           <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Accords mets-vin</h4>
           <div className="flex flex-wrap gap-2">
             {pairings.map((pairing, index) => (
-              <span key={`${index}-${pairing}`} className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
+              <span
+                key={`${index}-${pairing}`}
+                className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1"
+              >
                 {pairing}
               </span>
             ))}
@@ -150,4 +157,6 @@ export default async function BottleDetailPage({ params }: { params: Promise<{ i
       </a>
     </div>
   );
-}
+};
+
+export default BottleDetailPage;

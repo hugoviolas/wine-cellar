@@ -9,17 +9,27 @@ import {
   type UpdateWishlistItemInput,
 } from '@/domain/wishlist';
 import { parseBottleDetails } from '@/domain/bottleCategories';
+import { readJsonBody } from '@/lib/readJsonBody';
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = async (
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
   const access = await resolveWishlistItemAccess(db, auth.user.id, id);
-  if (access.status === 'not_found') return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
-  if (access.status === 'forbidden') return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  if (access.status === 'not_found') {
+    return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  }
+  if (access.status === 'forbidden') {
+    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = updateWishlistItemBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Champs de mise à jour invalides.' }, { status: 400 });
@@ -40,17 +50,26 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   await updateWishlistItem(db, id, patch);
   return NextResponse.json({ ok: true });
-}
+};
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = async (
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
   const access = await resolveWishlistItemAccess(db, auth.user.id, id);
-  if (access.status === 'not_found') return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
-  if (access.status === 'forbidden') return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  if (access.status === 'not_found') {
+    return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  }
+  if (access.status === 'forbidden') {
+    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  }
 
   await deleteWishlistItem(db, id);
   return NextResponse.json({ ok: true });
-}
+};

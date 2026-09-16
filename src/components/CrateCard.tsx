@@ -7,17 +7,20 @@ import { CSS } from '@dnd-kit/utilities';
 import { wineColorDotClass } from '@/lib/wineColor';
 import { crateLabel } from '@/lib/crateLabel';
 import { CATEGORY_SHORT_LABELS } from '@/lib/bottleCategory';
+import type { BottleRow } from './interfaces/bottle-row.interface';
+import type { ReactElement } from 'react';
 
-export interface BottleRow {
-  id: string;
-  name: string;
-  category: string;
-  vintage: number | null;
-  quantity: number;
-  color: string | null;
-}
+export type { BottleRow };
 
-function SortableBottleChip({ bottle, crateId, canEdit }: { bottle: BottleRow; crateId: string; canEdit: boolean }) {
+const SortableBottleChip = ({
+  bottle,
+  crateId,
+  canEdit,
+}: {
+  bottle: BottleRow;
+  crateId: string;
+  canEdit: boolean;
+}): ReactElement => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: bottle.id,
     data: { crateId },
@@ -54,9 +57,9 @@ function SortableBottleChip({ bottle, crateId, canEdit }: { bottle: BottleRow; c
       </Link>
     </div>
   );
-}
+};
 
-export function CrateCard({
+export const CrateCard = ({
   id,
   number,
   name,
@@ -70,7 +73,7 @@ export function CrateCard({
   capacity: number;
   bottles: BottleRow[];
   canEdit: boolean;
-}) {
+}): ReactElement => {
   const occupied = bottles.reduce((sum, b) => sum + b.quantity, 0);
   const fillPercent = capacity > 0 ? Math.min(100, Math.round((occupied / capacity) * 100)) : 0;
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -83,7 +86,9 @@ export function CrateCard({
           <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-gold" style={{ width: `${fillPercent}%` }} />
           </div>
-          <span className="text-xs text-gray-500 tabular-nums">{occupied}/{capacity}</span>
+          <span className="text-xs text-gray-500 tabular-nums">
+            {occupied}/{capacity}
+          </span>
         </div>
       </div>
       <div
@@ -99,4 +104,4 @@ export function CrateCard({
       </div>
     </div>
   );
-}
+};

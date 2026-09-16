@@ -3,16 +3,21 @@ import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
 import { isAiAvailableForUser } from '@/domain/ai/available';
 import { WishlistAddForm } from '@/components/WishlistAddForm';
+import type { ReactElement } from 'react';
 
-export default async function WishlistAddPage() {
+const WishlistAddPage = async (): Promise<ReactElement> => {
   const user = await requireUser();
   const aiAvailable = await isAiAvailableForUser(db, user.id);
 
   return (
     <div>
-      <Link href="/wishlist" className="text-xs text-forest mb-2 inline-block">← Retour à la wishlist</Link>
+      <Link href="/wishlist" className="text-xs text-forest mb-2 inline-block">
+        ← Retour à la wishlist
+      </Link>
       <h2 className="text-lg mb-4">Ajouter à la wishlist</h2>
       <WishlistAddForm aiAvailable={aiAvailable} />
     </div>
   );
-}
+};
+
+export default WishlistAddPage;

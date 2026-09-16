@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { db } from '../src/db/client';
 import { bootstrapSuperAdmin } from '../src/domain/bootstrap';
 
-async function main() {
+const main = async (): Promise<void> => {
   const email = process.env.BOOTSTRAP_EMAIL;
   const password = process.env.BOOTSTRAP_PASSWORD;
   const cellarName = process.env.BOOTSTRAP_CELLAR_NAME ?? 'Ma Cave';
@@ -14,7 +14,7 @@ async function main() {
   const { userId, cellarId } = await bootstrapSuperAdmin(db, { email, password, cellarName });
   console.log(`Super-admin créé : ${email} (${userId})`);
   console.log(`Cave créée : ${cellarName} (${cellarId})`);
-}
+};
 
 main()
   .then(() => process.exit(0))

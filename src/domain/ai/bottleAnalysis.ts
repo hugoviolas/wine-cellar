@@ -1,25 +1,18 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '../../db/client';
 import { bottles } from '../../db/schema';
-import { parseBottleDetails, type BottleCategory } from '../bottleCategories';
 import type { AiMessageContent } from './client';
+import { buildAiAnalysisPatch } from './analysisPatch';
 import type { AiBottleAnalysis } from './schemas';
+import type { BottleAnalysisInput } from './interfaces/bottle-analysis-input.interface';
+import type { BottleForAiSave } from './interfaces/bottle-for-ai-save.interface';
 
-export interface BottleAnalysisInput {
-  name: string;
-  producer: string | null;
-  vintage: number | null;
-  category: string;
-  region: string | null;
-  color: string | null;
-  grapeVarieties: string[];
-  appellation: string | null;
-}
+export type { BottleAnalysisInput, BottleForAiSave };
 
-export function buildBottleAnalysisPrompt(
+export const buildBottleAnalysisPrompt = (
   bottle: BottleAnalysisInput,
   currentYear: number,
-): { system: string; content: AiMessageContent } {
+): { system: string; content: AiMessageContent } => {
   const system =
     'Tu es un sommelier expert. Tu réponds uniquement avec un objet JSON valide, sans texte avant ni après, correspondant exactement au schéma demandé.';
   const content = `Analyse cette bouteille et réponds avec un objet JSON de cette forme exacte :
@@ -51,16 +44,7 @@ Bouteille :
 - Appellation connue : ${bottle.appellation ?? 'inconnue'}
 - Année actuelle : ${currentYear}`;
   return { system, content };
-}
-
-export interface BottleForAiSave {
-  id: string;
-  category: BottleCategory;
-  drinkFrom: number | null;
-  drinkUntil: number | null;
-  region: string | null;
-  details: unknown;
-}
+};
 
 /**
  * `aiAnalysis`/`aiPairings`/`aiTastingAdvice`/`aiGeneratedAt` sont toujours
@@ -71,46 +55,11 @@ export interface BottleForAiSave {
  * ou par une génération précédente) ne sont jamais écrasés (voir le spec
  * IA, section Chantier A).
  */
-export async function saveBottleAiAnalysis(
+export const saveBottleAiAnalysis = async (
   db: Db,
   bottle: BottleForAiSave,
   analysis: AiBottleAnalysis,
-): Promise<void> {
-  const set: {
-    aiAnalysis: string;
-    aiPairings: string[];
-    aiTastingAdvice: string;
-    aiGeneratedAt: string;
-    drinkFrom?: number;
-    drinkUntil?: number;
-    region?: string;
-    details?: unknown;
-  } = {
-    aiAnalysis: analysis.analysis,
-    aiPairings: analysis.pairings,
-    aiTastingAdvice: analysis.tastingAdvice,
-    aiGeneratedAt: new Date().toISOString(),
-  };
-  if (bottle.drinkFrom === null && analysis.drinkFromYear !== null) set.drinkFrom = analysis.drinkFromYear;
-  if (bottle.drinkUntil === null && analysis.drinkUntilYear !== null) set.drinkUntil = analysis.drinkUntilYear;
-  if (bottle.region === null && analysis.region !== null) set.region = analysis.region;
-
-  if (bottle.category === 'wine' || bottle.category === 'sparkling') {
-    let details = parseBottleDetails(bottle.category, bottle.details);
-    let detailsChanged = false;
-    if (details.grapeVarieties.length === 0 && analysis.grapeVarieties && analysis.grapeVarieties.length > 0) {
-      details = { ...details, grapeVarieties: analysis.grapeVarieties };
-      detailsChanged = true;
-    }
-    if (bottle.category === 'wine') {
-      const wineDetails = details as ReturnType<typeof parseBottleDetails<'wine'>>;
-      if (!wineDetails.appellation && analysis.appellation) {
-        details = { ...wineDetails, appellation: analysis.appellation };
-        detailsChanged = true;
-      }
-    }
-    if (detailsChanged) set.details = details;
-  }
-
-  await db.update(bottles).set(set).where(eq(bottles.id, bottle.id));
-}
+): Promise<void> => {
+  const patch = buildAiAnalysisPatch(bottle, analysis);
+  await db.update(bottles).set(patch).where(eq(bottles.id, bottle.id));
+};

@@ -5,15 +5,22 @@ import { listAllCellarsWithOwner, countMembersByCellarId, listAllUsers } from '@
 import { getDbFileSizeBytes, hasApiKeyConfigured } from '@/domain/supervision';
 import { CreateCellarForm } from '@/components/CreateCellarForm';
 import { AdminCellarActions } from '@/components/AdminCellarActions';
+import type { ReactElement } from 'react';
 
-function formatBytes(bytes: number | null): string {
-  if (bytes === null) return 'fichier introuvable';
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+const formatBytes = (bytes: number | null): string => {
+  if (bytes === null) {
+    return 'fichier introuvable';
+  }
+  if (bytes < 1024) {
+    return `${bytes} o`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} Ko`;
+  }
   return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
+};
 
-export default async function AdminCellarsPage() {
+const AdminCellarsPage = async (): Promise<ReactElement> => {
   // Voir le commentaire dans /admin/utilisateurs : la garde du layout ne
   // suffit pas à empêcher le rendu de cette page.
   await requireSuperAdmin();
@@ -37,7 +44,9 @@ export default async function AdminCellarsPage() {
       <ul className="bg-white rounded divide-y divide-gray-100">
         {cellarsList.map((cellar) => (
           <li key={cellar.id} className="flex items-center justify-between px-4 py-3 text-sm">
-            <span>{cellar.name} — propriétaire {cellar.ownerEmail ?? 'compte supprimé'}</span>
+            <span>
+              {cellar.name} — propriétaire {cellar.ownerEmail ?? 'compte supprimé'}
+            </span>
             <div className="flex items-center gap-3 text-xs text-gray-500">
               <span>{memberCounts[cellar.id] ?? 0} membre(s)</span>
               <Link href={`/cave?cellarId=${cellar.id}`} className="text-forest underline">
@@ -50,4 +59,6 @@ export default async function AdminCellarsPage() {
       </ul>
     </div>
   );
-}
+};
+
+export default AdminCellarsPage;

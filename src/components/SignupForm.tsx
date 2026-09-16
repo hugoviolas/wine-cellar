@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PasswordInput } from '@/components/PasswordInput';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-export function SignupForm() {
+export const SignupForm = (): ReactElement => {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,7 +16,7 @@ export function SignupForm() {
 
   const passwordsMatch = password.length > 0 && password === confirmPassword;
 
-  async function handleSubmit(event: React.FormEvent) {
+  const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
     setBusy(true);
@@ -25,8 +27,7 @@ export function SignupForm() {
         body: JSON.stringify({ email, password }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        setError(data.error ?? 'Impossible de créer ton compte.');
+        setError(await errorMessageFromResponse(response, 'Impossible de créer ton compte.'));
         return;
       }
       router.push('/accueil');
@@ -36,10 +37,10 @@ export function SignupForm() {
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={(...args) => void handleSubmit(...args)}>
       {error && <p className="text-sm text-red-700 mb-3">{error}</p>}
 
       <label className="block text-xs uppercase tracking-wide mb-1">Email</label>
@@ -62,12 +63,7 @@ export function SignupForm() {
       />
 
       <label className="block text-xs uppercase tracking-wide mb-1">Confirmer le mot de passe</label>
-      <PasswordInput
-        value={confirmPassword}
-        onChange={setConfirmPassword}
-        className="mb-1"
-        required
-      />
+      <PasswordInput value={confirmPassword} onChange={setConfirmPassword} className="mb-1" required />
       {confirmPassword.length > 0 && !passwordsMatch && (
         <p className="text-xs text-red-700 mb-2">Les mots de passe ne correspondent pas.</p>
       )}
@@ -84,8 +80,11 @@ export function SignupForm() {
       </button>
 
       <p className="text-xs text-gray-500 mt-4 text-center">
-        Déjà un compte ? <a href="/login" className="underline">Connecte-toi</a>
+        Déjà un compte ?{' '}
+        <a href="/login" className="underline">
+          Connecte-toi
+        </a>
       </p>
     </form>
   );
-}
+};

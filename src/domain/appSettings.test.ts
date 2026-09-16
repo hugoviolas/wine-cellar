@@ -3,7 +3,7 @@ import { createTestDb } from '../db/testDb';
 import { getAppSettings, setRegistrationEnabled } from './appSettings';
 
 describe('getAppSettings', () => {
-  it('retourne des valeurs par défaut si aucune ligne n\'existe encore', async () => {
+  it("retourne des valeurs par défaut si aucune ligne n'existe encore", async () => {
     const db = await createTestDb();
     const settings = await getAppSettings(db);
     expect(settings.registrationEnabled).toBe(true);
@@ -18,7 +18,7 @@ describe('getAppSettings', () => {
 });
 
 describe('setRegistrationEnabled', () => {
-  it('met à jour le réglage même si aucune ligne n\'existait avant', async () => {
+  it("met à jour le réglage même si aucune ligne n'existait avant", async () => {
     const db = await createTestDb();
     await setRegistrationEnabled(db, false);
     expect((await getAppSettings(db)).registrationEnabled).toBe(false);

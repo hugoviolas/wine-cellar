@@ -13,6 +13,7 @@ import {
 } from './crates';
 import { createBottle, getBottle } from './bottles';
 import { consumeBottle } from './consume';
+import { rowAt } from '../db/testRows';
 
 describe('crates', () => {
   it('crée puis liste une clayette', async () => {
@@ -26,8 +27,8 @@ describe('crates', () => {
     await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
     const crates = await listCrates(db, cellarId);
     expect(crates).toHaveLength(1);
-    expect(crates[0].name).toBe('Clayette 1');
-    expect(crates[0].capacity).toBe(12);
+    expect(rowAt(crates, 0).name).toBe('Clayette 1');
+    expect(rowAt(crates, 0).capacity).toBe(12);
   });
 
   it('renomme une clayette', async () => {
@@ -40,7 +41,7 @@ describe('crates', () => {
     const crateId = await createCrate(db, { cellarId, name: 'Ancien nom', capacity: 6 });
     await renameCrate(db, crateId, 'Nouveau nom');
     const crates = await listCrates(db, cellarId);
-    expect(crates[0].name).toBe('Nouveau nom');
+    expect(rowAt(crates, 0).name).toBe('Nouveau nom');
   });
 
   it('stocke un nom nul si aucun nom n’est fourni à la création (le nom par défaut est calculé à l’affichage)', async () => {
@@ -112,7 +113,11 @@ describe('crates', () => {
 
   it('retourne la clayette correspondant à son identifiant', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
     const crate = await getCrateById(db, crateId);
     expect(crate?.name).toBe('Clayette 1');
@@ -121,7 +126,11 @@ describe('crates', () => {
 
   it('attribue des numéros auto-incrémentés à la création', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const id1 = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
     const id2 = await createCrate(db, { cellarId, name: 'Champagne', capacity: 6 });
     const crate1 = await getCrateById(db, id1);
@@ -132,7 +141,11 @@ describe('crates', () => {
 
   it('réutilise le numéro d’une clayette supprimée plutôt que de décaler les autres', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const id1 = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
     const id2 = await createCrate(db, { cellarId, name: 'Champagne', capacity: 6 });
     const id3 = await createCrate(db, { cellarId, name: 'Cidres', capacity: 6 });
@@ -149,11 +162,21 @@ describe('crates', () => {
 
   it('crateHasActiveBottles distingue bouteilles en stock et bouteilles épuisées', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const crateId = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
     expect(await crateHasActiveBottles(db, crateId)).toBe(false);
 
-    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 1, details: {} });
+    const bottleId = await createBottle(db, {
+      crateId,
+      category: 'wine',
+      name: 'Vin',
+      quantity: 1,
+      details: {},
+    });
     expect(await crateHasActiveBottles(db, crateId)).toBe(true);
 
     await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-09-07' });
@@ -162,9 +185,19 @@ describe('crates', () => {
 
   it('supprime une clayette ne contenant que des bouteilles épuisées, qui deviennent orphelines', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const crateId = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
-    const bottleId = await createBottle(db, { crateId, category: 'wine', name: 'Vin', quantity: 1, details: {} });
+    const bottleId = await createBottle(db, {
+      crateId,
+      category: 'wine',
+      name: 'Vin',
+      quantity: 1,
+      details: {},
+    });
     await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-09-07' });
 
     expect(await crateHasActiveBottles(db, crateId)).toBe(false);
@@ -177,7 +210,11 @@ describe('crates', () => {
 
   it('applique le nouvel ordre demandé (glisser-déposer)', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const id1 = await createCrate(db, { cellarId, name: 'Bordeaux', capacity: 6 });
     const id2 = await createCrate(db, { cellarId, name: 'Champagne', capacity: 6 });
     const id3 = await createCrate(db, { cellarId, name: 'Cidres', capacity: 6 });
@@ -192,8 +229,16 @@ describe('crates', () => {
 
   it('refuse un réordonnancement qui ne correspond pas exactement aux clayettes de la cave', async () => {
     const db = await createTestDb();
-    const caveA = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave A' });
-    const caveB = await bootstrapSuperAdmin(db, { email: 'b@example.com', password: 'x', cellarName: 'Cave B' });
+    const caveA = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave A',
+    });
+    const caveB = await bootstrapSuperAdmin(db, {
+      email: 'b@example.com',
+      password: 'x',
+      cellarName: 'Cave B',
+    });
     const id1 = await createCrate(db, { cellarId: caveA.cellarId, name: 'Bordeaux', capacity: 6 });
     const otherId = await createCrate(db, { cellarId: caveB.cellarId, name: 'Autre cave', capacity: 6 });
 

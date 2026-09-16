@@ -18,21 +18,27 @@ describe('checkRateLimit', () => {
 
   it('compte chaque clé séparément', () => {
     const now = 1_000_000;
-    for (let i = 0; i < 3; i++) checkRateLimit('a', rule, now);
+    for (let i = 0; i < 3; i++) {
+      checkRateLimit('a', rule, now);
+    }
     expect(checkRateLimit('a', rule, now).allowed).toBe(false);
     expect(checkRateLimit('b', rule, now).allowed).toBe(true);
   });
 
   it('repart à zéro une fois la fenêtre passée', () => {
     const now = 1_000_000;
-    for (let i = 0; i < 4; i++) checkRateLimit('a', rule, now);
+    for (let i = 0; i < 4; i++) {
+      checkRateLimit('a', rule, now);
+    }
     expect(checkRateLimit('a', rule, now).allowed).toBe(false);
     expect(checkRateLimit('a', rule, now + rule.windowMs + 1).allowed).toBe(true);
   });
 
   it('décompte le temps restant au fur et à mesure', () => {
     const now = 1_000_000;
-    for (let i = 0; i < 4; i++) checkRateLimit('a', rule, now);
+    for (let i = 0; i < 4; i++) {
+      checkRateLimit('a', rule, now);
+    }
     expect(checkRateLimit('a', rule, now + 30_000).retryAfterSeconds).toBe(30);
   });
 });

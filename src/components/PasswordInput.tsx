@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import type { ReactElement } from 'react';
 
-export function PasswordInput({
+export const PasswordInput = ({
   value,
   onChange,
   placeholder,
@@ -16,7 +17,7 @@ export function PasswordInput({
   minLength?: number;
   required?: boolean;
   className?: string;
-}) {
+}): ReactElement => {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -40,4 +41,4 @@ export function PasswordInput({
       </button>
     </div>
   );
-}
+};

@@ -5,6 +5,7 @@ import { getSession } from '@/domain/session';
 import { getAppSettings } from '@/domain/appSettings';
 import { registerSelfServeUser, EmailAlreadyExistsError } from '@/domain/accounts';
 import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 /**
  * Sur l'énumération de comptes : tant que l'inscription est ouverte et
@@ -27,7 +28,7 @@ const signupBodySchema = z
   })
   .strict();
 
-export async function POST(request: Request) {
+export const POST = async (request: Request): Promise<NextResponse> => {
   const limit = checkRateLimit(`signup:ip:${clientKeyFromHeaders(request.headers)}`, PER_IP);
   if (!limit.allowed) {
     return NextResponse.json(
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = signupBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
@@ -44,10 +45,7 @@ export async function POST(request: Request) {
 
   const settings = await getAppSettings(db);
   if (!settings.registrationEnabled) {
-    return NextResponse.json(
-      { error: 'Les inscriptions sont actuellement fermées.' },
-      { status: 403 },
-    );
+    return NextResponse.json({ error: 'Les inscriptions sont actuellement fermées.' }, { status: 403 });
   }
 
   let userId: string;
@@ -76,4 +74,4 @@ export async function POST(request: Request) {
   await session.save();
 
   return NextResponse.json({ ok: true });
-}
+};

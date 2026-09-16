@@ -9,12 +9,13 @@ import { listActiveBottlesByCellar } from '@/domain/bottles';
 import { getCellarById } from '@/domain/cellars';
 import { CaveBoard } from '@/components/CaveBoard';
 import type { BottleRow } from '@/components/CrateCard';
+import type { ReactElement } from 'react';
 
-export default async function CavePage({
+const CavePage = async ({
   searchParams,
 }: {
   searchParams: Promise<{ cellarId?: string }>;
-}) {
+}): Promise<ReactElement> => {
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
   const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
@@ -86,10 +87,17 @@ export default async function CavePage({
               Gérer la cave
             </Link>
           )}
-          <Link href={`/cave/ajouter${cellarQuery}`} className="bg-forest text-cream rounded px-3 py-1.5 whitespace-nowrap">+ Ajouter</Link>
+          <Link
+            href={`/cave/ajouter${cellarQuery}`}
+            className="bg-forest text-cream rounded px-3 py-1.5 whitespace-nowrap"
+          >
+            + Ajouter
+          </Link>
         </div>
       </div>
       <CaveBoard crates={crates} initialBottlesByCrate={bottlesByCrate} canEdit={canEdit} />
     </div>
   );
-}
+};
+
+export default CavePage;

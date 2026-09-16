@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '@/db/client';
 import { resetPasswordWithToken } from '@/domain/passwordReset';
 import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 /**
  * Route publique dont le seul secret est le jeton de l'URL. Celui-ci fait
@@ -13,7 +14,10 @@ const PER_IP = { limit: 10, windowMs: 15 * 60 * 1000 };
 
 const resetBodySchema = z.object({ password: z.string().min(8) }).strict();
 
-export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
+export const POST = async (
+  request: Request,
+  { params }: { params: Promise<{ token: string }> },
+): Promise<NextResponse> => {
   const limit = checkRateLimit(`reset:ip:${clientKeyFromHeaders(request.headers)}`, PER_IP);
   if (!limit.allowed) {
     return NextResponse.json(
@@ -23,7 +27,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   }
 
   const { token } = await params;
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = resetBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Mot de passe invalide (8 caractères minimum).' }, { status: 400 });
@@ -35,4 +39,4 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     return NextResponse.json({ error: 'Lien de réinitialisation invalide ou expiré.' }, { status: 400 });
   }
   return NextResponse.json({ ok: true });
-}
+};

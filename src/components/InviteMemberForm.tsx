@@ -2,15 +2,18 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
+import { stringFieldFromResponse } from '@/lib/apiJson';
 
-export function InviteMemberForm({ cellarId }: { cellarId: string }) {
+export const InviteMemberForm = ({ cellarId }: { cellarId: string }): ReactElement => {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'editor' | 'reader'>('editor');
   const [link, setLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(event: React.FormEvent) {
+  const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
     setLink(null);
@@ -20,21 +23,24 @@ export function InviteMemberForm({ cellarId }: { cellarId: string }) {
       body: JSON.stringify({ cellarId, email, role }),
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      setError(data.error ?? 'Impossible de créer l’invitation.');
+      setError(await errorMessageFromResponse(response, 'Impossible de créer l’invitation.'));
       return;
     }
-    const data = await response.json();
-    setLink(`${window.location.origin}/invitations/${data.token}`);
+    const token = await stringFieldFromResponse(response, 'token');
+    if (token === null) {
+      setError('Invitation créée, mais le lien est illisible — recharge la page.');
+      return;
+    }
+    setLink(`${window.location.origin}/invitations/${token}`);
     setEmail('');
     router.refresh();
-  }
+  };
 
   return (
     <div className="bg-white rounded p-4 mb-6">
       <h3 className="text-sm mb-3">Inviter un membre</h3>
       {error && <p className="text-sm text-red-700 mb-2">{error}</p>}
-      <form onSubmit={handleSubmit} className="flex gap-2 items-end flex-wrap">
+      <form onSubmit={(...args) => void handleSubmit(...args)} className="flex gap-2 items-end flex-wrap">
         <div>
           <label className="block text-xs uppercase tracking-wide mb-1">Email</label>
           <input
@@ -75,4 +81,4 @@ export function InviteMemberForm({ cellarId }: { cellarId: string }) {
       )}
     </div>
   );
-}
+};

@@ -1,0 +1,10 @@
+.next
+node_modules
+src/db/migrations
+# Specs et plans : archives de décisions, pas du code vivant — les
+# reformater réécrirait des extraits qui doivent rester tels qu'ils ont été
+# écrits à l'époque.
+docs/superpowers
+yarn.lock
+data
+*.tsbuildinfo

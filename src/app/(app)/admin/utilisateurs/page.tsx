@@ -2,8 +2,9 @@ import Link from 'next/link';
 import { db } from '@/db/client';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { listAllUsers } from '@/domain/admin';
+import type { ReactElement } from 'react';
 
-export default async function AdminUsersPage() {
+const AdminUsersPage = async (): Promise<ReactElement> => {
   // Garde répétée dans chaque page /admin (et pas seulement dans le layout) :
   // layout et page sont rendus en parallèle, et le `redirect()` du layout
   // n'empêche pas le rendu de la page — son payload RSC part quand même dans
@@ -21,12 +22,13 @@ export default async function AdminUsersPage() {
               {u.email}
             </Link>
             <span className="text-xs text-gray-500">
-              {u.isSuperAdmin ? 'Super-admin' : 'Compte standard'} ·{' '}
-              {u.isActive ? 'Actif' : 'Désactivé'}
+              {u.isSuperAdmin ? 'Super-admin' : 'Compte standard'} · {u.isActive ? 'Actif' : 'Désactivé'}
             </span>
           </li>
         ))}
       </ul>
     </div>
   );
-}
+};
+
+export default AdminUsersPage;

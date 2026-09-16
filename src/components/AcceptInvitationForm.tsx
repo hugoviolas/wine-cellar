@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PasswordInput } from '@/components/PasswordInput';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-export function AcceptInvitationForm({
+export const AcceptInvitationForm = ({
   token,
   email,
   currentUserEmail,
@@ -12,7 +14,7 @@ export function AcceptInvitationForm({
   token: string;
   email: string;
   currentUserEmail: string | null;
-}) {
+}): ReactElement => {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,7 +23,7 @@ export function AcceptInvitationForm({
 
   const passwordsMatch = password.length > 0 && password === confirmPassword;
 
-  async function submit(mode: 'login' | 'signup') {
+  const submit = async (mode: 'login' | 'signup'): Promise<void> => {
     setError(null);
     setBusy(true);
     try {
@@ -31,8 +33,7 @@ export function AcceptInvitationForm({
         body: JSON.stringify(mode === 'login' ? { mode } : { mode, password }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        setError(data.error ?? 'Impossible d’accepter l’invitation.');
+        setError(await errorMessageFromResponse(response, 'Impossible d’accepter l’invitation.'));
         return;
       }
       router.push('/cave');
@@ -42,14 +43,14 @@ export function AcceptInvitationForm({
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   if (currentUserEmail === email) {
     return (
       <div>
         {error && <p className="text-sm text-red-700 mb-3">{error}</p>}
         <button
-          onClick={() => submit('login')}
+          onClick={() => void submit('login')}
           disabled={busy}
           className="bg-forest text-cream rounded px-4 py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -88,12 +89,7 @@ export function AcceptInvitationForm({
         required
       />
       <label className="block text-xs uppercase tracking-wide mb-1">Confirmer le mot de passe</label>
-      <PasswordInput
-        value={confirmPassword}
-        onChange={setConfirmPassword}
-        className="mb-1"
-        required
-      />
+      <PasswordInput value={confirmPassword} onChange={setConfirmPassword} className="mb-1" required />
       {confirmPassword.length > 0 && !passwordsMatch && (
         <p className="text-xs text-red-700 mb-2">Les mots de passe ne correspondent pas.</p>
       )}
@@ -101,16 +97,19 @@ export function AcceptInvitationForm({
         <p className="text-xs text-red-700 mb-2">Le mot de passe doit faire au moins 8 caractères.</p>
       )}
       <button
-        onClick={() => submit('signup')}
+        onClick={() => void submit('signup')}
         disabled={busy || password.length < 8 || !passwordsMatch}
         className="bg-forest text-cream rounded px-4 py-2 text-sm mt-2 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         Créer mon compte et rejoindre
       </button>
       <p className="text-xs text-gray-500 mt-2">
-        Un compte existe déjà pour {email} ? <a href="/login" className="underline">Connecte-toi</a> puis
-        reviens sur ce lien.
+        Un compte existe déjà pour {email} ?{' '}
+        <a href="/login" className="underline">
+          Connecte-toi
+        </a>{' '}
+        puis reviens sur ce lien.
       </p>
     </div>
   );
-}
+};

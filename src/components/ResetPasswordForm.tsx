@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PasswordInput } from '@/components/PasswordInput';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-export function ResetPasswordForm({ token }: { token: string }) {
+export const ResetPasswordForm = ({ token }: { token: string }): ReactElement => {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -13,7 +15,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   const passwordsMatch = password.length > 0 && password === confirmPassword;
 
-  async function handleSubmit(event: React.FormEvent) {
+  const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
     const response = await fetch(`/api/reset-password/${token}`, {
@@ -22,29 +24,22 @@ export function ResetPasswordForm({ token }: { token: string }) {
       body: JSON.stringify({ password }),
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      setError(data.error ?? 'Impossible de réinitialiser le mot de passe.');
+      setError(await errorMessageFromResponse(response, 'Impossible de réinitialiser le mot de passe.'));
       return;
     }
     setDone(true);
     setTimeout(() => router.push('/login'), 1500);
-  }
+  };
 
   if (done) {
     return <p className="text-sm">Mot de passe mis à jour. Redirection vers la connexion…</p>;
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={(...args) => void handleSubmit(...args)}>
       {error && <p className="text-sm text-red-700 mb-3">{error}</p>}
       <label className="block text-xs uppercase tracking-wide mb-1">Nouveau mot de passe</label>
-      <PasswordInput
-        value={password}
-        onChange={setPassword}
-        className="mb-3"
-        minLength={8}
-        required
-      />
+      <PasswordInput value={password} onChange={setPassword} className="mb-3" minLength={8} required />
       <label className="block text-xs uppercase tracking-wide mb-1">Confirmer le mot de passe</label>
       <PasswordInput
         value={confirmPassword}
@@ -65,4 +60,4 @@ export function ResetPasswordForm({ token }: { token: string }) {
       </button>
     </form>
   );
-}
+};

@@ -1,8 +1,11 @@
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db } from '../db/client';
+import type { Db, DbOrTx } from '../db/client';
 import { bottles, crates, consumptionHistory } from '../db/schema';
 import { newId } from '../db/id';
+import type { ConsumeBottleInput } from './interfaces/consume-bottle-input.interface';
+
+export type { ConsumeBottleInput };
 
 export class BottleUnavailableError extends Error {}
 
@@ -24,23 +27,15 @@ export const consumeBottleBodySchema = z
   })
   .strict();
 
-export interface ConsumeBottleInput {
-  bottleId: string;
-  consumedByUserId: string;
-  consumedAt: string;
-  quantity?: number;
-  rating?: number;
-  comment?: string;
-  occasion?: string;
-}
-
-async function getCellarIdForCrate(db: Db, crateId: string): Promise<string> {
+const getCellarIdForCrate = async (db: DbOrTx, crateId: string): Promise<string> => {
   const [crate] = await db.select().from(crates).where(eq(crates.id, crateId)).limit(1);
-  if (!crate) throw new Error('Clayette introuvable');
+  if (!crate) {
+    throw new Error('Clayette introuvable');
+  }
   return crate.cellarId;
-}
+};
 
-export async function consumeBottle(db: Db, input: ConsumeBottleInput): Promise<string> {
+export const consumeBottle = async (db: Db, input: ConsumeBottleInput): Promise<string> => {
   const quantity = input.quantity ?? 1;
   if (!Number.isInteger(quantity) || quantity < 1) {
     throw new BottleUnavailableError('Quantité invalide');
@@ -51,31 +46,41 @@ export async function consumeBottle(db: Db, input: ConsumeBottleInput): Promise<
     throw new BottleUnavailableError('Quantité demandée supérieure au stock disponible');
   }
 
-  await db.update(bottles).set({ quantity: bottle.quantity - quantity }).where(eq(bottles.id, bottle.id));
-
   // Une bouteille avec quantité ≥ 1 appartient forcément encore à une
   // clayette vivante : la suppression d'une clayette est bloquée tant
   // qu'elle contient des bouteilles en stock (voir crateHasActiveBottles).
   if (!bottle.crateId) {
     throw new Error('Bouteille orpheline : sa clayette a été supprimée.');
   }
-  const cellarId = await getCellarIdForCrate(db, bottle.crateId);
+  const crateId = bottle.crateId;
   const historyId = newId();
-  await db.insert(consumptionHistory).values({
-    id: historyId,
-    bottleId: bottle.id,
-    cellarId,
-    consumedByUserId: input.consumedByUserId,
-    consumedAt: input.consumedAt,
-    quantity,
-    rating: input.rating ?? null,
-    comment: input.comment ?? null,
-    occasion: input.occasion ?? null,
-    bottleNameSnapshot: bottle.name,
-    bottleProducerSnapshot: bottle.producer,
-    bottleVintageSnapshot: bottle.vintage,
-    bottleCategorySnapshot: bottle.category,
+
+  // Décrément du stock et écriture de l'historique dans la même
+  // transaction : séparés, un échec entre les deux faisait disparaître une
+  // bouteille du stock sans trace de sa consommation, ou l'inverse.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(bottles)
+      .set({ quantity: bottle.quantity - quantity })
+      .where(eq(bottles.id, bottle.id));
+
+    const cellarId = await getCellarIdForCrate(tx, crateId);
+    await tx.insert(consumptionHistory).values({
+      id: historyId,
+      bottleId: bottle.id,
+      cellarId,
+      consumedByUserId: input.consumedByUserId,
+      consumedAt: input.consumedAt,
+      quantity,
+      rating: input.rating ?? null,
+      comment: input.comment ?? null,
+      occasion: input.occasion ?? null,
+      bottleNameSnapshot: bottle.name,
+      bottleProducerSnapshot: bottle.producer,
+      bottleVintageSnapshot: bottle.vintage,
+      bottleCategorySnapshot: bottle.category,
+    });
   });
 
   return historyId;
-}
+};

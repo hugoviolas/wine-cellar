@@ -1,4 +1,5 @@
-export function GardeGauge({
+import type { ReactElement } from 'react';
+export const GardeGauge = ({
   progress,
   vintage,
   drinkFrom,
@@ -8,8 +9,10 @@ export function GardeGauge({
   vintage: number | null;
   drinkFrom: number | null;
   drinkUntil: number | null;
-}) {
-  if (drinkFrom == null || drinkUntil == null) return null;
+}): ReactElement | null => {
+  if (drinkFrom == null || drinkUntil == null) {
+    return null;
+  }
 
   return (
     <div>
@@ -21,8 +24,10 @@ export function GardeGauge({
       </div>
       <div className="flex justify-between text-[10px] text-gray-500 mt-1">
         <span>{vintage}</span>
-        <span>Apogée {drinkFrom}–{drinkUntil}</span>
+        <span>
+          Apogée {drinkFrom}–{drinkUntil}
+        </span>
       </div>
     </div>
   );
-}
+};

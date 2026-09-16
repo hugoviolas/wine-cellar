@@ -6,14 +6,23 @@ import { canEditCellarContent } from '@/domain/permissions';
 import { getCrateById } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
-import { buildBottleAnalysisPrompt, saveBottleAiAnalysis, type BottleAnalysisInput } from '@/domain/ai/bottleAnalysis';
+import {
+  buildBottleAnalysisPrompt,
+  saveBottleAiAnalysis,
+  type BottleAnalysisInput,
+} from '@/domain/ai/bottleAnalysis';
 import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
 import { aiBottleAnalysisSchema } from '@/domain/ai/schemas';
-import { callClaudeForJson, AiResponseError } from '@/domain/ai/client';
+import { callAiForRoute } from '@/domain/ai/callForRoute';
 
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const POST = async (
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
   const access = await resolveBottleAccess(db, auth.user.id, id);
@@ -27,8 +36,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
-  // access.status === 'ok' garantit bottle.crateId non nul (voir bottleAccess.ts).
-  const crate = await getCrateById(db, access.bottle.crateId as string);
+  const crate = await getCrateById(db, access.bottle.crateId);
   const cellar = crate ? await getCellarById(db, crate.cellarId) : null;
   if (!cellar || !isAiAvailable(cellar)) {
     return NextResponse.json({ error: 'Fonction IA indisponible pour cette cave.' }, { status: 403 });
@@ -46,18 +54,17 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   };
   const { system, content } = buildBottleAnalysisPrompt(bottleForPrompt, new Date().getFullYear());
 
-  let analysis;
-  try {
-    analysis = await callClaudeForJson({ system, content, schema: aiBottleAnalysisSchema });
-  } catch (err) {
-    if (err instanceof AiResponseError) {
-      console.error('[ai-generate]', err);
-      return NextResponse.json({ error: 'Réponse IA invalide, réessaie.' }, { status: 502 });
-    }
-    console.error('[ai-generate]', err);
-    return NextResponse.json({ error: 'Appel IA impossible pour le moment.' }, { status: 502 });
+  const result = await callAiForRoute({
+    route: 'bottles/ai-generate',
+    system,
+    content,
+    schema: aiBottleAnalysisSchema,
+    invalidResponseMessage: 'Réponse IA invalide, réessaie.',
+  });
+  if ('error' in result) {
+    return result.error;
   }
 
-  await saveBottleAiAnalysis(db, access.bottle, analysis);
+  await saveBottleAiAnalysis(db, access.bottle, result.data);
   return NextResponse.json({ ok: true });
-}
+};

@@ -2,13 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import type { NavLink } from './interfaces/nav-link.interface';
+import type { ReactElement } from 'react';
 
-interface NavLink {
-  href: string;
-  label: string;
-}
-
-export function MobileNav({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+export const MobileNav = ({ isSuperAdmin }: { isSuperAdmin: boolean }): ReactElement => {
   const [open, setOpen] = useState(false);
 
   const links: NavLink[] = [
@@ -23,7 +20,9 @@ export function MobileNav({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     <>
       <nav className="hidden sm:flex gap-4 text-xs uppercase tracking-wide items-center">
         {links.map((link) => (
-          <Link key={link.href} href={link.href}>{link.label}</Link>
+          <Link key={link.href} href={link.href}>
+            {link.label}
+          </Link>
         ))}
         <form action="/api/auth/logout" method="post">
           <button type="submit">Déconnexion</button>
@@ -48,10 +47,12 @@ export function MobileNav({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             </Link>
           ))}
           <form action="/api/auth/logout" method="post">
-            <button type="submit" onClick={() => setOpen(false)}>Déconnexion</button>
+            <button type="submit" onClick={() => setOpen(false)}>
+              Déconnexion
+            </button>
           </form>
         </div>
       )}
     </>
   );
-}
+};

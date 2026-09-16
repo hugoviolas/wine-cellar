@@ -1,3 +1,7 @@
+import type { RateLimitBucket } from './interfaces/rate-limit-bucket.interface';
+import type { RateLimitResult } from './interfaces/rate-limit-result.interface';
+import type { RateLimitRule } from './interfaces/rate-limit-rule.interface';
+
 /**
  * Limiteur de débit en mémoire, par fenêtre fixe. Suffisant ici : l'app
  * tourne en un seul conteneur (voir docker-compose.prod.yml), donc un état
@@ -5,39 +9,13 @@
  * chaque redémarrage est acceptable pour ce que ça protège (les routes
  * d'authentification publiques, pas un quota de facturation).
  */
-export interface RateLimitRule {
-  /** Nombre de tentatives autorisées par fenêtre. */
-  limit: number;
-  /** Durée de la fenêtre, en millisecondes. */
-  windowMs: number;
-}
+const buckets = new Map<string, RateLimitBucket>();
 
-export interface RateLimitResult {
-  allowed: boolean;
-  /** Secondes avant que la fenêtre courante ne se réinitialise (0 si autorisé). */
-  retryAfterSeconds: number;
-}
-
-interface Bucket {
-  count: number;
-  resetAt: number;
-}
-
-const buckets = new Map<string, Bucket>();
-
-/**
- * Purge les fenêtres expirées. Appelée à chaque vérification plutôt que sur
- * un timer : sans ça, une attaque distribuée ferait grossir la Map
- * indéfiniment (une entrée par IP vue), alors que ces entrées ne servent
- * plus à rien une fois leur fenêtre passée.
- */
-function evictExpired(now: number): void {
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt <= now) buckets.delete(key);
-  }
-}
-
-export function checkRateLimit(key: string, rule: RateLimitRule, now: number = Date.now()): RateLimitResult {
+export const checkRateLimit = (
+  key: string,
+  rule: RateLimitRule,
+  now: number = Date.now(),
+): RateLimitResult => {
   evictExpired(now);
 
   const bucket = buckets.get(key);
@@ -51,12 +29,12 @@ export function checkRateLimit(key: string, rule: RateLimitRule, now: number = D
     return { allowed: false, retryAfterSeconds: Math.ceil((bucket.resetAt - now) / 1000) };
   }
   return { allowed: true, retryAfterSeconds: 0 };
-}
+};
 
 /** Réinitialise l'état du limiteur — réservé aux tests. */
-export function resetRateLimits(): void {
+export const resetRateLimits = (): void => {
   buckets.clear();
-}
+};
 
 /**
  * Adresse du client. `cf-connecting-ip` d'abord : en production le seul
@@ -66,13 +44,31 @@ export function resetRateLimits(): void {
  * sur le LAN, accès direct) : un seau partagé limite alors tout le monde
  * ensemble, ce qui est plus sûr que de ne rien limiter du tout.
  */
-export function clientKeyFromHeaders(headers: Headers): string {
-  const cf = headers.get('cf-connecting-ip');
-  if (cf) return cf.trim();
+export const clientKeyFromHeaders = (headers: Headers): string => {
+  const cloudflareIp = headers.get('cf-connecting-ip');
+  if (cloudflareIp) {
+    return cloudflareIp.trim();
+  }
   const forwarded = headers.get('x-forwarded-for');
   if (forwarded) {
     const first = forwarded.split(',')[0]?.trim();
-    if (first) return first;
+    if (first) {
+      return first;
+    }
   }
   return 'unknown';
-}
+};
+
+/**
+ * Purge les fenêtres expirées. Appelée à chaque vérification plutôt que sur
+ * un timer : sans ça, une attaque distribuée ferait grossir la Map
+ * indéfiniment (une entrée par IP vue), alors que ces entrées ne servent
+ * plus à rien une fois leur fenêtre passée.
+ */
+const evictExpired = (now: number): void => {
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt <= now) {
+      buckets.delete(key);
+    }
+  }
+};

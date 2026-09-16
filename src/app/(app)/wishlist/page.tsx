@@ -4,8 +4,9 @@ import { requireUser } from '@/lib/requireUser';
 import { listWishlistItems } from '@/domain/wishlist';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { wineColorDotClass } from '@/lib/wineColor';
+import type { ReactElement } from 'react';
 
-export default async function WishlistPage() {
+const WishlistPage = async (): Promise<ReactElement> => {
   const user = await requireUser();
   const items = await listWishlistItems(db, user.id);
   const pending = items.filter((item) => item.status === 'pending');
@@ -13,7 +14,9 @@ export default async function WishlistPage() {
 
   return (
     <div>
-      <Link href="/cave" className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
+      <Link href="/cave" className="text-xs text-forest mb-2 inline-block">
+        ← Retour à la cave
+      </Link>
       <div className="flex justify-between items-start mb-6">
         <h2 className="text-2xl">Wishlist</h2>
         <Link href="/wishlist/ajouter" className="bg-forest text-cream rounded px-3 py-1.5 text-sm">
@@ -57,7 +60,10 @@ export default async function WishlistPage() {
             {promoted.map((item) => (
               <li key={item.id} className="text-sm px-4 py-3">
                 {item.promotedBottleId ? (
-                  <Link href={`/bottles/${item.promotedBottleId}`} className="flex items-center gap-2 hover:underline">
+                  <Link
+                    href={`/bottles/${item.promotedBottleId}`}
+                    className="flex items-center gap-2 hover:underline"
+                  >
                     <span className={`w-[3px] h-3.5 rounded-sm shrink-0 ${wineColorDotClass(item.color)}`} />
                     <span className="font-serif italic">{item.name}</span>
                   </Link>
@@ -74,4 +80,6 @@ export default async function WishlistPage() {
       )}
     </div>
   );
-}
+};
+
+export default WishlistPage;

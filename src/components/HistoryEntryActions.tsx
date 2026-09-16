@@ -3,16 +3,17 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
+import type { HistoryEntryValues } from './interfaces/history-entry-values.interface';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-interface HistoryEntryValues {
-  consumedAt: string;
-  quantity: number;
-  rating: number | null;
-  occasion: string | null;
-  comment: string | null;
-}
-
-export function HistoryEntryActions({ entryId, initial }: { entryId: string; initial: HistoryEntryValues }) {
+export const HistoryEntryActions = ({
+  entryId,
+  initial,
+}: {
+  entryId: string;
+  initial: HistoryEntryValues;
+}): ReactElement => {
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -25,12 +26,7 @@ export function HistoryEntryActions({ entryId, initial }: { entryId: string; ini
   const [comment, setComment] = useState(initial.comment ?? '');
   const [error, setError] = useState<string | null>(null);
 
-  async function readError(response: Response, fallback: string): Promise<string> {
-    const data = await response.json().catch(() => null);
-    return typeof data?.error === 'string' ? data.error : fallback;
-  }
-
-  async function save(event: React.FormEvent) {
+  const save = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
     setBusy(true);
@@ -47,7 +43,7 @@ export function HistoryEntryActions({ entryId, initial }: { entryId: string; ini
     });
     setBusy(false);
     if (!response.ok) {
-      const message = await readError(response, 'Impossible d’enregistrer les modifications.');
+      const message = await errorMessageFromResponse(response, 'Impossible d’enregistrer les modifications.');
       setError(message);
       toast.error(message);
       return;
@@ -55,25 +51,30 @@ export function HistoryEntryActions({ entryId, initial }: { entryId: string; ini
     toast.success('Entrée mise à jour.');
     setOpen(false);
     router.refresh();
-  }
+  };
 
-  async function remove() {
+  const remove = async (): Promise<void> => {
     setBusy(true);
     const response = await fetch(`/api/history/${entryId}`, { method: 'DELETE' });
     setBusy(false);
     if (!response.ok) {
-      toast.error(await readError(response, 'Impossible de supprimer cette entrée.'));
+      toast.error(await errorMessageFromResponse(response, 'Impossible de supprimer cette entrée.'));
       return;
     }
     toast.success('Entrée supprimée.');
     router.refresh();
-  }
+  };
 
   if (confirmingDelete) {
     return (
       <div className="flex items-center gap-2 mt-2 text-xs">
         <span>Supprimer cette entrée d’historique ?</span>
-        <button type="button" onClick={remove} disabled={busy} className="text-red-700 underline">
+        <button
+          type="button"
+          onClick={() => void remove()}
+          disabled={busy}
+          className="text-red-700 underline"
+        >
           Confirmer
         </button>
         <button type="button" onClick={() => setConfirmingDelete(false)} className="text-gray-500 underline">
@@ -97,7 +98,10 @@ export function HistoryEntryActions({ entryId, initial }: { entryId: string; ini
   }
 
   return (
-    <form onSubmit={save} className="mt-2 space-y-2 bg-gray-50 rounded p-3 text-xs">
+    <form
+      onSubmit={(...args) => void save(...args)}
+      className="mt-2 space-y-2 bg-gray-50 rounded p-3 text-xs"
+    >
       {error && <p className="text-red-700">{error}</p>}
       <div className="flex gap-2 flex-wrap">
         <div>
@@ -128,7 +132,9 @@ export function HistoryEntryActions({ entryId, initial }: { entryId: string; ini
           >
             <option value="">—</option>
             {[0, 1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
         </div>
@@ -160,4 +166,4 @@ export function HistoryEntryActions({ entryId, initial }: { entryId: string; ini
       </div>
     </form>
   );
-}
+};

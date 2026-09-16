@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { WINE_REGIONS } from '@/lib/wineRegions';
+import type { ReactElement } from 'react';
 
 const OTHER_VALUE = '__autre__';
 
@@ -15,12 +16,18 @@ const OTHER_VALUE = '__autre__';
  * `forceCustom` couvre le cas où l'utilisateur vient de choisir "Autre"
  * alors que la valeur est encore vide (donc "connue" au sens strict).
  */
-export function RegionInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export const RegionInput = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}): ReactElement => {
   const matchesKnown = value === '' || (WINE_REGIONS as readonly string[]).includes(value);
   const [forceCustom, setForceCustom] = useState(false);
   const showCustom = forceCustom || !matchesKnown;
 
-  function handleSelectChange(selected: string) {
+  const handleSelectChange = (selected: string): void => {
     if (selected === OTHER_VALUE) {
       setForceCustom(true);
       onChange('');
@@ -28,7 +35,7 @@ export function RegionInput({ value, onChange }: { value: string; onChange: (val
       setForceCustom(false);
       onChange(selected);
     }
-  }
+  };
 
   return (
     <div>
@@ -40,7 +47,9 @@ export function RegionInput({ value, onChange }: { value: string; onChange: (val
       >
         <option value="">—</option>
         {WINE_REGIONS.map((region) => (
-          <option key={region} value={region}>{region}</option>
+          <option key={region} value={region}>
+            {region}
+          </option>
         ))}
         <option value={OTHER_VALUE}>Autre (préciser)</option>
       </select>
@@ -54,4 +63,4 @@ export function RegionInput({ value, onChange }: { value: string; onChange: (val
       )}
     </div>
   );
-}
+};

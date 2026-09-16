@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
+import type { ReactElement } from 'react';
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+const AdminLayout = async ({ children }: { children: React.ReactNode }): Promise<ReactElement> => {
   await requireSuperAdmin();
 
   return (
@@ -14,4 +15,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {children}
     </div>
   );
-}
+};
+
+export default AdminLayout;

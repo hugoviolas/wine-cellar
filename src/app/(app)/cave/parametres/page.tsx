@@ -10,12 +10,13 @@ import { getCellarById } from '@/domain/cellars';
 import { InviteMemberForm } from '@/components/InviteMemberForm';
 import { MembersList } from '@/components/MembersList';
 import { CellarInfoForm } from '@/components/CellarInfoForm';
+import type { ReactElement } from 'react';
 
-export default async function CaveParametresPage({
+const CaveParametresPage = async ({
   searchParams,
 }: {
   searchParams: Promise<{ cellarId?: string }>;
-}) {
+}): Promise<ReactElement> => {
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
   const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
@@ -35,7 +36,9 @@ export default async function CaveParametresPage({
 
   return (
     <div className="max-w-xl">
-      <Link href={`/cave${cellarQuery}`} className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
+      <Link href={`/cave${cellarQuery}`} className="text-xs text-forest mb-2 inline-block">
+        ← Retour à la cave
+      </Link>
       <h2 className="text-lg mb-4">Gérer la cave</h2>
       {cellar && (
         <CellarInfoForm
@@ -51,4 +54,6 @@ export default async function CaveParametresPage({
       <MembersList initialMembers={members} />
     </div>
   );
-}
+};
+
+export default CaveParametresPage;

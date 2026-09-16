@@ -2,8 +2,9 @@ import { db } from '@/db/client';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { getAppSettings } from '@/domain/appSettings';
 import { RegistrationToggle } from '@/components/RegistrationToggle';
+import type { ReactElement } from 'react';
 
-export default async function AdminSettingsPage() {
+const AdminSettingsPage = async (): Promise<ReactElement> => {
   // Voir le commentaire dans /admin/utilisateurs : la garde du layout ne
   // suffit pas à empêcher le rendu de cette page.
   await requireSuperAdmin();
@@ -15,4 +16,6 @@ export default async function AdminSettingsPage() {
       <RegistrationToggle initialEnabled={settings.registrationEnabled} />
     </div>
   );
-}
+};
+
+export default AdminSettingsPage;

@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/db/client';
 import { requireSuperAdminApi } from '@/lib/requireSuperAdminApi';
-import { getUserById, setUserActive, setUserSuperAdmin, hasOtherActiveSuperAdmin, deleteUser } from '@/domain/admin';
+import {
+  getUserById,
+  setUserActive,
+  setUserSuperAdmin,
+  hasOtherActiveSuperAdmin,
+  deleteUser,
+} from '@/domain/admin';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const updateUserBodySchema = z
   .object({
@@ -11,15 +18,22 @@ const updateUserBodySchema = z
   })
   .strict();
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = async (
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireSuperAdminApi();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
   const target = await getUserById(db, id);
-  if (!target) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  if (!target) {
+    return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = updateUserBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
@@ -48,15 +62,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     await setUserSuperAdmin(db, id, parsed.data.isSuperAdmin);
   }
   return NextResponse.json({ ok: true });
-}
+};
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = async (
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireSuperAdminApi();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
   const target = await getUserById(db, id);
-  if (!target) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  if (!target) {
+    return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+  }
 
   if (target.id === auth.user.id) {
     return NextResponse.json({ error: 'Tu ne peux pas supprimer ton propre compte.' }, { status: 400 });
@@ -73,4 +94,4 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   await deleteUser(db, id);
   return NextResponse.json({ ok: true });
-}
+};

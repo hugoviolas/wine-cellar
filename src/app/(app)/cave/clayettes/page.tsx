@@ -4,12 +4,13 @@ import { requireUser } from '@/lib/requireUser';
 import { resolveViewedCellarId } from '@/domain/viewedCellar';
 import { listCrates } from '@/domain/crates';
 import { CrateManager } from '@/components/CrateManager';
+import type { ReactElement } from 'react';
 
-export default async function ClayettesPage({
+const ClayettesPage = async ({
   searchParams,
 }: {
   searchParams: Promise<{ cellarId?: string }>;
-}) {
+}): Promise<ReactElement> => {
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
   const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
@@ -19,7 +20,9 @@ export default async function ClayettesPage({
 
   return (
     <div>
-      <Link href={`/cave${cellarQuery}`} className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
+      <Link href={`/cave${cellarQuery}`} className="text-xs text-forest mb-2 inline-block">
+        ← Retour à la cave
+      </Link>
       <h2 className="text-lg mb-4">Gérer les clayettes</h2>
       {cellarId ? (
         <CrateManager cellarId={cellarId} initialCrates={crates} />
@@ -28,4 +31,6 @@ export default async function ClayettesPage({
       )}
     </div>
   );
-}
+};
+
+export default ClayettesPage;

@@ -8,10 +8,16 @@ import {
   updateHistoryEntryBodySchema,
   deleteHistoryEntry,
 } from '@/domain/history';
+import { readJsonBody } from '@/lib/readJsonBody';
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = async (
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
   const access = await resolveHistoryEntryAccess(db, auth.user.id, id);
@@ -25,7 +31,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = updateHistoryEntryBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Champs de mise à jour invalides.' }, { status: 400 });
@@ -36,11 +42,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   await updateHistoryEntry(db, id, parsed.data);
   return NextResponse.json({ ok: true });
-}
+};
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = async (
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
   const access = await resolveHistoryEntryAccess(db, auth.user.id, id);
@@ -56,4 +67,4 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   await deleteHistoryEntry(db, id);
   return NextResponse.json({ ok: true });
-}
+};

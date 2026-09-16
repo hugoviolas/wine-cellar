@@ -6,6 +6,7 @@ import { createCrate } from '../crates';
 import { createBottle, getBottle } from '../bottles';
 import { bottles } from '../../db/schema';
 import { buildBottleAnalysisPrompt, saveBottleAiAnalysis } from './bottleAnalysis';
+import type { Db } from '../../db/client';
 
 describe('buildBottleAnalysisPrompt', () => {
   it('inclut les champs de la bouteille dans le prompt', () => {
@@ -82,8 +83,13 @@ describe('buildBottleAnalysisPrompt', () => {
   });
 });
 
+interface SetupBottleResult {
+  db: Db;
+  bottleId: string;
+}
+
 describe('saveBottleAiAnalysis', () => {
-  async function setupBottle() {
+  const setupBottle = async (): Promise<SetupBottleResult> => {
     const db = await createTestDb();
     const { cellarId } = await bootstrapSuperAdmin(db, {
       email: 'admin@example.com',
@@ -99,7 +105,7 @@ describe('saveBottleAiAnalysis', () => {
       details: {},
     });
     return { db, bottleId };
-  }
+  };
 
   const analysis = {
     analysis: 'Un vin bien structuré.',
@@ -112,7 +118,14 @@ describe('saveBottleAiAnalysis', () => {
     appellation: 'Patrimonio',
   };
 
-  const emptyBottleRef = { id: '', category: 'wine' as const, drinkFrom: null, drinkUntil: null, region: null, details: {} };
+  const emptyBottleRef = {
+    id: '',
+    category: 'wine' as const,
+    drinkFrom: null,
+    drinkUntil: null,
+    region: null,
+    details: {},
+  };
 
   it('écrit les champs IA, la fenêtre de garde, la région, les cépages et l’appellation quand ils sont vides', async () => {
     const { db, bottleId } = await setupBottle();
@@ -144,7 +157,14 @@ describe('saveBottleAiAnalysis', () => {
 
     await saveBottleAiAnalysis(
       db,
-      { id: bottleId, category: 'wine', drinkFrom: 2020, drinkUntil: 2024, region: 'Bourgogne', details: existingDetails },
+      {
+        id: bottleId,
+        category: 'wine',
+        drinkFrom: 2020,
+        drinkUntil: 2024,
+        region: 'Bourgogne',
+        details: existingDetails,
+      },
       analysis,
     );
 

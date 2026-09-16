@@ -6,6 +6,7 @@ import { checkCellarAccess } from '@/domain/access';
 import { canEditCellarContent } from '@/domain/permissions';
 import { getCrateById } from '@/domain/crates';
 import { reorderBottlesInCrate } from '@/domain/bottles';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const reorderBodySchema = z
   .object({
@@ -14,12 +15,14 @@ const reorderBodySchema = z
   })
   .strict();
 
-export async function POST(request: Request) {
+export const POST = async (request: Request): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { user } = auth;
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = reorderBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Requête de réordonnancement invalide.' }, { status: 400 });
@@ -27,10 +30,14 @@ export async function POST(request: Request) {
   const { crateId, orderedIds } = parsed.data;
 
   const crate = await getCrateById(db, crateId);
-  if (!crate) return NextResponse.json({ error: 'Clayette introuvable' }, { status: 404 });
+  if (!crate) {
+    return NextResponse.json({ error: 'Clayette introuvable' }, { status: 404 });
+  }
 
   const access = await checkCellarAccess(db, user.id, crate.cellarId);
-  if (!access.allowed) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  if (!access.allowed) {
+    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  }
   if (!canEditCellarContent(access.role)) {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
@@ -44,4 +51,4 @@ export async function POST(request: Request) {
     );
   }
   return NextResponse.json({ ok: true });
-}
+};

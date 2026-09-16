@@ -4,14 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { crateLabel } from '@/lib/crateLabel';
 import { useToast } from '@/components/Toast';
+import type { CrateOption } from './interfaces/crate-option.interface';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-interface CrateOption {
-  id: string;
-  number: number;
-  name: string | null;
-}
-
-export function BottleActions({
+export const BottleActions = ({
   bottleId,
   otherCrates,
   initialQuantity,
@@ -19,7 +16,7 @@ export function BottleActions({
   bottleId: string;
   otherCrates: CrateOption[];
   initialQuantity: number;
-}) {
+}): ReactElement => {
   const router = useRouter();
   const toast = useToast();
   const [targetCrateId, setTargetCrateId] = useState(otherCrates[0]?.id ?? '');
@@ -28,13 +25,10 @@ export function BottleActions({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function readError(response: Response, fallback: string): Promise<string> {
-    const data = await response.json().catch(() => null);
-    return typeof data?.error === 'string' ? data.error : fallback;
-  }
-
-  async function updateQuantity() {
-    if (quantity === initialQuantity || quantity < 0) return;
+  const updateQuantity = async (): Promise<void> => {
+    if (quantity === initialQuantity || quantity < 0) {
+      return;
+    }
     setError(null);
     setBusy(true);
     const response = await fetch(`/api/bottles/${bottleId}`, {
@@ -44,17 +38,19 @@ export function BottleActions({
     });
     setBusy(false);
     if (!response.ok) {
-      const message = await readError(response, 'Impossible de mettre à jour la quantité.');
+      const message = await errorMessageFromResponse(response, 'Impossible de mettre à jour la quantité.');
       setError(message);
       toast.error(message);
       return;
     }
     toast.success('Quantité mise à jour.');
     router.refresh();
-  }
+  };
 
-  async function moveBottle() {
-    if (!targetCrateId) return;
+  const moveBottle = async (): Promise<void> => {
+    if (!targetCrateId) {
+      return;
+    }
     setError(null);
     setBusy(true);
     const response = await fetch(`/api/bottles/${bottleId}`, {
@@ -64,7 +60,7 @@ export function BottleActions({
     });
     setBusy(false);
     if (!response.ok) {
-      const message = await readError(response, 'Impossible de déplacer cette bouteille.');
+      const message = await errorMessageFromResponse(response, 'Impossible de déplacer cette bouteille.');
       setError(message);
       toast.error(message);
       return;
@@ -72,15 +68,15 @@ export function BottleActions({
     toast.success('Bouteille déplacée.');
     router.push('/cave');
     router.refresh();
-  }
+  };
 
-  async function removeBottle() {
+  const removeBottle = async (): Promise<void> => {
     setError(null);
     setBusy(true);
     const response = await fetch(`/api/bottles/${bottleId}`, { method: 'DELETE' });
     setBusy(false);
     if (!response.ok) {
-      const message = await readError(response, 'Impossible de supprimer cette bouteille.');
+      const message = await errorMessageFromResponse(response, 'Impossible de supprimer cette bouteille.');
       setError(message);
       toast.error(message);
       return;
@@ -88,7 +84,7 @@ export function BottleActions({
     toast.success('Bouteille supprimée.');
     router.push('/cave');
     router.refresh();
-  }
+  };
 
   return (
     <section className="mb-6 space-y-4">
@@ -107,7 +103,7 @@ export function BottleActions({
           />
           <button
             type="button"
-            onClick={updateQuantity}
+            onClick={() => void updateQuantity()}
             disabled={busy || quantity === initialQuantity || quantity < 0}
             className="border border-forest text-forest rounded px-3 py-2 text-sm"
           >
@@ -133,7 +129,7 @@ export function BottleActions({
             </select>
             <button
               type="button"
-              onClick={moveBottle}
+              onClick={() => void moveBottle()}
               disabled={busy}
               className="border border-forest text-forest rounded px-3 py-2 text-sm"
             >
@@ -149,7 +145,7 @@ export function BottleActions({
             <span className="text-sm">Supprimer définitivement cette bouteille ?</span>
             <button
               type="button"
-              onClick={removeBottle}
+              onClick={() => void removeBottle()}
               disabled={busy}
               className="text-xs text-red-700 underline"
             >
@@ -175,4 +171,4 @@ export function BottleActions({
       </div>
     </section>
   );
-}
+};

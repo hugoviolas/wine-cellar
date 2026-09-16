@@ -18,15 +18,21 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CrateCard, type BottleRow } from './CrateCard';
 import { useToast } from '@/components/Toast';
+import type { Crate } from './interfaces/crate.interface';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-interface Crate {
-  id: string;
-  number: number;
-  name: string | null;
-  capacity: number;
-}
+/**
+ * dnd-kit transporte des données libres dans `data.current` : on vérifie ce
+ * qu'on y lit plutôt que de le transtyper, la valeur venant d'ailleurs que
+ * de ce composant.
+ */
+const crateIdFromDragData = (data: Record<string, unknown> | undefined): string | undefined => {
+  const crateId = data?.crateId;
+  return typeof crateId === 'string' ? crateId : undefined;
+};
 
-export function CaveBoard({
+export const CaveBoard = ({
   crates,
   initialBottlesByCrate,
   canEdit,
@@ -34,7 +40,7 @@ export function CaveBoard({
   crates: Crate[];
   initialBottlesByCrate: Record<string, BottleRow[]>;
   canEdit: boolean;
-}) {
+}): ReactElement => {
   const router = useRouter();
   const toast = useToast();
   const [bottlesByCrate, setBottlesByCrate] = useState(initialBottlesByCrate);
@@ -57,34 +63,45 @@ export function CaveBoard({
     return pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args);
   };
 
-  function findCrateId(bottleId: string): string | undefined {
+  const findCrateId = (bottleId: string): string | undefined => {
     return Object.keys(bottlesByCrate).find((crateId) =>
-      bottlesByCrate[crateId].some((b) => b.id === bottleId),
+      (bottlesByCrate[crateId] ?? []).some((b) => b.id === bottleId),
     );
-  }
+  };
 
-  function handleDragStart(event: DragStartEvent) {
+  const handleDragStart = (event: DragStartEvent): void => {
     const fromCrateId = findCrateId(String(event.active.id));
-    if (!fromCrateId) return;
-    setActiveBottle(bottlesByCrate[fromCrateId].find((b) => b.id === event.active.id) ?? null);
-  }
+    if (!fromCrateId) {
+      return;
+    }
+    const bottles = bottlesByCrate[fromCrateId] ?? [];
+    setActiveBottle(bottles.find((b) => b.id === event.active.id) ?? null);
+  };
 
-  async function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = async (event: DragEndEvent): Promise<void> => {
     setActiveBottle(null);
     const { active, over } = event;
-    if (!over) return;
+    if (!over) {
+      return;
+    }
 
     const bottleId = String(active.id);
-    const fromCrateId = (active.data.current?.crateId as string | undefined) ?? findCrateId(bottleId);
-    if (!fromCrateId) return;
-    const toCrateId = (over.data.current?.crateId as string | undefined) ?? String(over.id);
+    const fromCrateId = crateIdFromDragData(active.data.current) ?? findCrateId(bottleId);
+    if (!fromCrateId) {
+      return;
+    }
+    const toCrateId = crateIdFromDragData(over.data.current) ?? String(over.id);
 
     if (fromCrateId === toCrateId) {
-      if (bottleId === String(over.id)) return;
-      const items = bottlesByCrate[fromCrateId];
+      if (bottleId === String(over.id)) {
+        return;
+      }
+      const items = bottlesByCrate[fromCrateId] ?? [];
       const oldIndex = items.findIndex((b) => b.id === bottleId);
       const newIndex = items.findIndex((b) => b.id === String(over.id));
-      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+        return;
+      }
 
       const reordered = arrayMove(items, oldIndex, newIndex);
       const previous = bottlesByCrate;
@@ -97,8 +114,7 @@ export function CaveBoard({
         body: JSON.stringify({ crateId: fromCrateId, orderedIds: reordered.map((b) => b.id) }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message = typeof data?.error === 'string' ? data.error : 'Impossible d’enregistrer le nouvel ordre.';
+        const message = await errorMessageFromResponse(response, 'Impossible d’enregistrer le nouvel ordre.');
         setError(message);
         toast.error(message);
         setBottlesByCrate(previous);
@@ -109,13 +125,15 @@ export function CaveBoard({
     }
 
     const moved = bottlesByCrate[fromCrateId]?.find((b) => b.id === bottleId);
-    if (!moved) return;
+    if (!moved) {
+      return;
+    }
 
     const previous = bottlesByCrate;
     setError(null);
     setBottlesByCrate({
       ...previous,
-      [fromCrateId]: previous[fromCrateId].filter((b) => b.id !== bottleId),
+      [fromCrateId]: (previous[fromCrateId] ?? []).filter((b) => b.id !== bottleId),
       [toCrateId]: [...(previous[toCrateId] ?? []), moved],
     });
 
@@ -125,15 +143,14 @@ export function CaveBoard({
       body: JSON.stringify({ crateId: toCrateId }),
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => null);
-      const message = typeof data?.error === 'string' ? data.error : 'Impossible de déplacer cette bouteille.';
+      const message = await errorMessageFromResponse(response, 'Impossible de déplacer cette bouteille.');
       setError(message);
       toast.error(message);
       setBottlesByCrate(previous);
       return;
     }
     router.refresh();
-  }
+  };
 
   return (
     <div>
@@ -143,7 +160,7 @@ export function CaveBoard({
         sensors={sensors}
         collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+        onDragEnd={(...args) => void handleDragEnd(...args)}
       >
         <div className="bg-white rounded shadow-sm px-4">
           {crates.map((crate) => (
@@ -168,4 +185,4 @@ export function CaveBoard({
       </DndContext>
     </div>
   );
-}
+};

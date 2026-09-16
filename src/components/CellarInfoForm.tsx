@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-export function CellarInfoForm({
+export const CellarInfoForm = ({
   cellarId,
   initialName,
   initialBrand,
@@ -16,7 +18,7 @@ export function CellarInfoForm({
   initialBrand: string | null;
   initialModel: string | null;
   initialNotes: string | null;
-}) {
+}): ReactElement => {
   const router = useRouter();
   const toast = useToast();
   const [name, setName] = useState(initialName);
@@ -26,7 +28,7 @@ export function CellarInfoForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent) {
+  const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     if (!name.trim()) {
       setError('Le nom de la cave ne peut pas être vide.');
@@ -41,18 +43,20 @@ export function CellarInfoForm({
     });
     setBusy(false);
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      const message = data.error ?? 'Impossible d’enregistrer les infos de la cave.';
+      const message = await errorMessageFromResponse(
+        response,
+        'Impossible d’enregistrer les infos de la cave.',
+      );
       setError(message);
       toast.error(message);
       return;
     }
     toast.success('Infos de la cave mises à jour.');
     router.refresh();
-  }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded p-4 mb-6 space-y-3">
+    <form onSubmit={(...args) => void handleSubmit(...args)} className="bg-white rounded p-4 mb-6 space-y-3">
       <h3 className="text-sm">Infos de la cave</h3>
       {error && <p className="text-sm text-red-700">{error}</p>}
 
@@ -103,4 +107,4 @@ export function CellarInfoForm({
       </button>
     </form>
   );
-}
+};

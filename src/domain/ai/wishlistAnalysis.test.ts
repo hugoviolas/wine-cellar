@@ -6,6 +6,7 @@ import { createWishlistItem, getWishlistItem } from '../wishlist';
 import { wishlistItems } from '../../db/schema';
 import { saveWishlistAiAnalysis } from './wishlistAnalysis';
 import type { AiBottleAnalysis } from './schemas';
+import type { Db } from '../../db/client';
 
 const analysis: AiBottleAnalysis = {
   analysis: 'Un rouge corsé aux tanins fondus.',
@@ -18,10 +19,14 @@ const analysis: AiBottleAnalysis = {
   appellation: 'Patrimonio',
 };
 
-async function seedItem(db: Awaited<ReturnType<typeof createTestDb>>, details: unknown) {
-  const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+const seedItem = async (db: Db, details: unknown): Promise<string> => {
+  const { userId } = await bootstrapSuperAdmin(db, {
+    email: 'a@example.com',
+    password: 'x',
+    cellarName: 'Cave',
+  });
   return createWishlistItem(db, { userId, category: 'wine', name: 'Clos Poggiale', details });
-}
+};
 
 describe('saveWishlistAiAnalysis', () => {
   it('écrit l’analyse et remplit les champs vides', async () => {
@@ -30,7 +35,14 @@ describe('saveWishlistAiAnalysis', () => {
 
     await saveWishlistAiAnalysis(
       db,
-      { id, category: 'wine', drinkFrom: null, drinkUntil: null, region: null, details: { grapeVarieties: [] } },
+      {
+        id,
+        category: 'wine',
+        drinkFrom: null,
+        drinkUntil: null,
+        region: null,
+        details: { grapeVarieties: [] },
+      },
       analysis,
     );
 
@@ -78,7 +90,14 @@ describe('saveWishlistAiAnalysis', () => {
   it('réécrit les champs ai* à chaque génération', async () => {
     const db = await createTestDb();
     const id = await seedItem(db, { grapeVarieties: [] });
-    const base = { id, category: 'wine' as const, drinkFrom: null, drinkUntil: null, region: null, details: { grapeVarieties: [] } };
+    const base = {
+      id,
+      category: 'wine' as const,
+      drinkFrom: null,
+      drinkUntil: null,
+      region: null,
+      details: { grapeVarieties: [] },
+    };
 
     await saveWishlistAiAnalysis(db, base, analysis);
     await saveWishlistAiAnalysis(db, base, { ...analysis, analysis: 'Seconde lecture, plus sévère.' });
@@ -88,8 +107,17 @@ describe('saveWishlistAiAnalysis', () => {
 
   it('ignore cépages et appellation hors des catégories concernées', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'b@example.com', password: 'x', cellarName: 'Cave' });
-    const id = await createWishlistItem(db, { userId, category: 'beer', name: 'Triple Karmeliet', details: {} });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'b@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
+    const id = await createWishlistItem(db, {
+      userId,
+      category: 'beer',
+      name: 'Triple Karmeliet',
+      details: {},
+    });
 
     await saveWishlistAiAnalysis(
       db,

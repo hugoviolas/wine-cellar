@@ -7,7 +7,7 @@ services:
     # le même réseau compose, doit atteindre l'app (via http://app:3000).
     # Rien n'expose ce service directement, ni sur le LAN ni sur internet.
     expose:
-      - "3000"
+      - '3000'
     env_file:
       - .env
     volumes:

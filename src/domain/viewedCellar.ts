@@ -12,14 +12,16 @@ import { checkCellarAccess } from './access';
  * cellarId demandé mais non autorisé est silencieusement ignoré plutôt que
  * de révéler quoi que ce soit sur son existence.
  */
-export async function resolveViewedCellarId(
+export const resolveViewedCellarId = async (
   db: Db,
   userId: string,
   requestedCellarId: string | undefined,
-): Promise<string | null> {
+): Promise<string | null> => {
   if (requestedCellarId) {
     const access = await checkCellarAccess(db, userId, requestedCellarId);
-    if (access.allowed) return requestedCellarId;
+    if (access.allowed) {
+      return requestedCellarId;
+    }
   }
   const [membership] = await db
     .select()
@@ -28,4 +30,4 @@ export async function resolveViewedCellarId(
     .orderBy(cellarMemberships.createdAt)
     .limit(1);
   return membership?.cellarId ?? null;
-}
+};

@@ -1,16 +1,8 @@
 import { getIronSession, type IronSession } from 'iron-session';
 import { cookies } from 'next/headers';
+import type { SessionData } from './interfaces/session-data.interface';
 
-export interface SessionData {
-  userId?: string;
-  /**
-   * Date d'émission ISO, posée à chaque ouverture de session (connexion,
-   * inscription, acceptation d'invitation). Comparée à
-   * `users.sessionsValidFrom` pour refuser une session antérieure à une
-   * réinitialisation de mot de passe — voir domain/sessionValidity.ts.
-   */
-  issuedAt?: string;
-}
+export type { SessionData };
 
 /** Durée de vie d'une session, en secondes. */
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 90;
@@ -23,7 +15,7 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 90;
  * Une vérification au chargement du module ferait échouer le build lui-même
  * plutôt que d'attendre le premier accès réel à une session.
  */
-function getSessionSecret(): string {
+const getSessionSecret = (): string => {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) {
     throw new Error(
@@ -31,7 +23,7 @@ function getSessionSecret(): string {
     );
   }
   return secret;
-}
+};
 
 /**
  * Un cookie `Secure` n'est jamais stocké par le navigateur sur une connexion
@@ -43,14 +35,14 @@ function getSessionSecret(): string {
  * par environnement plutôt que déduit de `NODE_ENV` : `false` en préprod,
  * sinon le comportement historique (vrai en production) reste le défaut.
  */
-function isCookieSecure(): boolean {
+const isCookieSecure = (): boolean => {
   if (process.env.COOKIE_SECURE !== undefined) {
     return process.env.COOKIE_SECURE === 'true';
   }
   return process.env.NODE_ENV === 'production';
-}
+};
 
-export async function getSession(): Promise<IronSession<SessionData>> {
+export const getSession = async (): Promise<IronSession<SessionData>> => {
   // `ttl` autant que `cookieOptions.maxAge` : le premier borne la validité
   // du sceau chiffré, le second la durée de conservation du cookie par le
   // navigateur. iron-session ne déduit pas l'un de l'autre — fournir
@@ -66,4 +58,4 @@ export async function getSession(): Promise<IronSession<SessionData>> {
     },
   };
   return getIronSession<SessionData>(await cookies(), sessionOptions);
-}
+};

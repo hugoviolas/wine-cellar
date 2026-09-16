@@ -5,6 +5,7 @@ import { requireApiUser } from '@/lib/requireApiUser';
 import { checkCellarAccess } from '@/domain/access';
 import { canEditCellarContent } from '@/domain/permissions';
 import { reorderCrates } from '@/domain/crates';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const reorderBodySchema = z
   .object({
@@ -13,12 +14,14 @@ const reorderBodySchema = z
   })
   .strict();
 
-export async function POST(request: Request) {
+export const POST = async (request: Request): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { user } = auth;
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = reorderBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Requête de réordonnancement invalide.' }, { status: 400 });
@@ -26,7 +29,9 @@ export async function POST(request: Request) {
   const { cellarId, orderedIds } = parsed.data;
 
   const access = await checkCellarAccess(db, user.id, cellarId);
-  if (!access.allowed) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  if (!access.allowed) {
+    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+  }
   if (!canEditCellarContent(access.role)) {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
@@ -40,4 +45,4 @@ export async function POST(request: Request) {
     );
   }
   return NextResponse.json({ ok: true });
-}
+};

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createTestDb } from './testDb';
 import { users, cellars, cellarMemberships, crates, bottles, consumptionHistory } from './schema';
 import { newId } from './id';
+import { rowAt } from './testRows';
 
 describe('schema', () => {
   it('permet d’insérer et de relire la chaîne complète user -> cellar -> crate -> bottle -> historique', async () => {
@@ -65,10 +66,10 @@ describe('schema', () => {
 
     const rows = await db.select().from(bottles);
     expect(rows).toHaveLength(1);
-    expect(rows[0].name).toBe('Château Margaux');
+    expect(rowAt(rows, 0).name).toBe('Château Margaux');
 
     const history = await db.select().from(consumptionHistory);
     expect(history).toHaveLength(1);
-    expect(history[0].bottleNameSnapshot).toBe('Château Margaux');
+    expect(rowAt(history, 0).bottleNameSnapshot).toBe('Château Margaux');
   });
 });

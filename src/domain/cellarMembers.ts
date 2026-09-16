@@ -1,5 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
+import type { CellarMembershipRow } from '../db/rows';
+import type { CellarMemberWithEmail } from './interfaces/cellar-member-with-email.interface';
 import { cellarMemberships, users } from '../db/schema';
 
 export class CannotModifyOwnerError extends Error {}
@@ -11,7 +13,10 @@ export class CannotModifyOwnerError extends Error {}
  * cette liste. `email` vaut alors `null`, à afficher comme "compte
  * supprimé" côté UI.
  */
-export async function listCellarMembersWithEmail(db: Db, cellarId: string) {
+export const listCellarMembersWithEmail = async (
+  db: Db,
+  cellarId: string,
+): Promise<CellarMemberWithEmail[]> => {
   return db
     .select({
       membershipId: cellarMemberships.id,
@@ -23,27 +28,42 @@ export async function listCellarMembersWithEmail(db: Db, cellarId: string) {
     .from(cellarMemberships)
     .leftJoin(users, eq(cellarMemberships.userId, users.id))
     .where(eq(cellarMemberships.cellarId, cellarId));
-}
+};
 
-export async function getMembershipById(db: Db, membershipId: string) {
-  const [row] = await db.select().from(cellarMemberships).where(eq(cellarMemberships.id, membershipId)).limit(1);
+export const getMembershipById = async (
+  db: Db,
+  membershipId: string,
+): Promise<CellarMembershipRow | null> => {
+  const [row] = await db
+    .select()
+    .from(cellarMemberships)
+    .where(eq(cellarMemberships.id, membershipId))
+    .limit(1);
   return row ?? null;
-}
+};
 
-export async function updateMembershipRole(
+export const updateMembershipRole = async (
   db: Db,
   membershipId: string,
   role: 'editor' | 'reader',
-): Promise<void> {
+): Promise<void> => {
   const membership = await getMembershipById(db, membershipId);
-  if (!membership) throw new Error('Membre introuvable.');
-  if (membership.role === 'owner') throw new CannotModifyOwnerError();
+  if (!membership) {
+    throw new Error('Membre introuvable.');
+  }
+  if (membership.role === 'owner') {
+    throw new CannotModifyOwnerError();
+  }
   await db.update(cellarMemberships).set({ role }).where(eq(cellarMemberships.id, membershipId));
-}
+};
 
-export async function removeMembership(db: Db, membershipId: string): Promise<void> {
+export const removeMembership = async (db: Db, membershipId: string): Promise<void> => {
   const membership = await getMembershipById(db, membershipId);
-  if (!membership) throw new Error('Membre introuvable.');
-  if (membership.role === 'owner') throw new CannotModifyOwnerError();
+  if (!membership) {
+    throw new Error('Membre introuvable.');
+  }
+  if (membership.role === 'owner') {
+    throw new CannotModifyOwnerError();
+  }
   await db.delete(cellarMemberships).where(eq(cellarMemberships.id, membershipId));
-}
+};

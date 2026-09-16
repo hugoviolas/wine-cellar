@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-export function RegistrationToggle({ initialEnabled }: { initialEnabled: boolean }) {
+export const RegistrationToggle = ({ initialEnabled }: { initialEnabled: boolean }): ReactElement => {
   const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [error, setError] = useState<string | null>(null);
 
-  async function toggle() {
+  const toggle = async (): Promise<void> => {
     setError(null);
     const response = await fetch('/api/admin/settings', {
       method: 'PATCH',
@@ -16,13 +18,12 @@ export function RegistrationToggle({ initialEnabled }: { initialEnabled: boolean
       body: JSON.stringify({ registrationEnabled: !enabled }),
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      setError(data.error ?? 'Impossible de mettre à jour ce réglage.');
+      setError(await errorMessageFromResponse(response, 'Impossible de mettre à jour ce réglage.'));
       return;
     }
     setEnabled(!enabled);
     router.refresh();
-  }
+  };
 
   return (
     <div className="bg-white rounded p-4 max-w-md">
@@ -34,10 +35,10 @@ export function RegistrationToggle({ initialEnabled }: { initialEnabled: boolean
             Autorise la création d&apos;un compte à l&apos;acceptation d&apos;une invitation.
           </p>
         </div>
-        <button onClick={toggle} className="text-xs border border-gray-300 rounded px-3 py-1">
+        <button onClick={() => void toggle()} className="text-xs border border-gray-300 rounded px-3 py-1">
           {enabled ? 'Désactiver' : 'Activer'}
         </button>
       </div>
     </div>
   );
-}
+};

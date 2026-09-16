@@ -2,24 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { Member } from './interfaces/member.interface';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-interface Member {
-  membershipId: string;
-  email: string | null;
-  role: 'owner' | 'editor' | 'reader';
-}
-
-export function MembersList({ initialMembers }: { initialMembers: Member[] }) {
+export const MembersList = ({ initialMembers }: { initialMembers: Member[] }): ReactElement => {
   const router = useRouter();
   const [members, setMembers] = useState(initialMembers);
   const [error, setError] = useState<string | null>(null);
 
-  async function readError(response: Response, fallback: string): Promise<string> {
-    const data = await response.json().catch(() => null);
-    return typeof data?.error === 'string' ? data.error : fallback;
-  }
-
-  async function changeRole(membershipId: string, role: 'editor' | 'reader') {
+  const changeRole = async (membershipId: string, role: 'editor' | 'reader'): Promise<void> => {
     setError(null);
     const response = await fetch(`/api/cellar-memberships/${membershipId}`, {
       method: 'PATCH',
@@ -27,23 +19,23 @@ export function MembersList({ initialMembers }: { initialMembers: Member[] }) {
       body: JSON.stringify({ role }),
     });
     if (!response.ok) {
-      setError(await readError(response, 'Impossible de changer ce rôle.'));
+      setError(await errorMessageFromResponse(response, 'Impossible de changer ce rôle.'));
       return;
     }
     setMembers(members.map((m) => (m.membershipId === membershipId ? { ...m, role } : m)));
     router.refresh();
-  }
+  };
 
-  async function removeMember(membershipId: string) {
+  const removeMember = async (membershipId: string): Promise<void> => {
     setError(null);
     const response = await fetch(`/api/cellar-memberships/${membershipId}`, { method: 'DELETE' });
     if (!response.ok) {
-      setError(await readError(response, 'Impossible de retirer ce membre.'));
+      setError(await errorMessageFromResponse(response, 'Impossible de retirer ce membre.'));
       return;
     }
     setMembers(members.filter((m) => m.membershipId !== membershipId));
     router.refresh();
-  }
+  };
 
   return (
     <div className="bg-white rounded">
@@ -60,14 +52,16 @@ export function MembersList({ initialMembers }: { initialMembers: Member[] }) {
               <div className="flex items-center gap-3">
                 <select
                   value={member.role}
-                  onChange={(e) => changeRole(member.membershipId, e.target.value as 'editor' | 'reader')}
+                  onChange={(e) =>
+                    void changeRole(member.membershipId, e.target.value as 'editor' | 'reader')
+                  }
                   className="border border-gray-300 rounded px-2 py-1 text-xs"
                 >
                   <option value="editor">Éditeur</option>
                   <option value="reader">Lecteur</option>
                 </select>
                 <button
-                  onClick={() => removeMember(member.membershipId)}
+                  onClick={() => void removeMember(member.membershipId)}
                   className="text-red-700 text-xs"
                 >
                   Retirer
@@ -79,4 +73,4 @@ export function MembersList({ initialMembers }: { initialMembers: Member[] }) {
       </ul>
     </div>
   );
-}
+};

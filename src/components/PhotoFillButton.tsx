@@ -2,42 +2,44 @@
 
 import { useRef, useState } from 'react';
 import { useToast } from '@/components/Toast';
+import type { PhotoExtractionResult } from './interfaces/photo-extraction-result.interface';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
+import { aiPhotoExtractionSchema } from '@/domain/ai/schemas';
+import { readJsonBody } from '@/lib/readJsonBody';
+
+export type { PhotoExtractionResult };
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
 type AcceptedMediaType = (typeof ACCEPTED_MEDIA_TYPES)[number];
 
-export interface PhotoExtractionResult {
-  name: string | null;
-  producer: string | null;
-  vintage: number | null;
-  category: 'wine' | 'sparkling' | 'cider' | 'beer' | 'spirit' | null;
-  color: 'rouge' | 'blanc' | 'rose' | 'autre' | null;
-  region: string | null;
-  grapeVarieties: string[] | null;
-  appellation: string | null;
-}
-
-function isAcceptedMediaType(type: string): type is AcceptedMediaType {
+const isAcceptedMediaType = (type: string): type is AcceptedMediaType => {
   return (ACCEPTED_MEDIA_TYPES as readonly string[]).includes(type);
-}
+};
 
-function fileToBase64(file: File): Promise<string> {
+const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       // reader.result: "data:image/jpeg;base64,AAAA..." — on ne garde que la
       // partie après la virgule ; la photo elle-même n'est jamais conservée
       // au-delà de cet appel (pas de persistance, voir le spec IA).
-      const result = reader.result as string;
+      const result = reader.result;
+      if (typeof result !== 'string') {
+        reject(new Error('Lecture de la photo impossible.'));
+        return;
+      }
       resolve(result.slice(result.indexOf(',') + 1));
     };
-    reader.onerror = () => reject(reader.error);
+    reader.onerror = () => {
+      reject(reader.error ?? new Error('Lecture de la photo impossible.'));
+    };
     reader.readAsDataURL(file);
   });
-}
+};
 
-export function PhotoFillButton({
+export const PhotoFillButton = ({
   endpoint,
   extraBody,
   onExtracted,
@@ -45,15 +47,17 @@ export function PhotoFillButton({
   endpoint: string;
   extraBody?: Record<string, unknown>;
   onExtracted: (data: PhotoExtractionResult) => void;
-}) {
+}): ReactElement => {
   const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
-  async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
+  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     if (file.size > MAX_BYTES) {
       toast.error('Photo trop volumineuse (5 Mo maximum).');
@@ -73,20 +77,23 @@ export function PhotoFillButton({
         body: JSON.stringify({ ...extraBody, imageBase64, mediaType: file.type }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message = typeof data?.error === 'string' ? data.error : 'Impossible d’analyser cette photo.';
+        const message = await errorMessageFromResponse(response, 'Impossible d’analyser cette photo.');
         toast.error(message);
         return;
       }
-      const extracted: PhotoExtractionResult = await response.json();
-      onExtracted(extracted);
+      const extracted = aiPhotoExtractionSchema.safeParse(await readJsonBody(response));
+      if (!extracted.success) {
+        toast.error('Réponse illisible pour cette photo, réessaie.');
+        return;
+      }
+      onExtracted(extracted.data);
       toast.success('Champs pré-remplis depuis la photo — vérifie-les avant d’ajouter.');
     } catch {
       toast.error('Impossible d’analyser cette photo.');
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   return (
     <div>
@@ -95,7 +102,7 @@ export function PhotoFillButton({
         type="file"
         accept="image/*"
         capture="environment"
-        onChange={handleFile}
+        onChange={(...args) => void handleFile(...args)}
         className="hidden"
       />
       <button
@@ -108,4 +115,4 @@ export function PhotoFillButton({
       </button>
     </div>
   );
-}
+};

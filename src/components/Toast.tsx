@@ -1,28 +1,22 @@
 'use client';
 
 import { createContext, useCallback, useContext, useRef, useState } from 'react';
-
-interface ToastMessage {
-  id: number;
-  type: 'success' | 'error';
-  text: string;
-}
-
-interface ToastContextValue {
-  success: (text: string) => void;
-  error: (text: string) => void;
-}
+import type { ToastContextValue } from './interfaces/toast-context-value.interface';
+import type { ToastMessage } from './interfaces/toast-message.interface';
+import type { ReactElement } from 'react';
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 /** Affiche une confirmation ou une erreur en popup temporaire (4s). */
-export function useToast(): ToastContextValue {
+export const useToast = (): ToastContextValue => {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast doit être utilisé sous ToastProvider');
+  if (!ctx) {
+    throw new Error('useToast doit être utilisé sous ToastProvider');
+  }
   return ctx;
-}
+};
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export const ToastProvider = ({ children }: { children: React.ReactNode }): ReactElement => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const nextId = useRef(0);
 
@@ -57,4 +51,4 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       </div>
     </ToastContext.Provider>
   );
-}
+};

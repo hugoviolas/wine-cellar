@@ -7,8 +7,9 @@ import { listActiveBottlesByCellar } from '@/domain/bottles';
 import { listConsumptionHistory } from '@/domain/history';
 import { computeGardeStatus } from '@/domain/gardeStatus';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
+import type { ReactElement } from 'react';
 
-export default async function AccueilPage() {
+const AccueilPage = async (): Promise<ReactElement> => {
   const user = await requireUser();
   const [membership] = await db
     .select()
@@ -32,7 +33,8 @@ export default async function AccueilPage() {
   }
 
   const closingWindow = bottleRows.filter(
-    (row) => computeGardeStatus(row.bottle.drinkFrom, row.bottle.drinkUntil, currentYear) === 'closing_window',
+    (row) =>
+      computeGardeStatus(row.bottle.drinkFrom, row.bottle.drinkUntil, currentYear) === 'closing_window',
   );
 
   const recentHistory = history.slice(0, 5);
@@ -44,7 +46,9 @@ export default async function AccueilPage() {
       <section>
         <h3 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Stats globales</h3>
         <div className="bg-white rounded p-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
-          <span><strong>{totalBottles}</strong> bouteille{totalBottles > 1 ? 's' : ''} en cave</span>
+          <span>
+            <strong>{totalBottles}</strong> bouteille{totalBottles > 1 ? 's' : ''} en cave
+          </span>
           {Object.entries(countByCategory).map(([category, count]) => (
             <span key={category} className="text-gray-500">
               {CATEGORY_LABELS[category] ?? category} : {count}
@@ -115,4 +119,6 @@ export default async function AccueilPage() {
       </section>
     </div>
   );
-}
+};
+
+export default AccueilPage;

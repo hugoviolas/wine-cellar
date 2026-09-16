@@ -3,8 +3,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-export function ConsumeForm({ bottleId, maxQuantity }: { bottleId: string; maxQuantity: number }) {
+export const ConsumeForm = ({
+  bottleId,
+  maxQuantity,
+}: {
+  bottleId: string;
+  maxQuantity: number;
+}): ReactElement => {
   const router = useRouter();
   const toast = useToast();
   const [consumedAt, setConsumedAt] = useState(new Date().toISOString().slice(0, 10));
@@ -14,7 +22,7 @@ export function ConsumeForm({ bottleId, maxQuantity }: { bottleId: string; maxQu
   const [occasion, setOccasion] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(event: React.FormEvent) {
+  const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
     const response = await fetch(`/api/bottles/${bottleId}/consume`, {
@@ -23,8 +31,7 @@ export function ConsumeForm({ bottleId, maxQuantity }: { bottleId: string; maxQu
       body: JSON.stringify({ consumedAt, quantity, rating, comment, occasion }),
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      const message = data.error ?? 'Impossible d’enregistrer la consommation.';
+      const message = await errorMessageFromResponse(response, 'Impossible d’enregistrer la consommation.');
       setError(message);
       toast.error(message);
       return;
@@ -32,10 +39,13 @@ export function ConsumeForm({ bottleId, maxQuantity }: { bottleId: string; maxQu
     toast.success('Consommation enregistrée.');
     router.push('/cave');
     router.refresh();
-  }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded p-6 max-w-md space-y-4">
+    <form
+      onSubmit={(...args) => void handleSubmit(...args)}
+      className="bg-white rounded p-6 max-w-md space-y-4"
+    >
       {error && <p className="text-sm text-red-700">{error}</p>}
 
       <div>
@@ -50,9 +60,7 @@ export function ConsumeForm({ bottleId, maxQuantity }: { bottleId: string; maxQu
       </div>
 
       <div>
-        <label className="block text-xs uppercase tracking-wide mb-1">
-          Quantité (max {maxQuantity})
-        </label>
+        <label className="block text-xs uppercase tracking-wide mb-1">Quantité (max {maxQuantity})</label>
         <input
           type="number"
           min={1}
@@ -105,4 +113,4 @@ export function ConsumeForm({ bottleId, maxQuantity }: { bottleId: string; maxQu
       </button>
     </form>
   );
-}
+};

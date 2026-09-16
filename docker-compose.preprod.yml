@@ -7,7 +7,7 @@ services:
     # la préprod. Accessible depuis un autre appareil du réseau via
     # http://<ip-locale-du-pi>:3001.
     ports:
-      - "3001:3000"
+      - '3001:3000'
     env_file:
       - .env
     volumes:
