@@ -53,7 +53,10 @@ export const POST = async (
     grapeVarieties: getGrapeVarieties(access.bottle.category, access.bottle.details),
     appellation: getAppellation(access.bottle.category, access.bottle.details),
   };
-  const quotaExceeded = checkAiQuota(auth.user.id);
+  const quotaExceeded = checkAiQuota({
+    userId: auth.user.id,
+    isSuperAdmin: auth.user.isSuperAdmin,
+  });
   if (quotaExceeded) {
     return quotaExceeded;
   }

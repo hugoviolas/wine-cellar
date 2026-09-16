@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import type { RateLimitRule } from '@/lib/interfaces/rate-limit-rule.interface';
+import type { CheckAiQuotaArgs } from './interfaces/check-ai-quota-args.interface';
 
 /**
  * Quota d'appels IA par utilisateur.
@@ -24,8 +25,22 @@ const PER_DAY: RateLimitRule = { limit: 100, windowMs: 24 * 60 * 60 * 1000 };
  * `null` si l'appel peut avoir lieu, sinon la réponse à renvoyer tel quel.
  * Vérifié avant l'appel au modèle, jamais après : le but est justement de
  * ne pas le déclencher.
+ *
+ * Un super-admin n'est jamais compté. Ce plafond existe pour borner ce
+ * qu'un compte quelconque — l'inscription étant ouverte — peut dépenser
+ * sur une clé API qui n'est pas la sienne ; or la clé est précisément
+ * celle du super-admin, qui décide par ailleurs quelle cave a droit à
+ * l'IA. Lui appliquer une limite reviendrait à le protéger de lui-même,
+ * au prix d'un blocage en pleine session de saisie.
  */
-export const checkAiQuota = (userId: string, now: number = Date.now()): NextResponse | null => {
+export const checkAiQuota = ({
+  userId,
+  isSuperAdmin,
+  now = Date.now(),
+}: CheckAiQuotaArgs): NextResponse | null => {
+  if (isSuperAdmin) {
+    return null;
+  }
   const hourly = checkRateLimit(`ai:hour:${userId}`, PER_HOUR, now);
   if (!hourly.allowed) {
     return quotaExceeded(hourly.retryAfterSeconds);
