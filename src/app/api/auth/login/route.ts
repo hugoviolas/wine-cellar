@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db } from '@/db/client';
 import { authenticateUser } from '@/domain/authenticate';
 import { getSession } from '@/domain/session';
-import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
+import { checkRateLimit, clientKeyFromHeaders, resetRateLimit } from '@/lib/rateLimit';
 import { readJsonBody } from '@/lib/readJsonBody';
 
 /**
@@ -42,11 +42,14 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
   const { email, password } = parsed.data;
 
-  const ipLimit = checkRateLimit(`login:ip:${clientKeyFromHeaders(request.headers)}`, PER_IP);
+  const ipKey = `login:ip:${clientKeyFromHeaders(request.headers)}`;
+  const emailKey = `login:email:${email.toLowerCase()}`;
+
+  const ipLimit = checkRateLimit(ipKey, PER_IP);
   if (!ipLimit.allowed) {
     return tooManyAttempts(ipLimit.retryAfterSeconds);
   }
-  const emailLimit = checkRateLimit(`login:email:${email.toLowerCase()}`, PER_EMAIL);
+  const emailLimit = checkRateLimit(emailKey, PER_EMAIL);
   if (!emailLimit.allowed) {
     return tooManyAttempts(emailLimit.retryAfterSeconds);
   }
@@ -55,6 +58,12 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   if (!user) {
     return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 });
   }
+
+  // Les seaux ne comptent que les échecs : une connexion réussie les
+  // libère, sinon quiconque connaît une adresse pouvait saturer son seau
+  // et bloquer son propriétaire pendant toute la fenêtre.
+  resetRateLimit(ipKey);
+  resetRateLimit(emailKey);
 
   const session = await getSession();
   session.userId = user.id;

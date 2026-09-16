@@ -42,4 +42,13 @@ next-env.d.ts
 
 # local tooling
 .superpowers/
+
+# Base SQLite et ses sauvegardes. Le dossier entier, pas seulement `*.db` :
+# ce motif ne couvrait pas `cave.db.backup-20260908-154830`, qui contient
+# pourtant les mêmes emails et hashes bcrypt que la base elle-même et
+# n'attendait qu'un `git add -A` pour partir sur GitHub. `.gitkeep` reste
+# suivi pour que le dossier existe au clone (le conteneur y monte un
+# volume, voir docker-compose.prod.yml).
+/data/*
+!/data/.gitkeep
 *.db

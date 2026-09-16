@@ -14,6 +14,7 @@ import {
 import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
 import { aiBottleAnalysisSchema } from '@/domain/ai/schemas';
 import { callAiForRoute } from '@/domain/ai/callForRoute';
+import { checkAiQuota } from '@/domain/ai/quota';
 
 export const POST = async (
   _request: Request,
@@ -52,6 +53,11 @@ export const POST = async (
     grapeVarieties: getGrapeVarieties(access.bottle.category, access.bottle.details),
     appellation: getAppellation(access.bottle.category, access.bottle.details),
   };
+  const quotaExceeded = checkAiQuota(auth.user.id);
+  if (quotaExceeded) {
+    return quotaExceeded;
+  }
+
   const { system, content } = buildBottleAnalysisPrompt(bottleForPrompt, new Date().getFullYear());
 
   const result = await callAiForRoute({

@@ -5,6 +5,7 @@ import { isAiAvailableForUser } from '@/domain/ai/available';
 import { wishlistExtractFromPhotoRequestSchema, aiPhotoExtractionSchema } from '@/domain/ai/schemas';
 import { buildPhotoExtractionPrompt } from '@/domain/ai/photoExtraction';
 import { callAiForRoute } from '@/domain/ai/callForRoute';
+import { checkAiQuota } from '@/domain/ai/quota';
 import { readJsonBody } from '@/lib/readJsonBody';
 
 export const POST = async (request: Request): Promise<NextResponse> => {
@@ -23,6 +24,11 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   const available = await isAiAvailableForUser(db, auth.user.id);
   if (!available) {
     return NextResponse.json({ error: 'Fonction IA indisponible.' }, { status: 403 });
+  }
+
+  const quotaExceeded = checkAiQuota(auth.user.id);
+  if (quotaExceeded) {
+    return quotaExceeded;
   }
 
   const { system, content } = buildPhotoExtractionPrompt(imageBase64, mediaType);
