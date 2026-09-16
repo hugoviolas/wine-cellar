@@ -9,13 +9,14 @@ import { getAppSettings } from '@/domain/appSettings';
 import { authenticateUser } from '@/domain/authenticate';
 import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
 import { readJsonBody } from '@/lib/readJsonBody';
+import { FIELD_MAX } from '@/domain/fieldLimits';
 
 /** Route publique : même raisonnement que la réinitialisation de mot de passe. */
 const PER_IP = { limit: 10, windowMs: 15 * 60 * 1000 };
 
 const acceptBodySchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('login') }).strict(),
-  z.object({ mode: z.literal('signup'), password: z.string().min(8) }).strict(),
+  z.object({ mode: z.literal('signup'), password: z.string().min(8).max(FIELD_MAX.password) }).strict(),
 ]);
 
 export const POST = async (

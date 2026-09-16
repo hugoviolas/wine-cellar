@@ -5,13 +5,14 @@ import { invitations, cellarMemberships } from '../db/schema';
 import { newId } from '../db/id';
 import { generateToken, hashToken } from './token';
 import type { CreateInvitationInput } from './interfaces/create-invitation-input.interface';
+import { FIELD_MAX } from './fieldLimits';
 
 export type { CreateInvitationInput };
 
 export const createInvitationBodySchema = z
   .object({
     cellarId: z.string().min(1),
-    email: z.string().email(),
+    email: z.string().email().max(FIELD_MAX.email),
     role: z.enum(['editor', 'reader']),
   })
   .strict();

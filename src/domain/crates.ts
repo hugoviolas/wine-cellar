@@ -5,6 +5,7 @@ import type { CrateRow } from '../db/rows';
 import type { CreateCrateInput } from './interfaces/create-crate-input.interface';
 import { crates, bottles } from '../db/schema';
 import { newId } from '../db/id';
+import { FIELD_MAX } from './fieldLimits';
 
 export type { CreateCrateInput };
 
@@ -18,7 +19,7 @@ export type { CreateCrateInput };
 export const createCrateBodySchema = z
   .object({
     cellarId: z.string().min(1),
-    name: z.string().optional(),
+    name: z.string().max(FIELD_MAX.shortText).optional(),
     capacity: z.number().int().positive(),
   })
   .strict();

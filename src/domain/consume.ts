@@ -4,6 +4,7 @@ import type { Db, DbOrTx } from '../db/client';
 import { bottles, crates, consumptionHistory } from '../db/schema';
 import { newId } from '../db/id';
 import type { ConsumeBottleInput } from './interfaces/consume-bottle-input.interface';
+import { FIELD_MAX } from './fieldLimits';
 
 export type { ConsumeBottleInput };
 
@@ -19,11 +20,11 @@ export class BottleUnavailableError extends Error {}
  */
 export const consumeBottleBodySchema = z
   .object({
-    consumedAt: z.string().min(1).optional(),
+    consumedAt: z.string().min(1).max(FIELD_MAX.shortText).optional(),
     quantity: z.number().int().min(1).optional(),
     rating: z.number().int().min(0).max(5).optional(),
-    comment: z.string().optional(),
-    occasion: z.string().optional(),
+    comment: z.string().max(FIELD_MAX.longText).optional(),
+    occasion: z.string().max(FIELD_MAX.shortText).optional(),
   })
   .strict();
 

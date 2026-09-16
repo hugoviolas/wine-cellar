@@ -1,4 +1,20 @@
 import { z } from 'zod';
+import { FIELD_MAX } from '../fieldLimits';
+
+/**
+ * Les champs que le modèle peut remplir atterrissent dans les mêmes
+ * colonnes que la saisie manuelle : ils suivent donc les mêmes bornes,
+ * sans quoi une génération pourrait écrire une région de 400 caractères là
+ * où un utilisateur en a 200 au maximum.
+ *
+ * `analysis` et `tastingAdvice` échappent à cette règle : ce sont des
+ * textes rédigés, déjà bornés par le `max_tokens` de l'appel (voir
+ * domain/ai/client.ts), et leur imposer une limite ferait échouer toute la
+ * génération sur une réponse un peu longue mais parfaitement valable.
+ */
+const aiShortText = (): z.ZodString => {
+  return z.string().min(1).max(FIELD_MAX.shortText);
+};
 
 /** Réponse attendue de Claude pour la fiche IA à la demande (chantier A). */
 export const aiBottleAnalysisSchema = z.object({
@@ -7,22 +23,22 @@ export const aiBottleAnalysisSchema = z.object({
   tastingAdvice: z.string().min(1),
   drinkFromYear: z.number().int().nullable(),
   drinkUntilYear: z.number().int().nullable(),
-  region: z.string().min(1).nullable(),
-  grapeVarieties: z.array(z.string().min(1)).nullable(),
-  appellation: z.string().min(1).nullable(),
+  region: aiShortText().nullable(),
+  grapeVarieties: z.array(aiShortText()).max(FIELD_MAX.listItems).nullable(),
+  appellation: aiShortText().nullable(),
 });
 export type AiBottleAnalysis = z.infer<typeof aiBottleAnalysisSchema>;
 
 /** Réponse attendue de Claude pour l'extraction par photo (chantier B). */
 export const aiPhotoExtractionSchema = z.object({
-  name: z.string().min(1).nullable(),
-  producer: z.string().min(1).nullable(),
+  name: aiShortText().nullable(),
+  producer: aiShortText().nullable(),
   vintage: z.number().int().nullable(),
   category: z.enum(['wine', 'sparkling', 'cider', 'beer', 'spirit']).nullable(),
   color: z.enum(['rouge', 'blanc', 'rose', 'autre']).nullable(),
-  region: z.string().min(1).nullable(),
-  grapeVarieties: z.array(z.string().min(1)).nullable(),
-  appellation: z.string().min(1).nullable(),
+  region: aiShortText().nullable(),
+  grapeVarieties: z.array(aiShortText()).max(FIELD_MAX.listItems).nullable(),
+  appellation: aiShortText().nullable(),
 });
 export type AiPhotoExtraction = z.infer<typeof aiPhotoExtractionSchema>;
 

@@ -12,21 +12,22 @@ import { users, cellars, cellarMemberships } from '../db/schema';
 import type { CreateWishlistItemInput } from './interfaces/create-wishlist-item-input.interface';
 import type { PromotionTarget } from './interfaces/promotion-target.interface';
 import type { UpdateWishlistItemInput } from './interfaces/update-wishlist-item-input.interface';
+import { FIELD_MAX } from './fieldLimits';
 
 export type { CreateWishlistItemInput, PromotionTarget, UpdateWishlistItemInput };
 
 export const createWishlistItemBodySchema = z
   .object({
     category: z.enum(['wine', 'sparkling', 'cider', 'beer', 'spirit']),
-    name: z.string().min(1),
-    producer: z.string().optional(),
+    name: z.string().min(1).max(FIELD_MAX.shortText),
+    producer: z.string().max(FIELD_MAX.shortText).optional(),
     vintage: z.number().int().optional(),
-    region: z.string().optional(),
-    color: z.string().optional(),
+    region: z.string().max(FIELD_MAX.shortText).optional(),
+    color: z.string().max(FIELD_MAX.shortText).optional(),
     abv: z.number().optional(),
     volumeMl: z.number().int().optional(),
     details: z.unknown(),
-    comment: z.string().max(2000).optional(),
+    comment: z.string().max(FIELD_MAX.longText).optional(),
   })
   .strict();
 
@@ -95,15 +96,15 @@ export const resolveWishlistItemAccess = async (
 /** category absente : immuable après création, comme sur bottles. */
 export const updateWishlistItemBodySchema = z
   .object({
-    name: z.string().min(1).optional(),
-    producer: z.string().nullable().optional(),
+    name: z.string().min(1).max(FIELD_MAX.shortText).optional(),
+    producer: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     vintage: z.number().int().nullable().optional(),
-    region: z.string().nullable().optional(),
-    color: z.string().nullable().optional(),
+    region: z.string().max(FIELD_MAX.shortText).nullable().optional(),
+    color: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     abv: z.number().nullable().optional(),
     volumeMl: z.number().int().nullable().optional(),
     details: z.unknown().optional(),
-    comment: z.string().max(2000).nullable().optional(),
+    comment: z.string().max(FIELD_MAX.longText).nullable().optional(),
   })
   .strict();
 

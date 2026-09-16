@@ -8,6 +8,7 @@ import type { BottleRow } from '../db/rows';
 import type { BottleWithCrate } from './interfaces/bottle-with-crate.interface';
 import type { CreateBottleInput } from './interfaces/create-bottle-input.interface';
 import type { UpdateBottleInput } from './interfaces/update-bottle-input.interface';
+import { FIELD_MAX } from './fieldLimits';
 
 export type { CreateBottleInput, UpdateBottleInput };
 
@@ -23,11 +24,11 @@ export const createBottleBodySchema = z
   .object({
     crateId: z.string().min(1),
     category: z.enum(['wine', 'sparkling', 'cider', 'beer', 'spirit']),
-    name: z.string().min(1),
-    producer: z.string().optional(),
+    name: z.string().min(1).max(FIELD_MAX.shortText),
+    producer: z.string().max(FIELD_MAX.shortText).optional(),
     vintage: z.number().int().optional(),
-    region: z.string().optional(),
-    color: z.string().optional(),
+    region: z.string().max(FIELD_MAX.shortText).optional(),
+    color: z.string().max(FIELD_MAX.shortText).optional(),
     abv: z.number().nonnegative().optional(),
     volumeMl: z.number().int().positive().optional(),
     quantity: z.number().int().min(0),
@@ -107,15 +108,15 @@ export const getBottle = async (db: Db, bottleId: string): Promise<BottleRow | n
  */
 export const updateBottleBodySchema = z
   .object({
-    name: z.string().min(1).optional(),
-    producer: z.string().nullable().optional(),
+    name: z.string().min(1).max(FIELD_MAX.shortText).optional(),
+    producer: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     vintage: z.number().int().nullable().optional(),
-    region: z.string().nullable().optional(),
-    color: z.string().nullable().optional(),
+    region: z.string().max(FIELD_MAX.shortText).nullable().optional(),
+    color: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     abv: z.number().nullable().optional(),
     volumeMl: z.number().int().nullable().optional(),
     quantity: z.number().int().min(0).optional(),
-    userNote: z.string().nullable().optional(),
+    userNote: z.string().max(FIELD_MAX.longText).nullable().optional(),
     rating: z.number().int().min(0).max(5).nullable().optional(),
     drinkFrom: z.number().int().nullable().optional(),
     drinkUntil: z.number().int().nullable().optional(),

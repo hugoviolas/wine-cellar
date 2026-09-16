@@ -1,36 +1,51 @@
 import { z } from 'zod';
+import { FIELD_MAX } from './fieldLimits';
+
+/**
+ * Champ libre d'une fiche détail : borné comme partout ailleurs (voir
+ * fieldLimits.ts). Ces schémas alimentent une colonne JSON, donc rien côté
+ * base ne viendrait limiter ce qu'on y écrit.
+ */
+const shortText = (): z.ZodString => {
+  return z.string().max(FIELD_MAX.shortText);
+};
+
+/** Liste libre : bornée en nombre d'entrées autant qu'en longueur de chacune. */
+const shortTextList = (): z.ZodDefault<z.ZodArray<z.ZodString>> => {
+  return z.array(shortText()).max(FIELD_MAX.listItems).default([]);
+};
 
 export const wineDetailsSchema = z.object({
-  grapeVarieties: z.array(z.string()).default([]),
-  appellation: z.string().optional(),
-  classification: z.string().optional(),
+  grapeVarieties: shortTextList(),
+  appellation: shortText().optional(),
+  classification: shortText().optional(),
 });
 
 export const sparklingDetailsSchema = z.object({
-  grapeVarieties: z.array(z.string()).default([]),
-  dosage: z.string().optional(),
-  method: z.string().optional(),
-  disgorgementDate: z.string().optional(),
+  grapeVarieties: shortTextList(),
+  dosage: shortText().optional(),
+  method: shortText().optional(),
+  disgorgementDate: shortText().optional(),
 });
 
 export const ciderDetailsSchema = z.object({
-  appleVarieties: z.array(z.string()).default([]),
+  appleVarieties: shortTextList(),
   method: z.enum(['bouche', 'fermier']).optional(),
   sweetness: z.enum(['doux', 'brut']).optional(),
 });
 
 export const beerDetailsSchema = z.object({
-  style: z.string().optional(),
+  style: shortText().optional(),
   ibu: z.number().optional(),
   ebc: z.number().optional(),
-  fermentation: z.string().optional(),
+  fermentation: shortText().optional(),
 });
 
 export const spiritDetailsSchema = z.object({
-  spiritType: z.string().optional(),
-  cask: z.string().optional(),
+  spiritType: shortText().optional(),
+  cask: shortText().optional(),
   age: z.number().optional(),
-  origin: z.string().optional(),
+  origin: shortText().optional(),
 });
 
 export const detailsSchemaByCategory = {
