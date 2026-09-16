@@ -1,42 +1,15 @@
 import { eq, and, gt } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db } from '../db/client';
+import type { Db, DbOrTx } from '../db/client';
 import { bottles, crates } from '../db/schema';
 import { newId } from '../db/id';
-import { parseBottleDetails, type BottleCategory } from './bottleCategories';
+import { parseBottleDetails } from './bottleCategories';
+import type { BottleRow } from '../db/rows';
+import type { BottleWithCrate } from './interfaces/bottle-with-crate.interface';
+import type { CreateBottleInput } from './interfaces/create-bottle-input.interface';
+import type { UpdateBottleInput } from './interfaces/update-bottle-input.interface';
 
-export interface CreateBottleInput {
-  crateId: string;
-  category: BottleCategory;
-  name: string;
-  producer?: string;
-  vintage?: number;
-  region?: string;
-  color?: string;
-  abv?: number;
-  volumeMl?: number;
-  quantity: number;
-  drinkFrom?: number;
-  drinkUntil?: number;
-  details: unknown;
-  /**
-   * Note personnelle posée dès la création. Volontairement absente de
-   * `createBottleBodySchema` : le formulaire d'ajout ne la propose pas
-   * (elle s'édite ensuite depuis la fiche). Sert à la promotion d'un item
-   * de wishlist, qui y reverse son commentaire.
-   */
-  userNote?: string;
-  /**
-   * Analyse IA déjà produite, reprise telle quelle. Même raison que
-   * `userNote` : absente de `createBottleBodySchema`, elle ne sert qu'à la
-   * promotion d'un item de wishlist déjà analysé, pour éviter de repayer
-   * un appel sur la bouteille créée.
-   */
-  aiAnalysis?: string | null;
-  aiPairings?: unknown;
-  aiTastingAdvice?: string | null;
-  aiGeneratedAt?: string | null;
-}
+export type { CreateBottleInput, UpdateBottleInput };
 
 /**
  * Corps attendu par `POST /api/bottles`. `.strict()` + typage explicite :
@@ -64,7 +37,7 @@ export const createBottleBodySchema = z
   })
   .strict();
 
-export async function createBottle(db: Db, input: CreateBottleInput): Promise<string> {
+export const createBottle = async (db: DbOrTx, input: CreateBottleInput): Promise<string> => {
   const details = parseBottleDetails(input.category, input.details);
   const id = newId();
   const siblingCount = (
@@ -94,47 +67,30 @@ export async function createBottle(db: Db, input: CreateBottleInput): Promise<st
     createdAt: new Date().toISOString(),
   });
   return id;
-}
+};
 
-export async function listBottlesByCellar(db: Db, cellarId: string) {
+export const listBottlesByCellar = async (db: Db, cellarId: string): Promise<BottleWithCrate[]> => {
   return db
     .select({ bottle: bottles, crate: crates })
     .from(bottles)
     .innerJoin(crates, eq(bottles.crateId, crates.id))
     .where(eq(crates.cellarId, cellarId))
     .orderBy(bottles.sortOrder);
-}
+};
 
-export async function listActiveBottlesByCellar(db: Db, cellarId: string) {
+export const listActiveBottlesByCellar = async (db: Db, cellarId: string): Promise<BottleWithCrate[]> => {
   return db
     .select({ bottle: bottles, crate: crates })
     .from(bottles)
     .innerJoin(crates, eq(bottles.crateId, crates.id))
     .where(and(eq(crates.cellarId, cellarId), gt(bottles.quantity, 0)))
     .orderBy(bottles.sortOrder);
-}
+};
 
-export async function getBottle(db: Db, bottleId: string) {
+export const getBottle = async (db: Db, bottleId: string): Promise<BottleRow | null> => {
   const [row] = await db.select().from(bottles).where(eq(bottles.id, bottleId)).limit(1);
   return row ?? null;
-}
-
-export interface UpdateBottleInput {
-  name?: string;
-  producer?: string | null;
-  vintage?: number | null;
-  region?: string | null;
-  color?: string | null;
-  abv?: number | null;
-  volumeMl?: number | null;
-  quantity?: number;
-  userNote?: string | null;
-  rating?: number | null;
-  drinkFrom?: number | null;
-  drinkUntil?: number | null;
-  crateId?: string;
-  details?: unknown;
-}
+};
 
 /**
  * Champs modifiables depuis `PATCH /api/bottles/[id]`. `.strict()` empêche
@@ -168,7 +124,7 @@ export const updateBottleBodySchema = z
   })
   .strict();
 
-export async function updateBottle(db: Db, bottleId: string, input: UpdateBottleInput): Promise<void> {
+export const updateBottle = async (db: Db, bottleId: string, input: UpdateBottleInput): Promise<void> => {
   if (input.crateId) {
     // Une bouteille déplacée vers une autre clayette est ajoutée à la fin
     // de celle-ci — son ancien sortOrder n'a aucun sens dans ce nouveau
@@ -176,11 +132,14 @@ export async function updateBottle(db: Db, bottleId: string, input: UpdateBottle
     const siblingCount = (
       await db.select({ id: bottles.id }).from(bottles).where(eq(bottles.crateId, input.crateId))
     ).length;
-    await db.update(bottles).set({ ...input, sortOrder: siblingCount }).where(eq(bottles.id, bottleId));
+    await db
+      .update(bottles)
+      .set({ ...input, sortOrder: siblingCount })
+      .where(eq(bottles.id, bottleId));
     return;
   }
   await db.update(bottles).set(input).where(eq(bottles.id, bottleId));
-}
+};
 
 /**
  * Réordonne les bouteilles actives (quantité > 0) d'une clayette. `orderedIds`
@@ -188,7 +147,7 @@ export async function updateBottle(db: Db, bottleId: string, input: UpdateBottle
  * clayette — même garde-fou que `reorderCrates`, pour éviter qu'une liste
  * incomplète ou d'une autre clayette ne corrompe le tri.
  */
-export async function reorderBottlesInCrate(db: Db, crateId: string, orderedIds: string[]): Promise<void> {
+export const reorderBottlesInCrate = async (db: Db, crateId: string, orderedIds: string[]): Promise<void> => {
   const existing = await db
     .select({ id: bottles.id })
     .from(bottles)
@@ -196,14 +155,16 @@ export async function reorderBottlesInCrate(db: Db, crateId: string, orderedIds:
   const existingIds = new Set(existing.map((b) => b.id));
   const sameSet = orderedIds.length === existing.length && orderedIds.every((id) => existingIds.has(id));
   if (!sameSet) {
-    throw new Error('La liste fournie ne correspond pas exactement aux bouteilles actives de cette clayette.');
+    throw new Error(
+      'La liste fournie ne correspond pas exactement aux bouteilles actives de cette clayette.',
+    );
   }
 
-  for (let i = 0; i < orderedIds.length; i++) {
-    await db.update(bottles).set({ sortOrder: i }).where(eq(bottles.id, orderedIds[i]));
+  for (const [index, bottleId] of orderedIds.entries()) {
+    await db.update(bottles).set({ sortOrder: index }).where(eq(bottles.id, bottleId));
   }
-}
+};
 
-export async function deleteBottle(db: Db, bottleId: string): Promise<void> {
+export const deleteBottle = async (db: Db, bottleId: string): Promise<void> => {
   await db.delete(bottles).where(eq(bottles.id, bottleId));
-}
+};

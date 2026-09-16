@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/db/client';
-import { requireApiUser } from '@/lib/requireApiUser';
+import { requireSuperAdminApi } from '@/lib/requireSuperAdminApi';
 import { setRegistrationEnabled } from '@/domain/appSettings';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const updateSettingsBodySchema = z.object({ registrationEnabled: z.boolean() }).strict();
 
-export async function PATCH(request: Request) {
-  const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
-  if (!auth.user.isSuperAdmin) {
-    return NextResponse.json({ error: 'Accès réservé au super-admin.' }, { status: 403 });
+export const PATCH = async (request: Request): Promise<NextResponse> => {
+  const auth = await requireSuperAdminApi();
+  if ('error' in auth) {
+    return auth.error;
   }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = updateSettingsBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
@@ -21,4 +21,4 @@ export async function PATCH(request: Request) {
 
   await setRegistrationEnabled(db, parsed.data.registrationEnabled);
   return NextResponse.json({ ok: true });
-}
+};

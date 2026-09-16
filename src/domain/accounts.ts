@@ -6,10 +6,12 @@ import { newId } from '../db/id';
 
 export class EmailAlreadyExistsError extends Error {}
 
-export async function createUserAccount(db: Db, email: string, password: string): Promise<string> {
+export const createUserAccount = async (db: Db, email: string, password: string): Promise<string> => {
   const normalizedEmail = email.toLowerCase();
   const [existing] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
-  if (existing) throw new EmailAlreadyExistsError();
+  if (existing) {
+    throw new EmailAlreadyExistsError();
+  }
 
   const id = newId();
   await db.insert(users).values({
@@ -21,7 +23,7 @@ export async function createUserAccount(db: Db, email: string, password: string)
     createdAt: new Date().toISOString(),
   });
   return id;
-}
+};
 
 /**
  * Inscription libre (page publique /signup) : crée un compte, une nouvelle
@@ -33,14 +35,16 @@ export async function createUserAccount(db: Db, email: string, password: string)
  * ne doit pas avoir accès par défaut à la clé API IA partagée (le
  * super-admin l'active au cas par cas depuis /admin/caves).
  */
-export async function registerSelfServeUser(
+export const registerSelfServeUser = async (
   db: Db,
   email: string,
   password: string,
-): Promise<{ userId: string; cellarId: string }> {
+): Promise<{ userId: string; cellarId: string }> => {
   const normalizedEmail = email.toLowerCase();
   const [existing] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
-  if (existing) throw new EmailAlreadyExistsError();
+  if (existing) {
+    throw new EmailAlreadyExistsError();
+  }
 
   const now = new Date().toISOString();
   const userId = newId();
@@ -71,4 +75,4 @@ export async function registerSelfServeUser(
   });
 
   return { userId, cellarId };
-}
+};

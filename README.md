@@ -80,20 +80,22 @@ redémarrages des conteneurs.
 
 ## Scripts
 
-| Commande           | Rôle                                                      |
-| ------------------ | --------------------------------------------------------- |
-| `yarn dev`         | Serveur de développement                                   |
-| `yarn build`       | Build de production                                        |
-| `yarn build:watch` | Vérification de types en continu (`tsc --watch`, sans build)|
-| `yarn start`       | Serveur de production (après `yarn build`)                  |
-| `yarn test`        | Suite de tests Vitest (logique métier de `src/domain/*`)    |
-| `yarn lint`        | ESLint                                                     |
-| `yarn db:generate` | Génère une migration Drizzle à partir du schéma            |
-| `yarn db:migrate`  | Applique les migrations à la base                           |
-| `yarn bootstrap`   | Crée le compte super-admin et sa cave initiale              |
-| `yarn docker:start`| `docker compose up start` (lance l'app en conteneur)         |
-| `yarn docker:watch`| `docker compose up build` (vérification de types en continu) |
-| `yarn docker:up`   | `docker compose up` (les deux services ensemble)              |
+| Commande            | Rôle                                                         |
+| ------------------- | ------------------------------------------------------------ |
+| `yarn dev`          | Serveur de développement                                     |
+| `yarn build`        | Build de production                                          |
+| `yarn build:watch`  | Vérification de types en continu (`tsc --watch`, sans build) |
+| `yarn start`        | Serveur de production (après `yarn build`)                   |
+| `yarn test`         | Suite de tests Vitest (logique métier de `src/domain/*`)     |
+| `yarn lint`         | ESLint (type-aware) + conventions du projet                  |
+| `yarn format`       | Vérifie le formatage Prettier (exécuté aussi en CI)          |
+| `yarn format:fix`   | Applique le formatage Prettier                               |
+| `yarn db:generate`  | Génère une migration Drizzle à partir du schéma              |
+| `yarn db:migrate`   | Applique les migrations à la base                            |
+| `yarn bootstrap`    | Crée le compte super-admin et sa cave initiale               |
+| `yarn docker:start` | `docker compose up start` (lance l'app en conteneur)         |
+| `yarn docker:watch` | `docker compose up build` (vérification de types en continu) |
+| `yarn docker:up`    | `docker compose up` (les deux services ensemble)             |
 
 ## Organisation du code
 

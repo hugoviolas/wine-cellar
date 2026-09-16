@@ -6,12 +6,13 @@ import { listCrates } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
 import { AddBottleForm } from '@/components/AddBottleForm';
+import type { ReactElement } from 'react';
 
-export default async function AddBottlePage({
+const AddBottlePage = async ({
   searchParams,
 }: {
   searchParams: Promise<{ cellarId?: string }>;
-}) {
+}): Promise<ReactElement> => {
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
   const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
@@ -23,7 +24,9 @@ export default async function AddBottlePage({
 
   return (
     <div>
-      <Link href={`/cave${cellarQuery}`} className="text-xs text-forest mb-2 inline-block">← Retour à la cave</Link>
+      <Link href={`/cave${cellarQuery}`} className="text-xs text-forest mb-2 inline-block">
+        ← Retour à la cave
+      </Link>
       <h2 className="text-lg mb-4">Ajouter une bouteille</h2>
       {crates.length === 0 || !cellarId ? (
         <p className="text-sm">Crée d’abord une clayette avant d’ajouter une bouteille.</p>
@@ -32,4 +35,6 @@ export default async function AddBottlePage({
       )}
     </div>
   );
-}
+};
+
+export default AddBottlePage;

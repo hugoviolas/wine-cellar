@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { Db } from '../db/client';
 import { consumptionHistory, bottles } from '../db/schema';
 import { checkCellarAccess, type CellarRole } from './access';
+import type { HistoryEntryWithReachability } from './interfaces/history-entry-with-reachability.interface';
 
 /**
  * `bottleReachable` : vrai seulement si la bouteille existe encore ET a
@@ -12,31 +13,42 @@ import { checkCellarAccess, type CellarRole } from './access';
  * ne proposer un lien vers la fiche bouteille que lorsqu'il mène réellement
  * quelque part.
  */
-export async function listConsumptionHistory(db: Db, cellarId: string) {
+export const listConsumptionHistory = async (
+  db: Db,
+  cellarId: string,
+): Promise<HistoryEntryWithReachability[]> => {
   return db
     .select({ ...getTableColumns(consumptionHistory), bottleReachable: bottles.crateId })
     .from(consumptionHistory)
     .leftJoin(bottles, eq(consumptionHistory.bottleId, bottles.id))
     .where(eq(consumptionHistory.cellarId, cellarId))
     .orderBy(desc(consumptionHistory.consumedAt));
-}
+};
 
 export type HistoryEntryAccessResult =
   | { status: 'ok'; entry: typeof consumptionHistory.$inferSelect; role: CellarRole }
   | { status: 'not_found' }
   | { status: 'forbidden' };
 
-export async function resolveHistoryEntryAccess(
+export const resolveHistoryEntryAccess = async (
   db: Db,
   userId: string,
   entryId: string,
-): Promise<HistoryEntryAccessResult> {
-  const [entry] = await db.select().from(consumptionHistory).where(eq(consumptionHistory.id, entryId)).limit(1);
-  if (!entry) return { status: 'not_found' };
+): Promise<HistoryEntryAccessResult> => {
+  const [entry] = await db
+    .select()
+    .from(consumptionHistory)
+    .where(eq(consumptionHistory.id, entryId))
+    .limit(1);
+  if (!entry) {
+    return { status: 'not_found' };
+  }
   const access = await checkCellarAccess(db, userId, entry.cellarId);
-  if (!access.allowed) return { status: 'forbidden' };
+  if (!access.allowed) {
+    return { status: 'forbidden' };
+  }
   return { status: 'ok', entry, role: access.role };
-}
+};
 
 /**
  * Champs modifiables d'une entrée d'historique : les valeurs saisies par
@@ -56,10 +68,14 @@ export const updateHistoryEntryBodySchema = z
   .strict();
 export type UpdateHistoryEntryInput = z.infer<typeof updateHistoryEntryBodySchema>;
 
-export async function updateHistoryEntry(db: Db, entryId: string, input: UpdateHistoryEntryInput): Promise<void> {
+export const updateHistoryEntry = async (
+  db: Db,
+  entryId: string,
+  input: UpdateHistoryEntryInput,
+): Promise<void> => {
   await db.update(consumptionHistory).set(input).where(eq(consumptionHistory.id, entryId));
-}
+};
 
-export async function deleteHistoryEntry(db: Db, entryId: string): Promise<void> {
+export const deleteHistoryEntry = async (db: Db, entryId: string): Promise<void> => {
   await db.delete(consumptionHistory).where(eq(consumptionHistory.id, entryId));
-}
+};

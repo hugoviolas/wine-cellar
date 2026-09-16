@@ -1,6 +1,7 @@
 import { db } from '@/db/client';
 import { validateResetToken } from '@/domain/passwordReset';
 import { ResetPasswordForm } from '@/components/ResetPasswordForm';
+import type { ReactElement } from 'react';
 
 const STATUS_MESSAGES: Record<'not_found' | 'expired' | 'already_used', string> = {
   not_found: "Ce lien de réinitialisation n'existe pas.",
@@ -8,7 +9,11 @@ const STATUS_MESSAGES: Record<'not_found' | 'expired' | 'already_used', string> 
   already_used: 'Ce lien de réinitialisation a déjà été utilisé.',
 };
 
-export default async function ResetPasswordPage({ params }: { params: Promise<{ token: string }> }) {
+const ResetPasswordPage = async ({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}): Promise<ReactElement> => {
   const { token } = await params;
   const lookup = await validateResetToken(db, token);
 
@@ -24,4 +29,6 @@ export default async function ResetPasswordPage({ params }: { params: Promise<{ 
       </div>
     </div>
   );
-}
+};
+
+export default ResetPasswordPage;

@@ -1,6 +1,7 @@
 import { db } from '@/db/client';
 import { getAppSettings } from '@/domain/appSettings';
 import { SignupForm } from '@/components/SignupForm';
+import type { ReactElement } from 'react';
 
 // Cette page lit les paramètres de l'application en base — jamais de
 // pré-rendu statique à la construction (qui exécuterait cette page sans
@@ -8,7 +9,7 @@ import { SignupForm } from '@/components/SignupForm';
 // environnement comme une image Docker construite sans data/).
 export const dynamic = 'force-dynamic';
 
-export default async function SignupPage() {
+const SignupPage = async (): Promise<ReactElement> => {
   const settings = await getAppSettings(db);
 
   return (
@@ -19,11 +20,13 @@ export default async function SignupPage() {
           <SignupForm />
         ) : (
           <p className="text-sm text-gray-500">
-            Les inscriptions sont actuellement fermées. Contacte l&apos;administrateur qui pourra créer
-            ton compte.
+            Les inscriptions sont actuellement fermées. Contacte l&apos;administrateur qui pourra créer ton
+            compte.
           </p>
         )}
       </div>
     </div>
   );
-}
+};
+
+export default SignupPage;

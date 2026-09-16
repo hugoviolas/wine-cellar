@@ -15,16 +15,17 @@ import {
 import { createCrate } from './crates';
 import { saveWishlistAiAnalysis } from './ai/wishlistAnalysis';
 import { getBottle } from './bottles';
-import {
-  promoteWishlistItem,
-  promoteWishlistItemBodySchema,
-  listPromotionTargets,
-} from './wishlist';
+import { promoteWishlistItem, promoteWishlistItemBodySchema, listPromotionTargets } from './wishlist';
+import { rowAt } from '../db/testRows';
 
 describe('createWishlistItem / getWishlistItem', () => {
   it('creates item with valid details for category', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
 
     const id = await createWishlistItem(db, {
       userId,
@@ -43,7 +44,11 @@ describe('createWishlistItem / getWishlistItem', () => {
 
   it('rejects invalid details for category', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
 
     await expect(
       createWishlistItem(db, { userId, category: 'cider', name: 'Cidre', details: { method: 'industriel' } }),
@@ -60,19 +65,26 @@ describe('createWishlistItemBodySchema', () => {
 
   it('accepte un corps minimal valide', () => {
     expect(
-      createWishlistItemBodySchema.safeParse({ category: 'wine', name: 'Clos Poggiale', details: {} }).success,
+      createWishlistItemBodySchema.safeParse({ category: 'wine', name: 'Clos Poggiale', details: {} })
+        .success,
     ).toBe(true);
   });
 
   it('rejette un nom vide', () => {
-    expect(createWishlistItemBodySchema.safeParse({ category: 'wine', name: '', details: {} }).success).toBe(false);
+    expect(createWishlistItemBodySchema.safeParse({ category: 'wine', name: '', details: {} }).success).toBe(
+      false,
+    );
   });
 });
 
 describe('listWishlistItems', () => {
   it('returns only items for requested user, newest first', async () => {
     const db = await createTestDb();
-    const { userId: userA } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave A' });
+    const { userId: userA } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave A',
+    });
     const userB = await createUserAccount(db, 'b@example.com', 'password123');
 
     await createWishlistItem(db, { userId: userA, category: 'wine', name: 'Premier', details: {} });
@@ -81,15 +93,19 @@ describe('listWishlistItems', () => {
 
     const items = await listWishlistItems(db, userA);
     expect(items).toHaveLength(2);
-    expect(items[0].name).toBe('Second');
-    expect(items[1].name).toBe('Premier');
+    expect(rowAt(items, 0).name).toBe('Second');
+    expect(rowAt(items, 1).name).toBe('Premier');
   });
 });
 
 describe('resolveWishlistItemAccess', () => {
   it('returns ok for owner', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const id = await createWishlistItem(db, { userId, category: 'wine', name: 'Wine', details: {} });
 
     const access = await resolveWishlistItemAccess(db, userId, id);
@@ -98,20 +114,32 @@ describe('resolveWishlistItemAccess', () => {
 
   it('returns not_found for unknown id', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const access = await resolveWishlistItemAccess(db, userId, 'unknown');
     expect(access.status).toBe('not_found');
   });
 
   it('returns forbidden for different user, even if super-admin', async () => {
     const db = await createTestDb();
-    const { userId: owner } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId: owner } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const id = await createWishlistItem(db, { userId: owner, category: 'wine', name: 'Wine', details: {} });
 
     // Use bootstrapSuperAdmin to create a second super-admin account
     // This proves there is no super-admin bypass, not just that
     // regular users fail for a different reason.
-    const { userId: otherSuperAdmin } = await bootstrapSuperAdmin(db, { email: 'admin2@example.com', password: 'x', cellarName: 'Another cellar' });
+    const { userId: otherSuperAdmin } = await bootstrapSuperAdmin(db, {
+      email: 'admin2@example.com',
+      password: 'x',
+      cellarName: 'Another cellar',
+    });
     const access = await resolveWishlistItemAccess(db, otherSuperAdmin, id);
     expect(access.status).toBe('forbidden');
   });
@@ -120,7 +148,11 @@ describe('resolveWishlistItemAccess', () => {
 describe('updateWishlistItem', () => {
   it('updates identity fields and details', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const id = await createWishlistItem(db, { userId, category: 'wine', name: 'Wine', details: {} });
 
     await updateWishlistItem(db, id, {
@@ -155,7 +187,11 @@ describe('updateWishlistItemBodySchema', () => {
 describe('deleteWishlistItem', () => {
   it('deletes an item', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const id = await createWishlistItem(db, { userId, category: 'wine', name: 'Wine', details: {} });
 
     await deleteWishlistItem(db, id);
@@ -176,7 +212,11 @@ describe('promoteWishlistItemBodySchema', () => {
 describe('promoteWishlistItem', () => {
   it("crée une vraie bouteille et marque l'item promu", async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
     const itemId = await createWishlistItem(db, {
       userId,
@@ -208,7 +248,11 @@ describe('promoteWishlistItem', () => {
 
   it('refuse de promouvoir un item déjà promu', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
     const itemId = await createWishlistItem(db, { userId, category: 'wine', name: 'Vin', details: {} });
     const item = await getWishlistItem(db, itemId);
@@ -222,20 +266,28 @@ describe('promoteWishlistItem', () => {
 describe('listPromotionTargets', () => {
   it("liste les caves où l'utilisateur peut éditer, avec leurs clayettes", async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave A' });
+    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave A',
+    });
     const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
 
     const targets = await listPromotionTargets(db, userId);
 
     expect(targets).toHaveLength(1);
-    expect(targets[0].cellarId).toBe(cellarId);
-    expect(targets[0].cellarName).toBe('Cave A');
-    expect(targets[0].crates.map((c) => c.id)).toEqual([crateId]);
+    expect(rowAt(targets, 0).cellarId).toBe(cellarId);
+    expect(rowAt(targets, 0).cellarName).toBe('Cave A');
+    expect(rowAt(targets, 0).crates.map((c) => c.id)).toEqual([crateId]);
   });
 
   it("exclut les caves où l'utilisateur n'a qu'un rôle lecteur", async () => {
     const db = await createTestDb();
-    const owner = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
+    const owner = await bootstrapSuperAdmin(db, {
+      email: 'owner@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const readerId = await createUserAccount(db, 'reader@example.com', 'password123');
     // owner ajoute readerId comme lecteur — insertion directe pour ce test,
     // la logique d'invitation n'est pas testée ici.
@@ -256,7 +308,11 @@ describe('listPromotionTargets', () => {
 describe('commentaire d’un item de wishlist', () => {
   it('enregistre le commentaire saisi à l’ajout', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
 
     const id = await createWishlistItem(db, {
       userId,
@@ -271,7 +327,11 @@ describe('commentaire d’un item de wishlist', () => {
 
   it('laisse le commentaire à null quand il est absent', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
 
     const id = await createWishlistItem(db, {
       userId,
@@ -285,7 +345,11 @@ describe('commentaire d’un item de wishlist', () => {
 
   it('traite un commentaire vide ou blanc comme une absence', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
 
     const id = await createWishlistItem(db, {
       userId,
@@ -300,7 +364,11 @@ describe('commentaire d’un item de wishlist', () => {
 
   it('permet de modifier puis d’effacer le commentaire', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave' });
+    const { userId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const id = await createWishlistItem(db, {
       userId,
       category: 'wine',
@@ -409,7 +477,14 @@ describe('promotion et analyse IA', () => {
     });
     await saveWishlistAiAnalysis(
       db,
-      { id: itemId, category: 'wine', drinkFrom: null, drinkUntil: null, region: null, details: { grapeVarieties: [] } },
+      {
+        id: itemId,
+        category: 'wine',
+        drinkFrom: null,
+        drinkUntil: null,
+        region: null,
+        details: { grapeVarieties: [] },
+      },
       {
         analysis: 'Un rouge corsé.',
         pairings: ['Agneau', 'Daube', 'Fromages'],

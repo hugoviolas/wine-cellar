@@ -6,13 +6,17 @@ import { isAiAvailableForUser } from '@/domain/ai/available';
 import { buildBottleAnalysisPrompt } from '@/domain/ai/bottleAnalysis';
 import { saveWishlistAiAnalysis, toBottleAnalysisInput } from '@/domain/ai/wishlistAnalysis';
 import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
-import type { BottleCategory } from '@/domain/bottleCategories';
 import { aiBottleAnalysisSchema } from '@/domain/ai/schemas';
-import { callClaudeForJson, AiResponseError } from '@/domain/ai/client';
+import { callAiForRoute } from '@/domain/ai/callForRoute';
 
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const POST = async (
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
   // Accès strictement privé, sans passe-droit super-admin : la wishlist est
@@ -32,7 +36,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Fonction IA indisponible.' }, { status: 403 });
   }
 
-  const category = item.category as BottleCategory;
+  const category = item.category;
   const { system, content } = buildBottleAnalysisPrompt(
     toBottleAnalysisInput({
       name: item.name,
@@ -47,16 +51,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     new Date().getFullYear(),
   );
 
-  let analysis;
-  try {
-    analysis = await callClaudeForJson({ system, content, schema: aiBottleAnalysisSchema });
-  } catch (err) {
-    if (err instanceof AiResponseError) {
-      console.error('[wishlist/ai-generate]', err);
-      return NextResponse.json({ error: 'Réponse IA invalide, réessaie.' }, { status: 502 });
-    }
-    console.error('[wishlist/ai-generate]', err);
-    return NextResponse.json({ error: 'Appel IA impossible pour le moment.' }, { status: 502 });
+  const result = await callAiForRoute({
+    route: 'wishlist/ai-generate',
+    system,
+    content,
+    schema: aiBottleAnalysisSchema,
+    invalidResponseMessage: 'Réponse IA invalide, réessaie.',
+  });
+  if ('error' in result) {
+    return result.error;
   }
 
   await saveWishlistAiAnalysis(
@@ -69,7 +72,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       region: item.region,
       details: item.details,
     },
-    analysis,
+    result.data,
   );
   return NextResponse.json({ ok: true });
-}
+};

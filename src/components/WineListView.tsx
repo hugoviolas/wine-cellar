@@ -4,24 +4,15 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { WINE_COLOR_LABELS } from '@/lib/wineColor';
-import { GARDE_STATUS_LABELS, type GardeStatus } from '@/domain/gardeStatus';
+import { GARDE_STATUS_LABELS } from '@/domain/gardeStatus';
+import type { WineListRow } from './interfaces/wine-list-row.interface';
+import type { ReactElement } from 'react';
 
-export interface WineListRow {
-  id: string;
-  name: string;
-  producer: string | null;
-  category: string;
-  color: string | null;
-  vintage: number | null;
-  quantity: number;
-  rating: number | null;
-  gardeStatus: GardeStatus;
-  createdAt: string;
-}
+export type { WineListRow };
 
 const ALL = '__all__';
 
-export function WineListView({ rows }: { rows: WineListRow[] }) {
+export const WineListView = ({ rows }: { rows: WineListRow[] }): ReactElement => {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState(ALL);
   const [color, setColor] = useState(ALL);
@@ -36,11 +27,21 @@ export function WineListView({ rows }: { rows: WineListRow[] }) {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return rows.filter((row) => {
-      if (query && !`${row.name} ${row.producer ?? ''}`.toLowerCase().includes(query)) return false;
-      if (category !== ALL && row.category !== category) return false;
-      if (color !== ALL && row.color !== color) return false;
-      if (vintage !== ALL && String(row.vintage) !== vintage) return false;
-      if (gardeStatus !== ALL && row.gardeStatus !== gardeStatus) return false;
+      if (query && !`${row.name} ${row.producer ?? ''}`.toLowerCase().includes(query)) {
+        return false;
+      }
+      if (category !== ALL && row.category !== category) {
+        return false;
+      }
+      if (color !== ALL && row.color !== color) {
+        return false;
+      }
+      if (vintage !== ALL && String(row.vintage) !== vintage) {
+        return false;
+      }
+      if (gardeStatus !== ALL && row.gardeStatus !== gardeStatus) {
+        return false;
+      }
       return true;
     });
   }, [rows, search, category, color, vintage, gardeStatus]);
@@ -66,7 +67,9 @@ export function WineListView({ rows }: { rows: WineListRow[] }) {
           >
             <option value={ALL}>Toutes</option>
             {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
         </div>
@@ -79,7 +82,9 @@ export function WineListView({ rows }: { rows: WineListRow[] }) {
           >
             <option value={ALL}>Toutes</option>
             {Object.entries(WINE_COLOR_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
         </div>
@@ -92,7 +97,9 @@ export function WineListView({ rows }: { rows: WineListRow[] }) {
           >
             <option value={ALL}>Tous</option>
             {vintageOptions.map((year) => (
-              <option key={year} value={year}>{year}</option>
+              <option key={year} value={year}>
+                {year}
+              </option>
             ))}
           </select>
         </div>
@@ -105,7 +112,9 @@ export function WineListView({ rows }: { rows: WineListRow[] }) {
           >
             <option value={ALL}>Toutes</option>
             {Object.entries(GARDE_STATUS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
         </div>
@@ -137,13 +146,23 @@ export function WineListView({ rows }: { rows: WineListRow[] }) {
                     {row.name}
                   </Link>
                 </td>
-                <td className="px-2 sm:px-3 py-2 whitespace-nowrap hidden sm:table-cell">{CATEGORY_LABELS[row.category] ?? row.category}</td>
-                <td className="px-2 sm:px-3 py-2 whitespace-nowrap">{row.color ? WINE_COLOR_LABELS[row.color] ?? row.color : '—'}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap hidden sm:table-cell">
+                  {CATEGORY_LABELS[row.category] ?? row.category}
+                </td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap">
+                  {row.color ? (WINE_COLOR_LABELS[row.color] ?? row.color) : '—'}
+                </td>
                 <td className="px-2 sm:px-3 py-2 whitespace-nowrap">{row.vintage ?? 'NV'}</td>
-                <td className="px-2 sm:px-3 py-2 whitespace-nowrap">{row.rating != null ? `${row.rating}/5` : '—'}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap">
+                  {row.rating != null ? `${row.rating}/5` : '—'}
+                </td>
                 <td className="px-2 sm:px-3 py-2 whitespace-nowrap">×{row.quantity}</td>
-                <td className="px-2 sm:px-3 py-2 whitespace-nowrap hidden sm:table-cell">{GARDE_STATUS_LABELS[row.gardeStatus]}</td>
-                <td className="px-2 sm:px-3 py-2 whitespace-nowrap text-gray-500 hidden sm:table-cell">{row.createdAt.slice(0, 10)}</td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap hidden sm:table-cell">
+                  {GARDE_STATUS_LABELS[row.gardeStatus]}
+                </td>
+                <td className="px-2 sm:px-3 py-2 whitespace-nowrap text-gray-500 hidden sm:table-cell">
+                  {row.createdAt.slice(0, 10)}
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
@@ -158,4 +177,4 @@ export function WineListView({ rows }: { rows: WineListRow[] }) {
       </div>
     </div>
   );
-}
+};

@@ -63,6 +63,7 @@ Crée le fichier `.env` de chaque environnement (jamais commité, sert à la
 fois de config compose et d'environnement du conteneur) :
 
 `/opt/cave-vin-preprod/.env` :
+
 ```env
 DATABASE_URL=file:./data/cave.db
 SESSION_SECRET=<chaîne aléatoire d'au moins 32 caractères, différente de la prod>
@@ -74,6 +75,7 @@ COOKIE_SECURE=false
 ```
 
 `/opt/cave-vin-prod/.env` :
+
 ```env
 DATABASE_URL=file:./data/cave.db
 SESSION_SECRET=<chaîne aléatoire d'au moins 32 caractères, différente de la préprod>
@@ -98,6 +100,7 @@ relaie ensuite vers l'app en HTTP en interne — seule la connexion vue par
 le navigateur compte pour le cookie.
 
 Génère un `SESSION_SECRET` avec :
+
 ```bash
 openssl rand -base64 32
 ```
@@ -153,6 +156,7 @@ récupère automatiquement au démarrage — pas besoin de lancer la commande
 que Cloudflare affiche telle quelle.
 
 Étape « Public Hostname » du même tunnel :
+
 - Subdomain : `cave`
 - Domain : `paupau-cuisine.com`
 - Service Type : `HTTP`
@@ -196,9 +200,9 @@ prod passe par la même approbation manuelle que le déploiement normal.
 
 ## Résumé de ce qui vit où
 
-| Où | Quoi |
-|---|---|
-| Dans le repo git | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret) |
+| Où                                 | Quoi                                                                                                                  |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Dans le repo git                   | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret)                                        |
 | `/opt/cave-vin-preprod/` sur le Pi | `.env` (secrets préprod), `data/` (SQLite préprod), `docker-compose.yml` (copié par le workflow à chaque déploiement) |
-| `/opt/cave-vin-prod/` sur le Pi | `.env` (secrets prod, dont `TUNNEL_TOKEN`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow) |
-| `ghcr.io/hugoviolas/wine-cellar` | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement) |
+| `/opt/cave-vin-prod/` sur le Pi    | `.env` (secrets prod, dont `TUNNEL_TOKEN`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow)       |
+| `ghcr.io/hugoviolas/wine-cellar`   | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement)     |

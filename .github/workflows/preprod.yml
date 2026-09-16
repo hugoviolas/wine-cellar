@@ -37,6 +37,12 @@ jobs:
       - name: Lint
         run: yarn lint
 
+      # Le formatage fait partie du contrat de la base de code : sans
+      # vérification ici, un fichier non formaté passe et la prochaine
+      # exécution de Prettier le reformate au milieu d'un autre diff.
+      - name: Formatage
+        run: yarn format
+
       - name: Tests
         run: yarn test
 

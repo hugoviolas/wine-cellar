@@ -8,6 +8,7 @@ import { createUserAccount, EmailAlreadyExistsError } from '@/domain/accounts';
 import { getAppSettings } from '@/domain/appSettings';
 import { authenticateUser } from '@/domain/authenticate';
 import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 /** Route publique : même raisonnement que la réinitialisation de mot de passe. */
 const PER_IP = { limit: 10, windowMs: 15 * 60 * 1000 };
@@ -17,7 +18,10 @@ const acceptBodySchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('signup'), password: z.string().min(8) }).strict(),
 ]);
 
-export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
+export const POST = async (
+  request: Request,
+  { params }: { params: Promise<{ token: string }> },
+): Promise<NextResponse> => {
   const limit = checkRateLimit(`invitation:ip:${clientKeyFromHeaders(request.headers)}`, PER_IP);
   if (!limit.allowed) {
     return NextResponse.json(
@@ -32,7 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     return NextResponse.json({ error: 'Invitation invalide ou expirée.' }, { status: 400 });
   }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = acceptBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
@@ -42,7 +46,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
   if (parsed.data.mode === 'login') {
     const auth = await requireApiUser();
-    if ('error' in auth) return auth.error;
+    if ('error' in auth) {
+      return auth.error;
+    }
     if (auth.user.email.toLowerCase() !== lookup.invitation.email.toLowerCase()) {
       return NextResponse.json(
         { error: 'Cette invitation est destinée à une autre adresse email.' },
@@ -70,7 +76,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       throw err;
     }
     const authedUser = await authenticateUser(db, lookup.invitation.email, parsed.data.password);
-    if (!authedUser) throw new Error('Échec inattendu de connexion après création du compte.');
+    if (!authedUser) {
+      throw new Error('Échec inattendu de connexion après création du compte.');
+    }
     const session = await getSession();
     session.userId = authedUser.id;
     session.issuedAt = new Date().toISOString();
@@ -79,4 +87,4 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
 
   const { cellarId } = await acceptInvitation(db, token, userId);
   return NextResponse.json({ cellarId });
-}
+};

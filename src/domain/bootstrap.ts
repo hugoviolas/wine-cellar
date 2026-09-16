@@ -2,14 +2,12 @@ import type { Db } from '../db/client';
 import { users, cellars, cellarMemberships } from '../db/schema';
 import { hashPassword } from './auth';
 import { newId } from '../db/id';
+import type { BootstrapParams } from './interfaces/bootstrap-params.interface';
+import type { BootstrapResult } from './interfaces/bootstrap-result.interface';
 
-export interface BootstrapParams {
-  email: string;
-  password: string;
-  cellarName: string;
-}
+export type { BootstrapParams };
 
-export async function bootstrapSuperAdmin(db: Db, params: BootstrapParams) {
+export const bootstrapSuperAdmin = async (db: Db, params: BootstrapParams): Promise<BootstrapResult> => {
   const now = new Date().toISOString();
   const userId = newId();
   await db.insert(users).values({
@@ -42,4 +40,4 @@ export async function bootstrapSuperAdmin(db: Db, params: BootstrapParams) {
   });
 
   return { userId, cellarId };
-}
+};

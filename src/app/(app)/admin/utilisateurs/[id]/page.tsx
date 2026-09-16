@@ -3,14 +3,21 @@ import { db } from '@/db/client';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { getUserById } from '@/domain/admin';
 import { AdminUserDetail } from '@/components/AdminUserDetail';
+import type { ReactElement } from 'react';
 
-export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
+const AdminUserDetailPage = async ({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<ReactElement> => {
   // Voir le commentaire dans /admin/utilisateurs : la garde du layout ne
   // suffit pas à empêcher le rendu de cette page.
   await requireSuperAdmin();
   const { id } = await params;
   const user = await getUserById(db, id);
-  if (!user) notFound();
+  if (!user) {
+    notFound();
+  }
 
   return (
     <div>
@@ -25,4 +32,6 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       />
     </div>
   );
-}
+};
+
+export default AdminUserDetailPage;

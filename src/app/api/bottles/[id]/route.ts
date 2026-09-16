@@ -6,12 +6,17 @@ import { getCrateById } from '@/domain/crates';
 import { canEditCellarContent } from '@/domain/permissions';
 import { resolveBottleAccess, type BottleAccessResult } from '@/domain/bottleAccess';
 import { parseBottleDetails } from '@/domain/bottleCategories';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 type BottleAccessOutcome =
-  | { bottle: Extract<BottleAccessResult, { status: 'ok' }>['bottle']; role: Extract<BottleAccessResult, { status: 'ok' }>['role']; error: null }
+  | {
+      bottle: Extract<BottleAccessResult, { status: 'ok' }>['bottle'];
+      role: Extract<BottleAccessResult, { status: 'ok' }>['role'];
+      error: null;
+    }
   | { bottle: null; role: null; error: NextResponse };
 
-async function requireBottleAccess(userId: string, bottleId: string): Promise<BottleAccessOutcome> {
+const requireBottleAccess = async (userId: string, bottleId: string): Promise<BottleAccessOutcome> => {
   const result = await resolveBottleAccess(db, userId, bottleId);
   if (result.status === 'not_found') {
     return { bottle: null, role: null, error: NextResponse.json({ error: 'Introuvable' }, { status: 404 }) };
@@ -20,25 +25,39 @@ async function requireBottleAccess(userId: string, bottleId: string): Promise<Bo
     return { bottle: null, role: null, error: NextResponse.json({ error: 'Accès refusé' }, { status: 403 }) };
   }
   return { bottle: result.bottle, role: result.role, error: null };
-}
+};
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const GET = async (
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
   const { bottle, error } = await requireBottleAccess(auth.user.id, id);
-  if (error) return error;
+  if (error) {
+    return error;
+  }
   return NextResponse.json(bottle);
-}
+};
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = async (
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
   const { bottle, role, error } = await requireBottleAccess(auth.user.id, id);
-  if (error) return error;
+  if (error) {
+    return error;
+  }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = updateBottleBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Champs de mise à jour invalides.' }, { status: 400 });
@@ -60,10 +79,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   if (parsed.data.crateId) {
-    // resolveBottleAccess ne renvoie 'ok' que pour une bouteille dont
-    // crateId est non nul (voir bottleAccess.ts), donc bottle.crateId est
-    // garanti non nul ici malgré son typage `string | null`.
-    const currentCrate = await getCrateById(db, bottle.crateId as string);
+    const currentCrate = await getCrateById(db, bottle.crateId);
     const targetCrate = await getCrateById(db, parsed.data.crateId);
     if (!targetCrate) {
       return NextResponse.json({ error: 'Clayette de destination introuvable.' }, { status: 404 });
@@ -87,17 +103,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   await updateBottle(db, id, patch);
   return NextResponse.json({ ok: true });
-}
+};
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = async (
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
   const { role, error } = await requireBottleAccess(auth.user.id, id);
-  if (error) return error;
+  if (error) {
+    return error;
+  }
   if (!canEditCellarContent(role)) {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
   await deleteBottle(db, id);
   return NextResponse.json({ ok: true });
-}
+};

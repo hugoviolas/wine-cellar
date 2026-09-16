@@ -6,22 +6,11 @@ import { WINE_COLOR_LABELS } from '@/lib/wineColor';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { useToast } from '@/components/Toast';
 import { RegionInput } from '@/components/RegionInput';
+import type { BottleFields } from './interfaces/bottle-fields.interface';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-interface BottleFields {
-  id: string;
-  category: string;
-  name: string;
-  producer: string | null;
-  vintage: number | null;
-  region: string | null;
-  color: string | null;
-  abv: number | null;
-  volumeMl: number | null;
-  grapeVarieties: string[];
-  appellation: string | null;
-}
-
-export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
+export const EditBottleForm = ({ bottle }: { bottle: BottleFields }): ReactElement => {
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -37,7 +26,7 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  function buildDetails(): Record<string, unknown> | undefined {
+  const buildDetails = (): Record<string, unknown> | undefined => {
     const grapeVarietiesArray = grapeVarieties
       .split(',')
       .map((v) => v.trim())
@@ -49,9 +38,9 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
       return { grapeVarieties: grapeVarietiesArray };
     }
     return undefined;
-  }
+  };
 
-  async function handleSubmit(event: React.FormEvent) {
+  const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
     setBusy(true);
@@ -71,8 +60,7 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
     });
     setBusy(false);
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      const message = data.error ?? 'Impossible d’enregistrer les modifications.';
+      const message = await errorMessageFromResponse(response, 'Impossible d’enregistrer les modifications.');
       setError(message);
       toast.error(message);
       return;
@@ -80,7 +68,7 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
     toast.success('Bouteille mise à jour.');
     setOpen(false);
     router.refresh();
-  }
+  };
 
   if (!open) {
     return (
@@ -91,7 +79,7 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded p-4 space-y-3">
+    <form onSubmit={(...args) => void handleSubmit(...args)} className="bg-white rounded p-4 space-y-3">
       {error && <p className="text-sm text-red-700">{error}</p>}
 
       <div>
@@ -128,7 +116,9 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
           >
             <option value="">—</option>
             {Object.entries(WINE_COLOR_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
         </div>
@@ -204,4 +194,4 @@ export function EditBottleForm({ bottle }: { bottle: BottleFields }) {
       </div>
     </form>
   );
-}
+};

@@ -53,9 +53,7 @@ describe('aiBottleAnalysisSchema', () => {
   });
 
   it('refuse un champ manquant', () => {
-    const incomplete = Object.fromEntries(
-      Object.entries(valid).filter(([key]) => key !== 'tastingAdvice'),
-    );
+    const incomplete = Object.fromEntries(Object.entries(valid).filter(([key]) => key !== 'tastingAdvice'));
     expect(aiBottleAnalysisSchema.safeParse(incomplete).success).toBe(false);
   });
 });
@@ -137,6 +135,8 @@ describe('wishlistExtractFromPhotoRequestSchema', () => {
   });
 
   it('refuse un imageBase64 vide', () => {
-    expect(wishlistExtractFromPhotoRequestSchema.safeParse({ ...valid, imageBase64: '' }).success).toBe(false);
+    expect(wishlistExtractFromPhotoRequestSchema.safeParse({ ...valid, imageBase64: '' }).success).toBe(
+      false,
+    );
   });
 });

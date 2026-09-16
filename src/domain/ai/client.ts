@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { z } from 'zod';
 import type { AiImageMediaType } from './schemas';
+import type { ClaudeJsonCallParams } from './interfaces/claude-json-call-params.interface';
+
+export type { ClaudeJsonCallParams };
 
 const MODEL = 'claude-sonnet-5';
 
@@ -10,13 +12,13 @@ const MODEL = 'claude-sonnet-5';
  * forcément présente à ce moment — même précaution que SESSION_SECRET
  * (voir src/domain/session.ts).
  */
-function getClient(): Anthropic {
+const getClient = (): Anthropic => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY doit être défini pour appeler Claude.');
   }
   return new Anthropic({ apiKey });
-}
+};
 
 export class AiResponseError extends Error {}
 
@@ -27,23 +29,17 @@ export type AiImageBlock = {
 };
 export type AiMessageContent = string | Array<AiTextBlock | AiImageBlock>;
 
-export interface ClaudeJsonCallParams<T> {
-  system: string;
-  content: AiMessageContent;
-  schema: z.ZodType<T>;
-}
-
 /**
  * Claude entoure parfois sa réponse d'un bloc de code markdown (```json ...
  * ``` ou ``` ... ```) même quand le prompt demande explicitement du JSON
  * seul, sans texte autour — constaté en usage réel malgré la consigne.
  * Retire cet entourage s'il est présent avant le `JSON.parse`.
  */
-function stripMarkdownCodeFence(text: string): string {
+const stripMarkdownCodeFence = (text: string): string => {
   const trimmed = text.trim();
   const match = trimmed.match(/^```(?:json)?\s*\n([\s\S]*?)\n```$/);
-  return match ? match[1] : trimmed;
-}
+  return match?.[1] ?? trimmed;
+};
 
 /**
  * Envoie un message à Claude, extrait le premier bloc texte de la réponse,
@@ -53,7 +49,11 @@ function stripMarkdownCodeFence(text: string): string {
  * correspond pas au schéma — pas de nouvelle tentative automatique en V1,
  * l'utilisateur relance manuellement (bouton Régénérer / autre photo).
  */
-export async function callClaudeForJson<T>({ system, content, schema }: ClaudeJsonCallParams<T>): Promise<T> {
+export const callClaudeForJson = async <T>({
+  system,
+  content,
+  schema,
+}: ClaudeJsonCallParams<T>): Promise<T> => {
   const client = getClient();
   const message = await client.messages.create({
     model: MODEL,
@@ -90,4 +90,4 @@ export async function callClaudeForJson<T>({ system, content, schema }: ClaudeJs
     throw new AiResponseError('Réponse Claude non conforme au schéma attendu.');
   }
   return result.data;
-}
+};

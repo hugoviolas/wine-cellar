@@ -12,12 +12,6 @@ const WINE_COLOR_STRIPE: Record<string, string> = {
   autre: 'border-l-4 border-l-gray-400',
 };
 
-/** Tailwind classes for a colored side stripe matching a wine's `color` field, or empty if none/unset. */
-export function wineColorStripeClass(color: string | null): string {
-  if (!color) return '';
-  return WINE_COLOR_STRIPE[color] ?? '';
-}
-
 const WINE_COLOR_DOT: Record<string, string> = {
   rouge: 'bg-[#7a2331]',
   blanc: 'bg-[#d4af37]',
@@ -25,8 +19,18 @@ const WINE_COLOR_DOT: Record<string, string> = {
   autre: 'bg-gray-400',
 };
 
-/** Tailwind background class for a small color marker (ex. une puce de bouteille), gris clair si couleur inconnue. */
-export function wineColorDotClass(color: string | null): string {
-  if (!color) return 'bg-gray-200';
+/** Classes Tailwind du liseré latéral correspondant à la couleur d'un vin, vide si inconnue. */
+export const wineColorStripeClass = (color: string | null): string => {
+  if (!color) {
+    return '';
+  }
+  return WINE_COLOR_STRIPE[color] ?? '';
+};
+
+/** Classe Tailwind de la pastille de couleur d'une bouteille, gris clair si couleur inconnue. */
+export const wineColorDotClass = (color: string | null): string => {
+  if (!color) {
+    return 'bg-gray-200';
+  }
   return WINE_COLOR_DOT[color] ?? 'bg-gray-200';
-}
+};

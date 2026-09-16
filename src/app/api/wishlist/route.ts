@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db/client';
 import { requireApiUser } from '@/lib/requireApiUser';
 import { createWishlistItem, createWishlistItemBodySchema } from '@/domain/wishlist';
+import { readJsonBody } from '@/lib/readJsonBody';
 
-export async function POST(request: Request) {
+export const POST = async (request: Request): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = createWishlistItemBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });
@@ -19,4 +22,4 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Détails invalides pour cette catégorie' }, { status: 400 });
   }
-}
+};

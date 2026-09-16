@@ -23,20 +23,24 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-export function proxy(request: NextRequest) {
+export const proxy = (request: NextRequest): NextResponse => {
   if (!MUTATING_METHODS.has(request.method)) {
     return NextResponse.next();
   }
 
   const origin = request.headers.get('origin');
-  if (!origin) return NextResponse.next();
+  if (!origin) {
+    return NextResponse.next();
+  }
 
   // `host` est celui que voit le navigateur : le domaine public derrière le
   // tunnel Cloudflare en production, `ip:3001` en préprod sur le LAN. Dans
   // les deux cas il correspond à l'origine d'une requête légitime issue de
   // l'app elle-même.
   const host = request.headers.get('host');
-  if (!host) return NextResponse.next();
+  if (!host) {
+    return NextResponse.next();
+  }
 
   let originHost: string;
   try {
@@ -50,7 +54,7 @@ export function proxy(request: NextRequest) {
   }
 
   return NextResponse.next();
-}
+};
 
 export const config = {
   // Exclut les assets statiques et l'optimiseur d'images : rien n'y est

@@ -24,7 +24,11 @@ describe('resolveViewedCellarId', () => {
       cellarName: 'Cave admin',
     });
     const otherUserId = await createUserAccount(db, 'other@example.com', 'x');
-    const other = await bootstrapSuperAdmin(db, { email: 'x2@example.com', password: 'x', cellarName: 'Autre cave' });
+    const other = await bootstrapSuperAdmin(db, {
+      email: 'x2@example.com',
+      password: 'x',
+      cellarName: 'Autre cave',
+    });
     void otherUserId;
 
     expect(await resolveViewedCellarId(db, adminId, other.cellarId)).toBe(other.cellarId);

@@ -13,8 +13,20 @@ import {
   removeMembership,
   CannotModifyOwnerError,
 } from './cellarMembers';
+import { firstRow } from '../db/testRows';
+import type { Db } from '../db/client';
 
-async function addMember(db: Awaited<ReturnType<typeof createTestDb>>, cellarId: string, email: string, role: 'editor' | 'reader') {
+interface AddedMember {
+  userId: string;
+  membershipId: string;
+}
+
+const addMember = async (
+  db: Db,
+  cellarId: string,
+  email: string,
+  role: 'editor' | 'reader',
+): Promise<AddedMember> => {
   const userId = await createUserAccount(db, email, 'x');
   const membershipId = newId();
   await db.insert(cellarMemberships).values({
@@ -25,12 +37,16 @@ async function addMember(db: Awaited<ReturnType<typeof createTestDb>>, cellarId:
     createdAt: new Date().toISOString(),
   });
   return { userId, membershipId };
-}
+};
 
 describe('listCellarMembersWithEmail', () => {
   it('liste les membres avec leur email et leur rôle', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'owner@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     await addMember(db, cellarId, 'editeur@example.com', 'editor');
 
     const members = await listCellarMembersWithEmail(db, cellarId);
@@ -41,7 +57,11 @@ describe('listCellarMembersWithEmail', () => {
 
   it('conserve le membership avec un email nul quand le membre est supprimé', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'owner@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const { userId } = await addMember(db, cellarId, 'editeur@example.com', 'editor');
 
     await deleteUser(db, userId);
@@ -57,7 +77,11 @@ describe('listCellarMembersWithEmail', () => {
 describe('updateMembershipRole', () => {
   it('change le rôle d’un membre non-owner', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'owner@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const { membershipId } = await addMember(db, cellarId, 'membre@example.com', 'reader');
 
     await updateMembershipRole(db, membershipId, 'editor');
@@ -67,8 +91,14 @@ describe('updateMembershipRole', () => {
 
   it('refuse de changer le rôle du owner', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
-    const [ownerMembership] = await db.select().from(cellarMemberships).where(eq(cellarMemberships.cellarId, cellarId));
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'owner@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
+    const ownerMembership = firstRow(
+      await db.select().from(cellarMemberships).where(eq(cellarMemberships.cellarId, cellarId)),
+    );
 
     await expect(updateMembershipRole(db, ownerMembership.id, 'editor')).rejects.toBeInstanceOf(
       CannotModifyOwnerError,
@@ -79,7 +109,11 @@ describe('updateMembershipRole', () => {
 describe('removeMembership', () => {
   it('retire un membre non-owner', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'owner@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
     const { membershipId } = await addMember(db, cellarId, 'membre@example.com', 'reader');
 
     await removeMembership(db, membershipId);
@@ -88,8 +122,14 @@ describe('removeMembership', () => {
 
   it('refuse de retirer le owner', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'owner@example.com', password: 'x', cellarName: 'Cave' });
-    const [ownerMembership] = await db.select().from(cellarMemberships).where(eq(cellarMemberships.cellarId, cellarId));
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'owner@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    });
+    const ownerMembership = firstRow(
+      await db.select().from(cellarMemberships).where(eq(cellarMemberships.cellarId, cellarId)),
+    );
 
     await expect(removeMembership(db, ownerMembership.id)).rejects.toBeInstanceOf(CannotModifyOwnerError);
   });

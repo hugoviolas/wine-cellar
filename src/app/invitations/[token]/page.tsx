@@ -5,6 +5,7 @@ import { getAppSettings } from '@/domain/appSettings';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { AcceptInvitationForm } from '@/components/AcceptInvitationForm';
+import type { ReactElement } from 'react';
 
 const STATUS_MESSAGES: Record<'not_found' | 'expired' | 'already_used', string> = {
   not_found: "Ce lien d'invitation n'existe pas.",
@@ -12,7 +13,7 @@ const STATUS_MESSAGES: Record<'not_found' | 'expired' | 'already_used', string> 
   already_used: 'Cette invitation a déjà été utilisée.',
 };
 
-export default async function InvitationPage({ params }: { params: Promise<{ token: string }> }) {
+const InvitationPage = async ({ params }: { params: Promise<{ token: string }> }): Promise<ReactElement> => {
   const { token } = await params;
   const lookup = await getInvitationByToken(db, token);
 
@@ -30,7 +31,9 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
   let currentUserEmail: string | null = null;
   if (session.userId) {
     const [user] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
-    if (user) currentUserEmail = user.email;
+    if (user) {
+      currentUserEmail = user.email;
+    }
   }
 
   const settings = await getAppSettings(db);
@@ -52,11 +55,12 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
           />
         ) : (
           <p className="text-sm">
-            Les inscriptions sont actuellement fermées. Contacte l’administrateur qui pourra créer
-            ton compte.
+            Les inscriptions sont actuellement fermées. Contacte l’administrateur qui pourra créer ton compte.
           </p>
         )}
       </div>
     </div>
   );
-}
+};
+
+export default InvitationPage;

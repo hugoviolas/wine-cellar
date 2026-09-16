@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { buildPhotoExtractionPrompt } from './photoExtraction';
+import { rowAt } from '../../db/testRows';
 
 describe('buildPhotoExtractionPrompt', () => {
-  it('place l\'image en premier bloc avec le bon media_type et les bonnes données', () => {
+  it("place l'image en premier bloc avec le bon media_type et les bonnes données", () => {
     const { content } = buildPhotoExtractionPrompt('AAAA_base64_data', 'image/jpeg');
 
     expect(Array.isArray(content)).toBe(true);
@@ -18,8 +19,8 @@ describe('buildPhotoExtractionPrompt', () => {
     const { content } = buildPhotoExtractionPrompt('AAAA', 'image/png');
     const blocks = content as Array<{ type: string; text?: string }>;
 
-    expect(blocks[1].type).toBe('text');
-    const text = blocks[1].text as string;
+    expect(rowAt(blocks, 1).type).toBe('text');
+    const text = rowAt(blocks, 1).text as string;
     expect(text).toContain('wine');
     expect(text).toContain('sparkling');
     expect(text).toContain('cider');
@@ -34,7 +35,7 @@ describe('buildPhotoExtractionPrompt', () => {
   it('indique que la couleur est pertinente pour le vin ET le champagne/effervescent', () => {
     const { content } = buildPhotoExtractionPrompt('AAAA', 'image/png');
     const blocks = content as Array<{ type: string; text?: string }>;
-    const text = blocks[1].text as string;
+    const text = rowAt(blocks, 1).text as string;
 
     expect(text).toContain('"wine" ou "sparkling"');
   });

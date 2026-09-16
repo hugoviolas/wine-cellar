@@ -2,16 +2,23 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/db/client';
 import { requireSuperAdminApi } from '@/lib/requireSuperAdminApi';
-import { listAllCellarsWithOwner, setCellarAiEnabled, deleteCellarCascade } from '@/domain/admin';
+import { setCellarAiEnabled, deleteCellarCascade } from '@/domain/admin';
+import { getCellarById } from '@/domain/cellars';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const updateCellarBodySchema = z.object({ aiEnabled: z.boolean() }).strict();
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = async (
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireSuperAdminApi();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = updateCellarBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
@@ -19,18 +26,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   await setCellarAiEnabled(db, id, parsed.data.aiEnabled);
   return NextResponse.json({ ok: true });
-}
+};
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = async (
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> => {
   const auth = await requireSuperAdminApi();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
   const { id } = await params;
 
-  const cellars = await listAllCellarsWithOwner(db);
-  if (!cellars.some((c) => c.id === id)) {
+  const cellar = await getCellarById(db, id);
+  if (!cellar) {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
 
   await deleteCellarCascade(db, id);
   return NextResponse.json({ ok: true });
-}
+};

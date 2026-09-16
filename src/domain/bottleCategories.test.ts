@@ -61,7 +61,10 @@ describe('parseBottleDetails', () => {
 
 describe('getGrapeVarieties', () => {
   it('lit les cépages pour un vin', () => {
-    expect(getGrapeVarieties('wine', { grapeVarieties: ['Niellucciu', 'Syrah'] })).toEqual(['Niellucciu', 'Syrah']);
+    expect(getGrapeVarieties('wine', { grapeVarieties: ['Niellucciu', 'Syrah'] })).toEqual([
+      'Niellucciu',
+      'Syrah',
+    ]);
   });
 
   it('lit les cépages pour un effervescent', () => {

@@ -4,13 +4,16 @@ import { requireApiUser } from '@/lib/requireApiUser';
 import { isAiAvailableForUser } from '@/domain/ai/available';
 import { wishlistExtractFromPhotoRequestSchema, aiPhotoExtractionSchema } from '@/domain/ai/schemas';
 import { buildPhotoExtractionPrompt } from '@/domain/ai/photoExtraction';
-import { callClaudeForJson, AiResponseError } from '@/domain/ai/client';
+import { callAiForRoute } from '@/domain/ai/callForRoute';
+import { readJsonBody } from '@/lib/readJsonBody';
 
-export async function POST(request: Request) {
+export const POST = async (request: Request): Promise<NextResponse> => {
   const auth = await requireApiUser();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = wishlistExtractFromPhotoRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Corps de requête invalide.' }, { status: 400 });
@@ -23,15 +26,15 @@ export async function POST(request: Request) {
   }
 
   const { system, content } = buildPhotoExtractionPrompt(imageBase64, mediaType);
-  try {
-    const extracted = await callClaudeForJson({ system, content, schema: aiPhotoExtractionSchema });
-    return NextResponse.json(extracted);
-  } catch (err) {
-    if (err instanceof AiResponseError) {
-      console.error('[wishlist/extract-from-photo]', err);
-      return NextResponse.json({ error: 'Réponse IA invalide, réessaie avec une autre photo.' }, { status: 502 });
-    }
-    console.error('[wishlist/extract-from-photo]', err);
-    return NextResponse.json({ error: 'Appel IA impossible pour le moment.' }, { status: 502 });
+  const result = await callAiForRoute({
+    route: 'wishlist/extract-from-photo',
+    system,
+    content,
+    schema: aiPhotoExtractionSchema,
+    invalidResponseMessage: 'Réponse IA invalide, réessaie avec une autre photo.',
+  });
+  if ('error' in result) {
+    return result.error;
   }
-}
+  return NextResponse.json(result.data);
+};

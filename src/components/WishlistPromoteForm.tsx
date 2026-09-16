@@ -5,8 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 import { crateLabel } from '@/lib/crateLabel';
 import type { PromotionTarget } from '@/domain/wishlist';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
+import { stringFieldFromResponse } from '@/lib/apiJson';
 
-export function WishlistPromoteForm({ itemId, targets }: { itemId: string; targets: PromotionTarget[] }) {
+export const WishlistPromoteForm = ({
+  itemId,
+  targets,
+}: {
+  itemId: string;
+  targets: PromotionTarget[];
+}): ReactElement => {
   const router = useRouter();
   const toast = useToast();
   const firstCrate = targets[0]?.crates[0];
@@ -14,7 +23,7 @@ export function WishlistPromoteForm({ itemId, targets }: { itemId: string; targe
   const [quantity, setQuantity] = useState(1);
   const [busy, setBusy] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent) {
+  const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     const response = await fetch(`/api/wishlist/${itemId}/promote`, {
@@ -24,18 +33,19 @@ export function WishlistPromoteForm({ itemId, targets }: { itemId: string; targe
     });
     if (!response.ok) {
       setBusy(false);
-      const data = await response.json().catch(() => ({}));
-      toast.error(data.error ?? "Impossible d'ajouter cette bouteille à la cave.");
+      toast.error(
+        await errorMessageFromResponse(response, "Impossible d'ajouter cette bouteille à la cave."),
+      );
       return;
     }
-    const data = await response.json();
+    const bottleId = await stringFieldFromResponse(response, 'bottleId');
     toast.success('Bouteille ajoutée à la cave.');
-    router.push(`/bottles/${data.bottleId}`);
+    router.push(bottleId === null ? '/cave' : `/bottles/${bottleId}`);
     router.refresh();
-  }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded p-4 space-y-3">
+    <form onSubmit={(...args) => void handleSubmit(...args)} className="bg-white rounded p-4 space-y-3">
       <div>
         <label className="block text-xs uppercase tracking-wide mb-1">Clayette</label>
         <select
@@ -47,7 +57,9 @@ export function WishlistPromoteForm({ itemId, targets }: { itemId: string; targe
           {targets.map((target) => (
             <optgroup key={target.cellarId} label={target.cellarName}>
               {target.crates.map((crate) => (
-                <option key={crate.id} value={crate.id}>{crateLabel(crate.number, crate.name)}</option>
+                <option key={crate.id} value={crate.id}>
+                  {crateLabel(crate.number, crate.name)}
+                </option>
               ))}
             </optgroup>
           ))}
@@ -64,9 +76,13 @@ export function WishlistPromoteForm({ itemId, targets }: { itemId: string; targe
           required
         />
       </div>
-      <button type="submit" disabled={busy || !crateId} className="bg-forest text-cream rounded px-4 py-2 text-sm">
+      <button
+        type="submit"
+        disabled={busy || !crateId}
+        className="bg-forest text-cream rounded px-4 py-2 text-sm"
+      >
         Ajouter à ma cave
       </button>
     </form>
   );
-}
+};

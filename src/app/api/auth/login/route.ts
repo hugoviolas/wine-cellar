@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { db } from '@/db/client';
 import { authenticateUser } from '@/domain/authenticate';
 import { getSession } from '@/domain/session';
 import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 /**
  * Deux seaux distincts : par IP (limite un attaquant unique qui balaie
@@ -13,25 +15,43 @@ import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
 const PER_IP = { limit: 10, windowMs: 5 * 60 * 1000 };
 const PER_EMAIL = { limit: 5, windowMs: 5 * 60 * 1000 };
 
-function tooManyAttempts(retryAfterSeconds: number) {
+/**
+ * Validation volontairement minimale — pas de `.email()` ni de longueur : ce
+ * n'est pas une inscription, et refuser en 400 une adresse mal formée
+ * apprendrait à un attaquant ce que la base considère comme une adresse
+ * valide. Tout ce qui n'authentifie pas ressort en 401 identique.
+ */
+const loginBodySchema = z
+  .object({
+    email: z.string().min(1),
+    password: z.string().min(1),
+  })
+  .strict();
+
+const tooManyAttempts = (retryAfterSeconds: number): NextResponse => {
   return NextResponse.json(
     { error: 'Trop de tentatives de connexion. Réessaie dans quelques minutes.' },
     { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } },
   );
-}
+};
 
-export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
-  if (!body || typeof body.email !== 'string' || typeof body.password !== 'string') {
+export const POST = async (request: Request): Promise<NextResponse> => {
+  const parsed = loginBodySchema.safeParse(await readJsonBody(request));
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Email et mot de passe requis' }, { status: 400 });
   }
+  const { email, password } = parsed.data;
 
   const ipLimit = checkRateLimit(`login:ip:${clientKeyFromHeaders(request.headers)}`, PER_IP);
-  if (!ipLimit.allowed) return tooManyAttempts(ipLimit.retryAfterSeconds);
-  const emailLimit = checkRateLimit(`login:email:${body.email.toLowerCase()}`, PER_EMAIL);
-  if (!emailLimit.allowed) return tooManyAttempts(emailLimit.retryAfterSeconds);
+  if (!ipLimit.allowed) {
+    return tooManyAttempts(ipLimit.retryAfterSeconds);
+  }
+  const emailLimit = checkRateLimit(`login:email:${email.toLowerCase()}`, PER_EMAIL);
+  if (!emailLimit.allowed) {
+    return tooManyAttempts(emailLimit.retryAfterSeconds);
+  }
 
-  const user = await authenticateUser(db, body.email, body.password);
+  const user = await authenticateUser(db, email, password);
   if (!user) {
     return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 });
   }
@@ -42,4 +62,4 @@ export async function POST(request: Request) {
   await session.save();
 
   return NextResponse.json({ ok: true });
-}
+};

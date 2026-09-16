@@ -7,7 +7,7 @@ import { hashPassword } from './auth';
 
 const RESET_TTL_MS = 24 * 60 * 60 * 1000;
 
-export async function createResetToken(db: Db, userId: string): Promise<string> {
+export const createResetToken = async (db: Db, userId: string): Promise<string> => {
   const token = generateToken();
   await db.insert(passwordResetTokens).values({
     id: newId(),
@@ -18,7 +18,7 @@ export async function createResetToken(db: Db, userId: string): Promise<string> 
     createdAt: new Date().toISOString(),
   });
   return token;
-}
+};
 
 export type ResetTokenLookup =
   | { status: 'valid'; userId: string }
@@ -26,19 +26,29 @@ export type ResetTokenLookup =
   | { status: 'expired' }
   | { status: 'already_used' };
 
-export async function validateResetToken(db: Db, token: string): Promise<ResetTokenLookup> {
-  const [row] = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token)).limit(1);
+export const validateResetToken = async (db: Db, token: string): Promise<ResetTokenLookup> => {
+  const [row] = await db
+    .select()
+    .from(passwordResetTokens)
+    .where(eq(passwordResetTokens.token, token))
+    .limit(1);
   // `userId` nul : le compte a été supprimé depuis (voir deleteUser dans
   // domain/admin.ts, qui met les jetons de réinitialisation orphelins à
   // `null` plutôt que de les supprimer) — un jeton sans compte associé
   // n'a plus de sens, traité comme introuvable.
-  if (!row || row.userId === null) return { status: 'not_found' };
-  if (row.usedAt) return { status: 'already_used' };
-  if (new Date(row.expiresAt).getTime() < Date.now()) return { status: 'expired' };
+  if (!row || row.userId === null) {
+    return { status: 'not_found' };
+  }
+  if (row.usedAt) {
+    return { status: 'already_used' };
+  }
+  if (new Date(row.expiresAt).getTime() < Date.now()) {
+    return { status: 'expired' };
+  }
   return { status: 'valid', userId: row.userId };
-}
+};
 
-export async function resetPasswordWithToken(db: Db, token: string, newPassword: string): Promise<void> {
+export const resetPasswordWithToken = async (db: Db, token: string, newPassword: string): Promise<void> => {
   const lookup = await validateResetToken(db, token);
   if (lookup.status !== 'valid') {
     throw new Error('Lien de réinitialisation invalide.');
@@ -57,4 +67,4 @@ export async function resetPasswordWithToken(db: Db, token: string, newPassword:
     .update(passwordResetTokens)
     .set({ usedAt: new Date().toISOString() })
     .where(eq(passwordResetTokens.token, token));
-}
+};

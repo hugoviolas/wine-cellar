@@ -6,7 +6,11 @@ import { getCellarById, updateCellarInfo } from './cellars';
 describe('getCellarById', () => {
   it('retourne la cave', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Ma Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Ma Cave',
+    });
     const cellar = await getCellarById(db, cellarId);
     expect(cellar?.name).toBe('Ma Cave');
     expect(cellar?.brand).toBeNull();
@@ -23,7 +27,11 @@ describe('getCellarById', () => {
 describe('updateCellarInfo', () => {
   it('met à jour la marque, le modèle et les notes', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Ma Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Ma Cave',
+    });
 
     await updateCellarInfo(db, cellarId, {
       brand: 'EuroCave',
@@ -39,7 +47,11 @@ describe('updateCellarInfo', () => {
 
   it('efface un champ si une valeur vide est fournie', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Ma Cave' });
+    const { cellarId } = await bootstrapSuperAdmin(db, {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Ma Cave',
+    });
     await updateCellarInfo(db, cellarId, { brand: 'EuroCave', model: null, notes: null });
 
     await updateCellarInfo(db, cellarId, { brand: '', model: null, notes: null });

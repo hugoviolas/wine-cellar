@@ -9,12 +9,16 @@ import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { WishlistEditForm } from '@/components/WishlistEditForm';
 import { WishlistPromoteForm } from '@/components/WishlistPromoteForm';
+import type { ReactElement } from 'react';
+import { stringArrayOrEmpty } from '@/lib/stringArray';
 
-export default async function WishlistItemPage({ params }: { params: Promise<{ id: string }> }) {
+const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> }): Promise<ReactElement> => {
   const user = await requireUser();
   const { id } = await params;
   const access = await resolveWishlistItemAccess(db, user.id, id);
-  if (access.status !== 'ok') notFound();
+  if (access.status !== 'ok') {
+    notFound();
+  }
   const item = access.item;
   const promotionTargets = (item.status === 'pending' ? await listPromotionTargets(db, user.id) : []).filter(
     (target) => target.crates.length > 0,
@@ -22,11 +26,13 @@ export default async function WishlistItemPage({ params }: { params: Promise<{ i
   // Génération proposée seulement tant que l'item est en attente : une fois
   // promu, c'est la fiche bouteille qui porte l'analyse et sa régénération.
   const aiAvailable = item.status === 'pending' && (await isAiAvailableForUser(db, user.id));
-  const pairings = Array.isArray(item.aiPairings) ? (item.aiPairings as string[]) : [];
+  const pairings = stringArrayOrEmpty(item.aiPairings);
 
   return (
     <div className="max-w-md">
-      <Link href="/wishlist" className="text-xs text-forest mb-2 inline-block">← Retour à la wishlist</Link>
+      <Link href="/wishlist" className="text-xs text-forest mb-2 inline-block">
+        ← Retour à la wishlist
+      </Link>
       <h2 className="text-xl mb-1">{item.name}</h2>
       <p className="text-xs text-gray-500 mb-4">
         {item.vintage ?? 'NV'} · {item.region ?? '—'} · {CATEGORY_LABELS[item.category] ?? item.category}
@@ -83,7 +89,10 @@ export default async function WishlistItemPage({ params }: { params: Promise<{ i
           <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Accords mets-vin</h4>
           <div className="flex flex-wrap gap-2">
             {pairings.map((pairing, index) => (
-              <span key={`${index}-${pairing}`} className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
+              <span
+                key={`${index}-${pairing}`}
+                className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1"
+              >
                 {pairing}
               </span>
             ))}
@@ -120,4 +129,6 @@ export default async function WishlistItemPage({ params }: { params: Promise<{ i
       />
     </div>
   );
-}
+};
+
+export default WishlistItemPage;

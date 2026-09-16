@@ -32,7 +32,9 @@ export const cellars = sqliteTable('cellars', {
 
 export const cellarMemberships = sqliteTable('cellar_memberships', {
   id: text('id').primaryKey(),
-  cellarId: text('cellar_id').notNull().references(() => cellars.id),
+  cellarId: text('cellar_id')
+    .notNull()
+    .references(() => cellars.id),
   userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
   role: text('role', { enum: ['owner', 'editor', 'reader'] }).notNull(),
   createdAt: text('created_at').notNull(),
@@ -40,7 +42,9 @@ export const cellarMemberships = sqliteTable('cellar_memberships', {
 
 export const crates = sqliteTable('crates', {
   id: text('id').primaryKey(),
-  cellarId: text('cellar_id').notNull().references(() => cellars.id),
+  cellarId: text('cellar_id')
+    .notNull()
+    .references(() => cellars.id),
   number: integer('number').notNull().default(1),
   name: text('name'),
   capacity: integer('capacity').notNull(),
@@ -78,7 +82,9 @@ export const bottles = sqliteTable('bottles', {
 export const consumptionHistory = sqliteTable('consumption_history', {
   id: text('id').primaryKey(),
   bottleId: text('bottle_id').references(() => bottles.id, { onDelete: 'set null' }),
-  cellarId: text('cellar_id').notNull().references(() => cellars.id),
+  cellarId: text('cellar_id')
+    .notNull()
+    .references(() => cellars.id),
   consumedByUserId: text('consumed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   consumedAt: text('consumed_at').notNull(),
   quantity: integer('quantity').notNull().default(1),
@@ -93,11 +99,15 @@ export const consumptionHistory = sqliteTable('consumption_history', {
 
 export const invitations = sqliteTable('invitations', {
   id: text('id').primaryKey(),
-  cellarId: text('cellar_id').notNull().references(() => cellars.id),
+  cellarId: text('cellar_id')
+    .notNull()
+    .references(() => cellars.id),
   email: text('email').notNull(),
   role: text('role', { enum: ['editor', 'reader'] }).notNull(),
   token: text('token').notNull().unique(),
-  status: text('status', { enum: ['pending', 'accepted', 'expired'] }).notNull().default('pending'),
+  status: text('status', { enum: ['pending', 'accepted', 'expired'] })
+    .notNull()
+    .default('pending'),
   invitedByUserId: text('invited_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   expiresAt: text('expires_at').notNull(),
   createdAt: text('created_at').notNull(),
@@ -147,7 +157,9 @@ export const wishlistItems = sqliteTable('wishlist_items', {
   aiPairings: text('ai_pairings', { mode: 'json' }),
   aiTastingAdvice: text('ai_tasting_advice'),
   aiGeneratedAt: text('ai_generated_at'),
-  status: text('status', { enum: ['pending', 'promoted'] }).notNull().default('pending'),
+  status: text('status', { enum: ['pending', 'promoted'] })
+    .notNull()
+    .default('pending'),
   promotedBottleId: text('promoted_bottle_id').references(() => bottles.id, { onDelete: 'set null' }),
   createdAt: text('created_at').notNull(),
 });

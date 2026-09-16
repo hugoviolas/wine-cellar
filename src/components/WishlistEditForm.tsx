@@ -6,21 +6,11 @@ import { WINE_COLOR_LABELS } from '@/lib/wineColor';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { useToast } from '@/components/Toast';
 import { RegionInput } from '@/components/RegionInput';
+import type { WishlistItemFields } from './interfaces/wishlist-item-fields.interface';
+import { errorMessageFromResponse } from '@/lib/apiError';
+import type { ReactElement } from 'react';
 
-interface WishlistItemFields {
-  id: string;
-  category: string;
-  name: string;
-  producer: string | null;
-  vintage: number | null;
-  region: string | null;
-  color: string | null;
-  grapeVarieties: string[];
-  appellation: string | null;
-  comment: string | null;
-}
-
-export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
+export const WishlistEditForm = ({ item }: { item: WishlistItemFields }): ReactElement => {
   const router = useRouter();
   const toast = useToast();
   const [name, setName] = useState(item.name);
@@ -34,7 +24,7 @@ export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  function buildDetails(): Record<string, unknown> | undefined {
+  const buildDetails = (): Record<string, unknown> | undefined => {
     const grapeVarietiesArray = grapeVarieties
       .split(',')
       .map((v) => v.trim())
@@ -46,9 +36,9 @@ export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
       return { grapeVarieties: grapeVarietiesArray };
     }
     return undefined;
-  }
+  };
 
-  async function handleSubmit(event: React.FormEvent) {
+  const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
     setBusy(true);
@@ -67,17 +57,16 @@ export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
     });
     setBusy(false);
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      const message = data.error ?? "Impossible d'enregistrer les modifications.";
+      const message = await errorMessageFromResponse(response, "Impossible d'enregistrer les modifications.");
       setError(message);
       toast.error(message);
       return;
     }
-    toast.success("Modifications enregistrées.");
+    toast.success('Modifications enregistrées.');
     router.refresh();
-  }
+  };
 
-  async function handleDelete() {
+  const handleDelete = async (): Promise<void> => {
     setBusy(true);
     const response = await fetch(`/api/wishlist/${item.id}`, { method: 'DELETE' });
     setBusy(false);
@@ -88,10 +77,10 @@ export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
     toast.success('Supprimée de la wishlist.');
     router.push('/wishlist');
     router.refresh();
-  }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded p-4 space-y-3">
+    <form onSubmit={(...args) => void handleSubmit(...args)} className="bg-white rounded p-4 space-y-3">
       {error && <p className="text-sm text-red-700">{error}</p>}
 
       <div>
@@ -128,7 +117,9 @@ export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
           >
             <option value="">—</option>
             {Object.entries(WINE_COLOR_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
         </div>
@@ -182,13 +173,22 @@ export function WishlistEditForm({ item }: { item: WishlistItemFields }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={busy || !name.trim()} className="bg-forest text-cream rounded px-4 py-2 text-sm">
+        <button
+          type="submit"
+          disabled={busy || !name.trim()}
+          className="bg-forest text-cream rounded px-4 py-2 text-sm"
+        >
           Enregistrer les modifications
         </button>
-        <button type="button" onClick={handleDelete} disabled={busy} className="text-xs text-red-700 underline">
+        <button
+          type="button"
+          onClick={() => void handleDelete()}
+          disabled={busy}
+          className="text-xs text-red-700 underline"
+        >
           Supprimer
         </button>
       </div>
     </form>
   );
-}
+};

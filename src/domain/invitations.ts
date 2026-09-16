@@ -4,6 +4,9 @@ import type { Db } from '../db/client';
 import { invitations, cellarMemberships } from '../db/schema';
 import { newId } from '../db/id';
 import { generateToken } from './token';
+import type { CreateInvitationInput } from './interfaces/create-invitation-input.interface';
+
+export type { CreateInvitationInput };
 
 export const createInvitationBodySchema = z
   .object({
@@ -13,19 +16,12 @@ export const createInvitationBodySchema = z
   })
   .strict();
 
-export interface CreateInvitationInput {
-  cellarId: string;
-  email: string;
-  role: 'editor' | 'reader';
-  invitedByUserId: string;
-}
-
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-export async function createInvitation(
+export const createInvitation = async (
   db: Db,
   input: CreateInvitationInput,
-): Promise<{ id: string; token: string }> {
+): Promise<{ id: string; token: string }> => {
   const id = newId();
   const token = generateToken();
   const now = new Date();
@@ -41,7 +37,7 @@ export async function createInvitation(
     createdAt: now.toISOString(),
   });
   return { id, token };
-}
+};
 
 type InvitationRow = typeof invitations.$inferSelect;
 
@@ -51,50 +47,59 @@ export type InvitationLookup =
   | { status: 'expired' }
   | { status: 'already_used' };
 
-export async function getInvitationByToken(db: Db, token: string): Promise<InvitationLookup> {
+export const getInvitationByToken = async (db: Db, token: string): Promise<InvitationLookup> => {
   const [invitation] = await db.select().from(invitations).where(eq(invitations.token, token)).limit(1);
-  if (!invitation) return { status: 'not_found' };
-  if (invitation.status === 'accepted') return { status: 'already_used' };
-  if (new Date(invitation.expiresAt).getTime() < Date.now()) return { status: 'expired' };
+  if (!invitation) {
+    return { status: 'not_found' };
+  }
+  if (invitation.status === 'accepted') {
+    return { status: 'already_used' };
+  }
+  if (new Date(invitation.expiresAt).getTime() < Date.now()) {
+    return { status: 'expired' };
+  }
   return { status: 'valid', invitation };
-}
+};
 
-export async function acceptInvitation(
+export const acceptInvitation = async (
   db: Db,
   token: string,
   userId: string,
-): Promise<{ cellarId: string }> {
+): Promise<{ cellarId: string }> => {
   const lookup = await getInvitationByToken(db, token);
   if (lookup.status !== 'valid') {
     throw new Error('Invitation invalide.');
   }
 
-  const [existingMembership] = await db
-    .select()
-    .from(cellarMemberships)
-    .where(
-      and(
-        eq(cellarMemberships.cellarId, lookup.invitation.cellarId),
-        eq(cellarMemberships.userId, userId),
-      ),
-    )
-    .limit(1);
+  // Adhésion et passage de l'invitation à « acceptée » dans la même
+  // transaction : séparées, un échec entre les deux laissait soit une
+  // invitation consommée sans accès accordé, soit l'inverse — une
+  // invitation encore réutilisable.
+  await db.transaction(async (tx) => {
+    const [existingMembership] = await tx
+      .select()
+      .from(cellarMemberships)
+      .where(
+        and(eq(cellarMemberships.cellarId, lookup.invitation.cellarId), eq(cellarMemberships.userId, userId)),
+      )
+      .limit(1);
 
-  if (existingMembership) {
-    await db
-      .update(cellarMemberships)
-      .set({ role: lookup.invitation.role })
-      .where(eq(cellarMemberships.id, existingMembership.id));
-  } else {
-    await db.insert(cellarMemberships).values({
-      id: newId(),
-      cellarId: lookup.invitation.cellarId,
-      userId,
-      role: lookup.invitation.role,
-      createdAt: new Date().toISOString(),
-    });
-  }
-  await db.update(invitations).set({ status: 'accepted' }).where(eq(invitations.id, lookup.invitation.id));
+    if (existingMembership) {
+      await tx
+        .update(cellarMemberships)
+        .set({ role: lookup.invitation.role })
+        .where(eq(cellarMemberships.id, existingMembership.id));
+    } else {
+      await tx.insert(cellarMemberships).values({
+        id: newId(),
+        cellarId: lookup.invitation.cellarId,
+        userId,
+        role: lookup.invitation.role,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    await tx.update(invitations).set({ status: 'accepted' }).where(eq(invitations.id, lookup.invitation.id));
+  });
 
   return { cellarId: lookup.invitation.cellarId };
-}
+};

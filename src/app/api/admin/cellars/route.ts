@@ -3,14 +3,17 @@ import { z } from 'zod';
 import { db } from '@/db/client';
 import { requireSuperAdminApi } from '@/lib/requireSuperAdminApi';
 import { createCellarByAdmin } from '@/domain/admin';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const createCellarBodySchema = z.object({ name: z.string().min(1), ownerId: z.string().min(1) }).strict();
 
-export async function POST(request: Request) {
+export const POST = async (request: Request): Promise<NextResponse> => {
   const auth = await requireSuperAdminApi();
-  if ('error' in auth) return auth.error;
+  if ('error' in auth) {
+    return auth.error;
+  }
 
-  const rawBody = await request.json().catch(() => null);
+  const rawBody = await readJsonBody(request);
   const parsed = createCellarBodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Nom et propriétaire requis.' }, { status: 400 });
@@ -18,4 +21,4 @@ export async function POST(request: Request) {
 
   const id = await createCellarByAdmin(db, parsed.data);
   return NextResponse.json({ id });
-}
+};
