@@ -97,11 +97,19 @@ export const PhotoFillButton = ({
 
   return (
     <div>
+      {/*
+        Pas de `capture="environment"` : cet attribut ouvre directement
+        l'appareil photo et masque tout le reste, alors qu'une étiquette est
+        souvent déjà photographiée — une bouteille reçue en cadeau, une
+        carte de restaurant, une capture d'écran. Sans lui, iOS et Android
+        proposent le choix (photothèque, appareil photo, fichiers) et
+        l'appareil photo reste à un geste ; sur ordinateur, l'attribut
+        n'avait de toute façon aucun effet.
+      */}
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={(...args) => void handleFile(...args)}
         className="hidden"
       />

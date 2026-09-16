@@ -26,7 +26,10 @@ export const POST = async (request: Request): Promise<NextResponse> => {
     return NextResponse.json({ error: 'Fonction IA indisponible.' }, { status: 403 });
   }
 
-  const quotaExceeded = checkAiQuota(auth.user.id);
+  const quotaExceeded = checkAiQuota({
+    userId: auth.user.id,
+    isSuperAdmin: auth.user.isSuperAdmin,
+  });
   if (quotaExceeded) {
     return quotaExceeded;
   }

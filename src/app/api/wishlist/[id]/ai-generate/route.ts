@@ -38,7 +38,10 @@ export const POST = async (
   }
 
   const category = item.category;
-  const quotaExceeded = checkAiQuota(auth.user.id);
+  const quotaExceeded = checkAiQuota({
+    userId: auth.user.id,
+    isSuperAdmin: auth.user.isSuperAdmin,
+  });
   if (quotaExceeded) {
     return quotaExceeded;
   }
