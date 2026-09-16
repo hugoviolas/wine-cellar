@@ -1,10 +1,11 @@
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db, DbOrTx } from '../db/client';
 import { bottles, crates, consumptionHistory } from '../db/schema';
 import { newId } from '../db/id';
 import type { ConsumeBottleInput } from './interfaces/consume-bottle-input.interface';
 import { FIELD_MAX } from './fieldLimits';
+import type { GetCellarIdForCrateArgs } from './interfaces/get-cellar-id-for-crate-args.interface';
+import type { ConsumeBottleArgs } from './interfaces/consume-bottle-args.interface';
 
 export type { ConsumeBottleInput };
 
@@ -28,7 +29,7 @@ export const consumeBottleBodySchema = z
   })
   .strict();
 
-const getCellarIdForCrate = async (db: DbOrTx, crateId: string): Promise<string> => {
+const getCellarIdForCrate = async ({ db, crateId }: GetCellarIdForCrateArgs): Promise<string> => {
   const [crate] = await db.select().from(crates).where(eq(crates.id, crateId)).limit(1);
   if (!crate) {
     throw new Error('Clayette introuvable');
@@ -36,7 +37,7 @@ const getCellarIdForCrate = async (db: DbOrTx, crateId: string): Promise<string>
   return crate.cellarId;
 };
 
-export const consumeBottle = async (db: Db, input: ConsumeBottleInput): Promise<string> => {
+export const consumeBottle = async ({ db, input }: ConsumeBottleArgs): Promise<string> => {
   const quantity = input.quantity ?? 1;
   if (!Number.isInteger(quantity) || quantity < 1) {
     throw new BottleUnavailableError('Quantité invalide');
@@ -65,7 +66,7 @@ export const consumeBottle = async (db: Db, input: ConsumeBottleInput): Promise<
       .set({ quantity: bottle.quantity - quantity })
       .where(eq(bottles.id, bottle.id));
 
-    const cellarId = await getCellarIdForCrate(tx, crateId);
+    const cellarId = await getCellarIdForCrate({ db: tx, crateId });
     await tx.insert(consumptionHistory).values({
       id: historyId,
       bottleId: bottle.id,

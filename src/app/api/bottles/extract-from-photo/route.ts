@@ -24,7 +24,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
   const { cellarId, imageBase64, mediaType } = parsed.data;
 
-  const access = await checkCellarAccess(db, auth.user.id, cellarId);
+  const access = await checkCellarAccess({ db, userId: auth.user.id, cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
@@ -32,7 +32,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
-  const cellar = await getCellarById(db, cellarId);
+  const cellar = await getCellarById({ db, cellarId });
   if (!cellar || !isAiAvailable(cellar)) {
     return NextResponse.json({ error: 'Fonction IA indisponible pour cette cave.' }, { status: 403 });
   }
@@ -45,7 +45,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
     return quotaExceeded;
   }
 
-  const { system, content } = buildPhotoExtractionPrompt(imageBase64, mediaType);
+  const { system, content } = buildPhotoExtractionPrompt({ imageBase64, mediaType });
   const result = await callAiForRoute({
     route: 'bottles/extract-from-photo',
     system,

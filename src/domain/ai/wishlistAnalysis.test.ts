@@ -6,7 +6,7 @@ import { createWishlistItem, getWishlistItem } from '../wishlist';
 import { wishlistItems } from '../../db/schema';
 import { saveWishlistAiAnalysis } from './wishlistAnalysis';
 import type { AiBottleAnalysis } from './schemas';
-import type { Db } from '../../db/client';
+import type { SeedItemArgs } from './interfaces/seed-item-args.interface';
 
 const analysis: AiBottleAnalysis = {
   analysis: 'Un rouge corsé aux tanins fondus.',
@@ -19,23 +19,26 @@ const analysis: AiBottleAnalysis = {
   appellation: 'Patrimonio',
 };
 
-const seedItem = async (db: Db, details: unknown): Promise<string> => {
-  const { userId } = await bootstrapSuperAdmin(db, {
-    email: 'a@example.com',
-    password: 'x',
-    cellarName: 'Cave',
+const seedItem = async ({ db, details }: SeedItemArgs): Promise<string> => {
+  const { userId } = await bootstrapSuperAdmin({
+    db,
+    params: {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    },
   });
-  return createWishlistItem(db, { userId, category: 'wine', name: 'Clos Poggiale', details });
+  return createWishlistItem({ db, input: { userId, category: 'wine', name: 'Clos Poggiale', details } });
 };
 
 describe('saveWishlistAiAnalysis', () => {
   it('écrit l’analyse et remplit les champs vides', async () => {
     const db = await createTestDb();
-    const id = await seedItem(db, { grapeVarieties: [] });
+    const id = await seedItem({ db, details: { grapeVarieties: [] } });
 
-    await saveWishlistAiAnalysis(
+    await saveWishlistAiAnalysis({
       db,
-      {
+      item: {
         id,
         category: 'wine',
         drinkFrom: null,
@@ -44,9 +47,9 @@ describe('saveWishlistAiAnalysis', () => {
         details: { grapeVarieties: [] },
       },
       analysis,
-    );
+    });
 
-    const item = await getWishlistItem(db, id);
+    const item = await getWishlistItem({ db, id });
     expect(item?.aiAnalysis).toBe('Un rouge corsé aux tanins fondus.');
     expect(item?.aiPairings).toEqual(['Agneau', 'Fromages affinés', 'Daube']);
     expect(item?.aiTastingAdvice).toBe('Carafer une heure, servir à 17 °C.');
@@ -59,15 +62,15 @@ describe('saveWishlistAiAnalysis', () => {
 
   it('n’écrase jamais ce qui a été saisi à la main', async () => {
     const db = await createTestDb();
-    const id = await seedItem(db, { grapeVarieties: ['Sciaccarellu'], appellation: 'Ajaccio' });
+    const id = await seedItem({ db, details: { grapeVarieties: ['Sciaccarellu'], appellation: 'Ajaccio' } });
     await db
       .update(wishlistItems)
       .set({ drinkFrom: 2025, drinkUntil: 2030, region: 'Corse' })
       .where(eq(wishlistItems.id, id));
 
-    await saveWishlistAiAnalysis(
+    await saveWishlistAiAnalysis({
       db,
-      {
+      item: {
         id,
         category: 'wine',
         drinkFrom: 2025,
@@ -76,9 +79,9 @@ describe('saveWishlistAiAnalysis', () => {
         details: { grapeVarieties: ['Sciaccarellu'], appellation: 'Ajaccio' },
       },
       analysis,
-    );
+    });
 
-    const item = await getWishlistItem(db, id);
+    const item = await getWishlistItem({ db, id });
     expect(item?.drinkFrom).toBe(2025);
     expect(item?.drinkUntil).toBe(2030);
     expect(item?.region).toBe('Corse');
@@ -89,7 +92,7 @@ describe('saveWishlistAiAnalysis', () => {
 
   it('réécrit les champs ai* à chaque génération', async () => {
     const db = await createTestDb();
-    const id = await seedItem(db, { grapeVarieties: [] });
+    const id = await seedItem({ db, details: { grapeVarieties: [] } });
     const base = {
       id,
       category: 'wine' as const,
@@ -99,33 +102,43 @@ describe('saveWishlistAiAnalysis', () => {
       details: { grapeVarieties: [] },
     };
 
-    await saveWishlistAiAnalysis(db, base, analysis);
-    await saveWishlistAiAnalysis(db, base, { ...analysis, analysis: 'Seconde lecture, plus sévère.' });
+    await saveWishlistAiAnalysis({ db, item: base, analysis });
+    await saveWishlistAiAnalysis({
+      db,
+      item: base,
+      analysis: { ...analysis, analysis: 'Seconde lecture, plus sévère.' },
+    });
 
-    expect((await getWishlistItem(db, id))?.aiAnalysis).toBe('Seconde lecture, plus sévère.');
+    expect((await getWishlistItem({ db, id }))?.aiAnalysis).toBe('Seconde lecture, plus sévère.');
   });
 
   it('ignore cépages et appellation hors des catégories concernées', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, {
-      email: 'b@example.com',
-      password: 'x',
-      cellarName: 'Cave',
-    });
-    const id = await createWishlistItem(db, {
-      userId,
-      category: 'beer',
-      name: 'Triple Karmeliet',
-      details: {},
-    });
-
-    await saveWishlistAiAnalysis(
+    const { userId } = await bootstrapSuperAdmin({
       db,
-      { id, category: 'beer', drinkFrom: null, drinkUntil: null, region: null, details: {} },
-      analysis,
-    );
+      params: {
+        email: 'b@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
+    });
+    const id = await createWishlistItem({
+      db,
+      input: {
+        userId,
+        category: 'beer',
+        name: 'Triple Karmeliet',
+        details: {},
+      },
+    });
 
-    const item = await getWishlistItem(db, id);
+    await saveWishlistAiAnalysis({
+      db,
+      item: { id, category: 'beer', drinkFrom: null, drinkUntil: null, region: null, details: {} },
+      analysis,
+    });
+
+    const item = await getWishlistItem({ db, id });
     expect(item?.details).toEqual({});
     expect(item?.aiAnalysis).toBe('Un rouge corsé aux tanins fondus.');
   });

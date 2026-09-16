@@ -12,7 +12,7 @@ describe('getAppSettings', () => {
   it('retourne la ligne existante si déjà initialisée', async () => {
     const db = await createTestDb();
     await getAppSettings(db);
-    await setRegistrationEnabled(db, false);
+    await setRegistrationEnabled({ db, enabled: false });
     expect((await getAppSettings(db)).registrationEnabled).toBe(false);
   });
 });
@@ -20,7 +20,7 @@ describe('getAppSettings', () => {
 describe('setRegistrationEnabled', () => {
   it("met à jour le réglage même si aucune ligne n'existait avant", async () => {
     const db = await createTestDb();
-    await setRegistrationEnabled(db, false);
+    await setRegistrationEnabled({ db, enabled: false });
     expect((await getAppSettings(db)).registrationEnabled).toBe(false);
   });
 });

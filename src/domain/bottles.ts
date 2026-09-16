@@ -1,6 +1,5 @@
 import { eq, and, gt } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db, DbOrTx } from '../db/client';
 import { bottles, crates } from '../db/schema';
 import { newId } from '../db/id';
 import { parseBottleDetails } from './bottleCategories';
@@ -9,6 +8,13 @@ import type { BottleWithCrate } from './interfaces/bottle-with-crate.interface';
 import type { CreateBottleInput } from './interfaces/create-bottle-input.interface';
 import type { UpdateBottleInput } from './interfaces/update-bottle-input.interface';
 import { FIELD_MAX } from './fieldLimits';
+import type { CreateBottleArgs } from './interfaces/create-bottle-args.interface';
+import type { ListBottlesByCellarArgs } from './interfaces/list-bottles-by-cellar-args.interface';
+import type { ListActiveBottlesByCellarArgs } from './interfaces/list-active-bottles-by-cellar-args.interface';
+import type { GetBottleArgs } from './interfaces/get-bottle-args.interface';
+import type { UpdateBottleArgs } from './interfaces/update-bottle-args.interface';
+import type { ReorderBottlesInCrateArgs } from './interfaces/reorder-bottles-in-crate-args.interface';
+import type { DeleteBottleArgs } from './interfaces/delete-bottle-args.interface';
 
 export type { CreateBottleInput, UpdateBottleInput };
 
@@ -38,7 +44,7 @@ export const createBottleBodySchema = z
   })
   .strict();
 
-export const createBottle = async (db: DbOrTx, input: CreateBottleInput): Promise<string> => {
+export const createBottle = async ({ db, input }: CreateBottleArgs): Promise<string> => {
   const details = parseBottleDetails(input.category, input.details);
   const id = newId();
   const siblingCount = (
@@ -70,7 +76,10 @@ export const createBottle = async (db: DbOrTx, input: CreateBottleInput): Promis
   return id;
 };
 
-export const listBottlesByCellar = async (db: Db, cellarId: string): Promise<BottleWithCrate[]> => {
+export const listBottlesByCellar = async ({
+  db,
+  cellarId,
+}: ListBottlesByCellarArgs): Promise<BottleWithCrate[]> => {
   return db
     .select({ bottle: bottles, crate: crates })
     .from(bottles)
@@ -79,7 +88,10 @@ export const listBottlesByCellar = async (db: Db, cellarId: string): Promise<Bot
     .orderBy(bottles.sortOrder);
 };
 
-export const listActiveBottlesByCellar = async (db: Db, cellarId: string): Promise<BottleWithCrate[]> => {
+export const listActiveBottlesByCellar = async ({
+  db,
+  cellarId,
+}: ListActiveBottlesByCellarArgs): Promise<BottleWithCrate[]> => {
   return db
     .select({ bottle: bottles, crate: crates })
     .from(bottles)
@@ -88,7 +100,7 @@ export const listActiveBottlesByCellar = async (db: Db, cellarId: string): Promi
     .orderBy(bottles.sortOrder);
 };
 
-export const getBottle = async (db: Db, bottleId: string): Promise<BottleRow | null> => {
+export const getBottle = async ({ db, bottleId }: GetBottleArgs): Promise<BottleRow | null> => {
   const [row] = await db.select().from(bottles).where(eq(bottles.id, bottleId)).limit(1);
   return row ?? null;
 };
@@ -125,7 +137,7 @@ export const updateBottleBodySchema = z
   })
   .strict();
 
-export const updateBottle = async (db: Db, bottleId: string, input: UpdateBottleInput): Promise<void> => {
+export const updateBottle = async ({ db, bottleId, input }: UpdateBottleArgs): Promise<void> => {
   if (input.crateId) {
     // Une bouteille déplacée vers une autre clayette est ajoutée à la fin
     // de celle-ci — son ancien sortOrder n'a aucun sens dans ce nouveau
@@ -148,7 +160,11 @@ export const updateBottle = async (db: Db, bottleId: string, input: UpdateBottle
  * clayette — même garde-fou que `reorderCrates`, pour éviter qu'une liste
  * incomplète ou d'une autre clayette ne corrompe le tri.
  */
-export const reorderBottlesInCrate = async (db: Db, crateId: string, orderedIds: string[]): Promise<void> => {
+export const reorderBottlesInCrate = async ({
+  db,
+  crateId,
+  orderedIds,
+}: ReorderBottlesInCrateArgs): Promise<void> => {
   const existing = await db
     .select({ id: bottles.id })
     .from(bottles)
@@ -166,6 +182,6 @@ export const reorderBottlesInCrate = async (db: Db, crateId: string, orderedIds:
   }
 };
 
-export const deleteBottle = async (db: Db, bottleId: string): Promise<void> => {
+export const deleteBottle = async ({ db, bottleId }: DeleteBottleArgs): Promise<void> => {
   await db.delete(bottles).where(eq(bottles.id, bottleId));
 };

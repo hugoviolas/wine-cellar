@@ -18,9 +18,9 @@ const HistoriquePage = async (): Promise<ReactElement> => {
     .orderBy(cellarMemberships.createdAt)
     .limit(1);
 
-  const entries = membership ? await listConsumptionHistory(db, membership.cellarId) : [];
+  const entries = membership ? await listConsumptionHistory({ db, cellarId: membership.cellarId }) : [];
   const access = membership
-    ? await checkCellarAccess(db, user.id, membership.cellarId)
+    ? await checkCellarAccess({ db, userId: user.id, cellarId: membership.cellarId })
     : { allowed: false as const };
   const canEdit = access.allowed && canEditCellarContent(access.role);
 

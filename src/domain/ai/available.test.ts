@@ -33,37 +33,46 @@ describe('isAiAvailableForUser', () => {
   it("vrai si au moins une des caves de l'utilisateur a l'IA activée", async () => {
     vi.stubEnv('ANTHROPIC_API_KEY', 'sk-test-123');
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
 
-    expect(await isAiAvailableForUser(db, userId)).toBe(true);
+    expect(await isAiAvailableForUser({ db, userId })).toBe(true);
   });
 
   it("faux si toutes les caves de l'utilisateur ont l'IA désactivée", async () => {
     vi.stubEnv('ANTHROPIC_API_KEY', 'sk-test-123');
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    await setCellarAiEnabled(db, cellarId, false);
+    await setCellarAiEnabled({ db, cellarId, aiEnabled: false });
 
-    expect(await isAiAvailableForUser(db, userId)).toBe(false);
+    expect(await isAiAvailableForUser({ db, userId })).toBe(false);
   });
 
   it('faux si aucune clé API configurée, même avec une cave IA activée', async () => {
     vi.stubEnv('ANTHROPIC_API_KEY', '');
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
 
-    expect(await isAiAvailableForUser(db, userId)).toBe(false);
+    expect(await isAiAvailableForUser({ db, userId })).toBe(false);
   });
 });

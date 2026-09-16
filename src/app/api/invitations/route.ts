@@ -23,7 +23,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
   const input = parsed.data;
 
-  const access = await checkCellarAccess(db, user.id, input.cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId: input.cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
@@ -31,6 +31,6 @@ export const POST = async (request: Request): Promise<NextResponse> => {
     return NextResponse.json({ error: 'Rôle insuffisant pour inviter un membre.' }, { status: 403 });
   }
 
-  const { token } = await createInvitation(db, { ...input, invitedByUserId: user.id });
+  const { token } = await createInvitation({ db, input: { ...input, invitedByUserId: user.id } });
   return NextResponse.json({ token });
 };

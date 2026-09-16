@@ -9,21 +9,27 @@ import { hashPassword } from './auth';
 describe('checkCellarAccess', () => {
   it('autorise le super-admin même sans membership', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'admin@example.com',
-      password: 'x',
-      cellarName: 'Ma Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'admin@example.com',
+        password: 'x',
+        cellarName: 'Ma Cave',
+      },
     });
-    const result = await checkCellarAccess(db, userId, cellarId);
+    const result = await checkCellarAccess({ db, userId, cellarId });
     expect(result).toEqual({ allowed: true, role: 'super_admin' });
   });
 
   it('autorise un membre non-admin via une vraie ligne de membership', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'admin@example.com',
-      password: 'x',
-      cellarName: 'Ma Cave',
+    const { cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'admin@example.com',
+        password: 'x',
+        cellarName: 'Ma Cave',
+      },
     });
 
     const editorId = newId();
@@ -42,16 +48,19 @@ describe('checkCellarAccess', () => {
       createdAt: new Date().toISOString(),
     });
 
-    const result = await checkCellarAccess(db, editorId, cellarId);
+    const result = await checkCellarAccess({ db, userId: editorId, cellarId });
     expect(result).toEqual({ allowed: true, role: 'editor' });
   });
 
   it('refuse un utilisateur sans lien avec la cave', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'admin@example.com',
-      password: 'x',
-      cellarName: 'Ma Cave',
+    const { cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'admin@example.com',
+        password: 'x',
+        cellarName: 'Ma Cave',
+      },
     });
     const otherId = newId();
     await db.insert(users).values({
@@ -61,7 +70,7 @@ describe('checkCellarAccess', () => {
       isSuperAdmin: false,
       createdAt: new Date().toISOString(),
     });
-    const result = await checkCellarAccess(db, otherId, cellarId);
+    const result = await checkCellarAccess({ db, userId: otherId, cellarId });
     expect(result).toEqual({ allowed: false });
   });
 });

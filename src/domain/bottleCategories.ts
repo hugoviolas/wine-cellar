@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { FIELD_MAX } from './fieldLimits';
+import type { GetGrapeVarietiesArgs } from './interfaces/get-grape-varieties-args.interface';
+import type { GetAppellationArgs } from './interfaces/get-appellation-args.interface';
 
 /**
  * Champ libre d'une fiche détail : borné comme partout ailleurs (voir
@@ -66,7 +68,7 @@ export const parseBottleDetails = <C extends BottleCategory>(
 };
 
 /** `grapeVarieties` n'existe que pour wine et sparkling — [] pour les autres catégories. */
-export const getGrapeVarieties = (category: BottleCategory, details: unknown): string[] => {
+export const getGrapeVarieties = ({ category, details }: GetGrapeVarietiesArgs): string[] => {
   if (category !== 'wine' && category !== 'sparkling') {
     return [];
   }
@@ -74,7 +76,7 @@ export const getGrapeVarieties = (category: BottleCategory, details: unknown): s
 };
 
 /** `appellation` n'existe que pour wine — null pour les autres catégories. */
-export const getAppellation = (category: BottleCategory, details: unknown): string | null => {
+export const getAppellation = ({ category, details }: GetAppellationArgs): string | null => {
   if (category !== 'wine') {
     return null;
   }

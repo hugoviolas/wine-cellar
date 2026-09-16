@@ -1,8 +1,11 @@
 import { eq } from 'drizzle-orm';
-import type { Db } from '../db/client';
 import type { CellarMembershipRow } from '../db/rows';
 import type { CellarMemberWithEmail } from './interfaces/cellar-member-with-email.interface';
 import { cellarMemberships, users } from '../db/schema';
+import type { ListCellarMembersWithEmailArgs } from './interfaces/list-cellar-members-with-email-args.interface';
+import type { GetMembershipByIdArgs } from './interfaces/get-membership-by-id-args.interface';
+import type { UpdateMembershipRoleArgs } from './interfaces/update-membership-role-args.interface';
+import type { RemoveMembershipArgs } from './interfaces/remove-membership-args.interface';
 
 export class CannotModifyOwnerError extends Error {}
 
@@ -13,10 +16,10 @@ export class CannotModifyOwnerError extends Error {}
  * cette liste. `email` vaut alors `null`, à afficher comme "compte
  * supprimé" côté UI.
  */
-export const listCellarMembersWithEmail = async (
-  db: Db,
-  cellarId: string,
-): Promise<CellarMemberWithEmail[]> => {
+export const listCellarMembersWithEmail = async ({
+  db,
+  cellarId,
+}: ListCellarMembersWithEmailArgs): Promise<CellarMemberWithEmail[]> => {
   return db
     .select({
       membershipId: cellarMemberships.id,
@@ -30,10 +33,10 @@ export const listCellarMembersWithEmail = async (
     .where(eq(cellarMemberships.cellarId, cellarId));
 };
 
-export const getMembershipById = async (
-  db: Db,
-  membershipId: string,
-): Promise<CellarMembershipRow | null> => {
+export const getMembershipById = async ({
+  db,
+  membershipId,
+}: GetMembershipByIdArgs): Promise<CellarMembershipRow | null> => {
   const [row] = await db
     .select()
     .from(cellarMemberships)
@@ -42,12 +45,12 @@ export const getMembershipById = async (
   return row ?? null;
 };
 
-export const updateMembershipRole = async (
-  db: Db,
-  membershipId: string,
-  role: 'editor' | 'reader',
-): Promise<void> => {
-  const membership = await getMembershipById(db, membershipId);
+export const updateMembershipRole = async ({
+  db,
+  membershipId,
+  role,
+}: UpdateMembershipRoleArgs): Promise<void> => {
+  const membership = await getMembershipById({ db, membershipId });
   if (!membership) {
     throw new Error('Membre introuvable.');
   }
@@ -57,8 +60,8 @@ export const updateMembershipRole = async (
   await db.update(cellarMemberships).set({ role }).where(eq(cellarMemberships.id, membershipId));
 };
 
-export const removeMembership = async (db: Db, membershipId: string): Promise<void> => {
-  const membership = await getMembershipById(db, membershipId);
+export const removeMembership = async ({ db, membershipId }: RemoveMembershipArgs): Promise<void> => {
+  const membership = await getMembershipById({ db, membershipId });
   if (!membership) {
     throw new Error('Membre introuvable.');
   }

@@ -13,31 +13,41 @@ describe('bootstrapSuperAdmin', () => {
     // authenticateUser cherche en `.toLowerCase()` : un email stocké avec
     // une majuscule créait un super-admin qui ne pouvait jamais se
     // connecter.
-    const { userId } = await bootstrapSuperAdmin(db, {
-      email: 'Hugo@Example.COM',
-      password: 'un-mot-de-passe-solide',
-      cellarName: 'Ma Cave',
+    const { userId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'Hugo@Example.COM',
+        password: 'un-mot-de-passe-solide',
+        cellarName: 'Ma Cave',
+      },
     });
 
     const user = firstRow(await db.select().from(users).where(eq(users.id, userId)));
     expect(user.email).toBe('hugo@example.com');
 
-    const authed = await authenticateUser(db, 'Hugo@Example.COM', 'un-mot-de-passe-solide');
+    const authed = await authenticateUser({
+      db,
+      email: 'Hugo@Example.COM',
+      password: 'un-mot-de-passe-solide',
+    });
     expect(authed?.id).toBe(userId);
   });
 
   it('crée un utilisateur super-admin et sa première cave', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'admin@example.com',
-      password: 'un-mot-de-passe-solide',
-      cellarName: 'Ma Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'admin@example.com',
+        password: 'un-mot-de-passe-solide',
+        cellarName: 'Ma Cave',
+      },
     });
 
     const user = firstRow(await db.select().from(users).where(eq(users.id, userId)));
     expect(user.email).toBe('admin@example.com');
     expect(user.isSuperAdmin).toBe(true);
-    expect(await verifyPassword('un-mot-de-passe-solide', user.passwordHash)).toBe(true);
+    expect(await verifyPassword({ password: 'un-mot-de-passe-solide', hash: user.passwordHash })).toBe(true);
 
     const cellar = firstRow(await db.select().from(cellars).where(eq(cellars.id, cellarId)));
     expect(cellar.name).toBe('Ma Cave');

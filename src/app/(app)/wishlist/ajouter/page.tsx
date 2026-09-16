@@ -7,7 +7,7 @@ import type { ReactElement } from 'react';
 
 const WishlistAddPage = async (): Promise<ReactElement> => {
   const user = await requireUser();
-  const aiAvailable = await isAiAvailableForUser(db, user.id);
+  const aiAvailable = await isAiAvailableForUser({ db, userId: user.id });
 
   return (
     <div>

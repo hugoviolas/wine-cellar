@@ -33,7 +33,7 @@ export const PATCH = async (
   const { user } = auth;
   const { id } = await params;
 
-  const access = await checkCellarAccess(db, user.id, id);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId: id });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
@@ -47,6 +47,6 @@ export const PATCH = async (
     return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
   }
 
-  await updateCellarInfo(db, id, parsed.data);
+  await updateCellarInfo({ db, cellarId: id, input: parsed.data });
   return NextResponse.json({ ok: true });
 };

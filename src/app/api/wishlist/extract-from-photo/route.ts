@@ -21,7 +21,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
   const { imageBase64, mediaType } = parsed.data;
 
-  const available = await isAiAvailableForUser(db, auth.user.id);
+  const available = await isAiAvailableForUser({ db, userId: auth.user.id });
   if (!available) {
     return NextResponse.json({ error: 'Fonction IA indisponible.' }, { status: 403 });
   }
@@ -34,7 +34,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
     return quotaExceeded;
   }
 
-  const { system, content } = buildPhotoExtractionPrompt(imageBase64, mediaType);
+  const { system, content } = buildPhotoExtractionPrompt({ imageBase64, mediaType });
   const result = await callAiForRoute({
     route: 'wishlist/extract-from-photo',
     system,

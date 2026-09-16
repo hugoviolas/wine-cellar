@@ -22,8 +22,8 @@ const AccueilPage = async (): Promise<ReactElement> => {
     return <p className="text-sm">Aucune cave associée à ce compte.</p>;
   }
 
-  const bottleRows = await listActiveBottlesByCellar(db, membership.cellarId);
-  const history = await listConsumptionHistory(db, membership.cellarId);
+  const bottleRows = await listActiveBottlesByCellar({ db, cellarId: membership.cellarId });
+  const history = await listConsumptionHistory({ db, cellarId: membership.cellarId });
   const currentYear = new Date().getFullYear();
 
   const totalBottles = bottleRows.reduce((sum, row) => sum + row.bottle.quantity, 0);
@@ -34,7 +34,11 @@ const AccueilPage = async (): Promise<ReactElement> => {
 
   const closingWindow = bottleRows.filter(
     (row) =>
-      computeGardeStatus(row.bottle.drinkFrom, row.bottle.drinkUntil, currentYear) === 'closing_window',
+      computeGardeStatus({
+        drinkFrom: row.bottle.drinkFrom,
+        drinkUntil: row.bottle.drinkUntil,
+        currentYear,
+      }) === 'closing_window',
   );
 
   const recentHistory = history.slice(0, 5);

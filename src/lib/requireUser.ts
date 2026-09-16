@@ -25,7 +25,7 @@ export const requireUser = async (): Promise<ApiUser> => {
   // Handler ») — l'appeler renvoyait une 500 au lieu de la redirection.
   // Le cookie périmé reste donc dans le navigateur, sans conséquence : il
   // est rejeté à chaque requête, et le premier appel d'API le supprime.
-  if (!isSessionStillValid(user, session.issuedAt)) {
+  if (!isSessionStillValid({ user, issuedAt: session.issuedAt })) {
     redirect('/login');
   }
 

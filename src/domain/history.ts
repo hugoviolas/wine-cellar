@@ -1,10 +1,13 @@
 import { eq, desc, getTableColumns } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db } from '../db/client';
 import { consumptionHistory, bottles } from '../db/schema';
 import { checkCellarAccess, type CellarRole } from './access';
 import type { HistoryEntryWithReachability } from './interfaces/history-entry-with-reachability.interface';
 import { FIELD_MAX } from './fieldLimits';
+import type { ListConsumptionHistoryArgs } from './interfaces/list-consumption-history-args.interface';
+import type { ResolveHistoryEntryAccessArgs } from './interfaces/resolve-history-entry-access-args.interface';
+import type { UpdateHistoryEntryArgs } from './interfaces/update-history-entry-args.interface';
+import type { DeleteHistoryEntryArgs } from './interfaces/delete-history-entry-args.interface';
 
 /**
  * `bottleReachable` : vrai seulement si la bouteille existe encore ET a
@@ -14,10 +17,10 @@ import { FIELD_MAX } from './fieldLimits';
  * ne proposer un lien vers la fiche bouteille que lorsqu'il mène réellement
  * quelque part.
  */
-export const listConsumptionHistory = async (
-  db: Db,
-  cellarId: string,
-): Promise<HistoryEntryWithReachability[]> => {
+export const listConsumptionHistory = async ({
+  db,
+  cellarId,
+}: ListConsumptionHistoryArgs): Promise<HistoryEntryWithReachability[]> => {
   return db
     .select({ ...getTableColumns(consumptionHistory), bottleReachable: bottles.crateId })
     .from(consumptionHistory)
@@ -31,11 +34,11 @@ export type HistoryEntryAccessResult =
   | { status: 'not_found' }
   | { status: 'forbidden' };
 
-export const resolveHistoryEntryAccess = async (
-  db: Db,
-  userId: string,
-  entryId: string,
-): Promise<HistoryEntryAccessResult> => {
+export const resolveHistoryEntryAccess = async ({
+  db,
+  userId,
+  entryId,
+}: ResolveHistoryEntryAccessArgs): Promise<HistoryEntryAccessResult> => {
   const [entry] = await db
     .select()
     .from(consumptionHistory)
@@ -44,7 +47,7 @@ export const resolveHistoryEntryAccess = async (
   if (!entry) {
     return { status: 'not_found' };
   }
-  const access = await checkCellarAccess(db, userId, entry.cellarId);
+  const access = await checkCellarAccess({ db, userId, cellarId: entry.cellarId });
   if (!access.allowed) {
     return { status: 'forbidden' };
   }
@@ -69,14 +72,10 @@ export const updateHistoryEntryBodySchema = z
   .strict();
 export type UpdateHistoryEntryInput = z.infer<typeof updateHistoryEntryBodySchema>;
 
-export const updateHistoryEntry = async (
-  db: Db,
-  entryId: string,
-  input: UpdateHistoryEntryInput,
-): Promise<void> => {
+export const updateHistoryEntry = async ({ db, entryId, input }: UpdateHistoryEntryArgs): Promise<void> => {
   await db.update(consumptionHistory).set(input).where(eq(consumptionHistory.id, entryId));
 };
 
-export const deleteHistoryEntry = async (db: Db, entryId: string): Promise<void> => {
+export const deleteHistoryEntry = async ({ db, entryId }: DeleteHistoryEntryArgs): Promise<void> => {
   await db.delete(consumptionHistory).where(eq(consumptionHistory.id, entryId));
 };

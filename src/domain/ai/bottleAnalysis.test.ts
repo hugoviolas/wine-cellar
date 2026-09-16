@@ -10,8 +10,8 @@ import type { Db } from '../../db/client';
 
 describe('buildBottleAnalysisPrompt', () => {
   it('inclut les champs de la bouteille dans le prompt', () => {
-    const { content } = buildBottleAnalysisPrompt(
-      {
+    const { content } = buildBottleAnalysisPrompt({
+      bottle: {
         name: 'Château Margaux',
         producer: 'Château Margaux SA',
         vintage: 2015,
@@ -21,8 +21,8 @@ describe('buildBottleAnalysisPrompt', () => {
         grapeVarieties: ['Cabernet Sauvignon', 'Merlot'],
         appellation: 'Margaux',
       },
-      2026,
-    );
+      currentYear: 2026,
+    });
 
     expect(typeof content).toBe('string');
     const text = content as string;
@@ -39,8 +39,8 @@ describe('buildBottleAnalysisPrompt', () => {
   });
 
   it('gère les champs absents sans planter', () => {
-    const { content } = buildBottleAnalysisPrompt(
-      {
+    const { content } = buildBottleAnalysisPrompt({
+      bottle: {
         name: 'Cidre mystère',
         producer: null,
         vintage: null,
@@ -50,8 +50,8 @@ describe('buildBottleAnalysisPrompt', () => {
         grapeVarieties: [],
         appellation: null,
       },
-      2026,
-    );
+      currentYear: 2026,
+    });
 
     const text = content as string;
     expect(text).toContain('Cidre mystère');
@@ -63,8 +63,8 @@ describe('buildBottleAnalysisPrompt', () => {
   });
 
   it('demande une estimation best-effort même pour un vin ancien probablement en fin de vie', () => {
-    const { content } = buildBottleAnalysisPrompt(
-      {
+    const { content } = buildBottleAnalysisPrompt({
+      bottle: {
         name: 'Côtes du Rhône',
         producer: null,
         vintage: 1998,
@@ -74,8 +74,8 @@ describe('buildBottleAnalysisPrompt', () => {
         grapeVarieties: [],
         appellation: null,
       },
-      2026,
-    );
+      currentYear: 2026,
+    });
 
     const text = content as string;
     expect(text).toContain('même si la fenêtre est déjà passée');
@@ -91,18 +91,24 @@ interface SetupBottleResult {
 describe('saveBottleAiAnalysis', () => {
   const setupBottle = async (): Promise<SetupBottleResult> => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'admin@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'admin@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
-    const bottleId = await createBottle(db, {
-      crateId,
-      category: 'wine',
-      name: 'Vin test',
-      quantity: 1,
-      details: {},
+    const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette 1', capacity: 12 } });
+    const bottleId = await createBottle({
+      db,
+      input: {
+        crateId,
+        category: 'wine',
+        name: 'Vin test',
+        quantity: 1,
+        details: {},
+      },
     });
     return { db, bottleId };
   };
@@ -129,14 +135,14 @@ describe('saveBottleAiAnalysis', () => {
 
   it('écrit les champs IA, la fenêtre de garde, la région, les cépages et l’appellation quand ils sont vides', async () => {
     const { db, bottleId } = await setupBottle();
-    const before = await getBottle(db, bottleId);
+    const before = await getBottle({ db, bottleId });
     expect(before?.drinkFrom).toBeNull();
     expect(before?.drinkUntil).toBeNull();
     expect(before?.region).toBeNull();
 
-    await saveBottleAiAnalysis(db, { ...emptyBottleRef, id: bottleId }, analysis);
+    await saveBottleAiAnalysis({ db, bottle: { ...emptyBottleRef, id: bottleId }, analysis });
 
-    const after = await getBottle(db, bottleId);
+    const after = await getBottle({ db, bottleId });
     expect(after?.aiAnalysis).toBe(analysis.analysis);
     expect(after?.aiPairings).toEqual(analysis.pairings);
     expect(after?.aiTastingAdvice).toBe(analysis.tastingAdvice);
@@ -155,9 +161,9 @@ describe('saveBottleAiAnalysis', () => {
       .set({ drinkFrom: 2020, drinkUntil: 2024, region: 'Bourgogne', details: existingDetails })
       .where(eq(bottles.id, bottleId));
 
-    await saveBottleAiAnalysis(
+    await saveBottleAiAnalysis({
       db,
-      {
+      bottle: {
         id: bottleId,
         category: 'wine',
         drinkFrom: 2020,
@@ -166,9 +172,9 @@ describe('saveBottleAiAnalysis', () => {
         details: existingDetails,
       },
       analysis,
-    );
+    });
 
-    const after = await getBottle(db, bottleId);
+    const after = await getBottle({ db, bottleId });
     expect(after?.drinkFrom).toBe(2020);
     expect(after?.drinkUntil).toBe(2024);
     expect(after?.region).toBe('Bourgogne');
@@ -179,7 +185,7 @@ describe('saveBottleAiAnalysis', () => {
 
   it('remplace le contenu IA précédent lors d’une régénération', async () => {
     const { db, bottleId } = await setupBottle();
-    await saveBottleAiAnalysis(db, { ...emptyBottleRef, id: bottleId }, analysis);
+    await saveBottleAiAnalysis({ db, bottle: { ...emptyBottleRef, id: bottleId }, analysis });
 
     const secondAnalysis = {
       ...analysis,
@@ -191,9 +197,9 @@ describe('saveBottleAiAnalysis', () => {
       grapeVarieties: ['Grenache'],
       appellation: 'Châteauneuf-du-Pape',
     };
-    await saveBottleAiAnalysis(
+    await saveBottleAiAnalysis({
       db,
-      {
+      bottle: {
         id: bottleId,
         category: 'wine',
         drinkFrom: 2027,
@@ -201,10 +207,10 @@ describe('saveBottleAiAnalysis', () => {
         region: 'Bordeaux',
         details: { grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' },
       },
-      secondAnalysis,
-    );
+      analysis: secondAnalysis,
+    });
 
-    const after = await getBottle(db, bottleId);
+    const after = await getBottle({ db, bottleId });
     expect(after?.aiAnalysis).toBe('Nouvelle analyse.');
     expect(after?.aiPairings).toEqual(['Volaille', 'Poisson', 'Fromage']);
     // La garde, la région, les cépages et l'appellation étaient déjà remplis par le premier appel : pas réécrasés par le second.

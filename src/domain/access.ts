@@ -1,11 +1,15 @@
 import { eq, and } from 'drizzle-orm';
-import type { Db } from '../db/client';
 import { cellarMemberships, users } from '../db/schema';
+import type { CheckCellarAccessArgs } from './interfaces/check-cellar-access-args.interface';
 
 export type CellarRole = 'owner' | 'editor' | 'reader' | 'super_admin';
 export type AccessResult = { allowed: true; role: CellarRole } | { allowed: false };
 
-export const checkCellarAccess = async (db: Db, userId: string, cellarId: string): Promise<AccessResult> => {
+export const checkCellarAccess = async ({
+  db,
+  userId,
+  cellarId,
+}: CheckCellarAccessArgs): Promise<AccessResult> => {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user) {
     return { allowed: false };

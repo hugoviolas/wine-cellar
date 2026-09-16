@@ -24,7 +24,9 @@ export const AdminUserDetail = ({ user }: { user: UserDetail }): ReactElement =>
       body: JSON.stringify(patch),
     });
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible de mettre à jour ce compte.'));
+      setError(
+        await errorMessageFromResponse({ response, fallback: 'Impossible de mettre à jour ce compte.' }),
+      );
       return;
     }
     if (patch.isActive !== undefined) {
@@ -40,10 +42,10 @@ export const AdminUserDetail = ({ user }: { user: UserDetail }): ReactElement =>
     setError(null);
     const response = await fetch(`/api/admin/users/${user.id}/reset-token`, { method: 'POST' });
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible de générer un lien.'));
+      setError(await errorMessageFromResponse({ response, fallback: 'Impossible de générer un lien.' }));
       return;
     }
-    const token = await stringFieldFromResponse(response, 'token');
+    const token = await stringFieldFromResponse({ response, field: 'token' });
     if (token === null) {
       setError('Lien de réinitialisation illisible — réessaie.');
       return;
@@ -57,7 +59,7 @@ export const AdminUserDetail = ({ user }: { user: UserDetail }): ReactElement =>
     const response = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
     setBusy(false);
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible de supprimer ce compte.'));
+      setError(await errorMessageFromResponse({ response, fallback: 'Impossible de supprimer ce compte.' }));
       return;
     }
     router.push('/admin/utilisateurs');

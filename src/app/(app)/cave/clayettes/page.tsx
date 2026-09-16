@@ -13,10 +13,10 @@ const ClayettesPage = async ({
 }): Promise<ReactElement> => {
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
-  const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
+  const cellarId = await resolveViewedCellarId({ db, userId: user.id, requestedCellarId });
   const cellarQuery = requestedCellarId ? `?cellarId=${cellarId}` : '';
 
-  const crates = cellarId ? await listCrates(db, cellarId) : [];
+  const crates = cellarId ? await listCrates({ db, cellarId }) : [];
 
   return (
     <div>

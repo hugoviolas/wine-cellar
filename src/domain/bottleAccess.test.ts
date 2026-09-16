@@ -12,21 +12,27 @@ import { firstRow } from '../db/testRows';
 describe('resolveBottleAccess', () => {
   it('autorise le propriétaire de la cave de la bouteille', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'admin@example.com',
-      password: 'x',
-      cellarName: 'Ma Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'admin@example.com',
+        password: 'x',
+        cellarName: 'Ma Cave',
+      },
     });
-    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
-    const bottleId = await createBottle(db, {
-      crateId,
-      category: 'wine',
-      name: 'Château Margaux',
-      quantity: 1,
-      details: {},
+    const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette 1', capacity: 12 } });
+    const bottleId = await createBottle({
+      db,
+      input: {
+        crateId,
+        category: 'wine',
+        name: 'Château Margaux',
+        quantity: 1,
+        details: {},
+      },
     });
 
-    const result = await resolveBottleAccess(db, userId, bottleId);
+    const result = await resolveBottleAccess({ db, userId, bottleId });
     expect(result.status).toBe('ok');
     if (result.status !== 'ok') {
       throw new Error('accès inattendu');
@@ -37,24 +43,33 @@ describe('resolveBottleAccess', () => {
 
   it('refuse un utilisateur sans membership dans la cave de la bouteille', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'admin@example.com',
-      password: 'x',
-      cellarName: 'Ma Cave',
+    const { cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'admin@example.com',
+        password: 'x',
+        cellarName: 'Ma Cave',
+      },
     });
-    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
-    const bottleId = await createBottle(db, {
-      crateId,
-      category: 'wine',
-      name: 'Vin privé',
-      quantity: 1,
-      details: {},
+    const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette 1', capacity: 12 } });
+    const bottleId = await createBottle({
+      db,
+      input: {
+        crateId,
+        category: 'wine',
+        name: 'Vin privé',
+        quantity: 1,
+        details: {},
+      },
     });
 
-    const otherCave = await bootstrapSuperAdmin(db, {
-      email: 'autre-admin@example.com',
-      password: 'x',
-      cellarName: 'Autre Cave',
+    const otherCave = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'autre-admin@example.com',
+        password: 'x',
+        cellarName: 'Autre Cave',
+      },
     });
     const intrusId = newId();
     await db.insert(users).values({
@@ -72,40 +87,49 @@ describe('resolveBottleAccess', () => {
       createdAt: new Date().toISOString(),
     });
 
-    const result = await resolveBottleAccess(db, intrusId, bottleId);
+    const result = await resolveBottleAccess({ db, userId: intrusId, bottleId });
     expect(result).toEqual({ status: 'forbidden' });
   });
 
   it('retourne not_found pour un identifiant de bouteille inconnu', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, {
-      email: 'admin@example.com',
-      password: 'x',
-      cellarName: 'Ma Cave',
+    const { userId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'admin@example.com',
+        password: 'x',
+        cellarName: 'Ma Cave',
+      },
     });
 
-    const result = await resolveBottleAccess(db, userId, 'bouteille-inconnue');
+    const result = await resolveBottleAccess({ db, userId, bottleId: 'bouteille-inconnue' });
     expect(result).toEqual({ status: 'not_found' });
   });
 
   it('inclut le rôle du membre dans le résultat "ok"', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
-    const bottleId = await createBottle(db, {
-      crateId,
-      category: 'wine',
-      name: 'Vin',
-      quantity: 1,
-      details: {},
+    const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette 1', capacity: 12 } });
+    const bottleId = await createBottle({
+      db,
+      input: {
+        crateId,
+        category: 'wine',
+        name: 'Vin',
+        quantity: 1,
+        details: {},
+      },
     });
     const owner = firstRow(await db.select().from(users));
 
-    const result = await resolveBottleAccess(db, owner.id, bottleId);
+    const result = await resolveBottleAccess({ db, userId: owner.id, bottleId });
     expect(result).toMatchObject({ status: 'ok', role: 'super_admin' });
   });
 });

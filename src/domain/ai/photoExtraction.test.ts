@@ -4,7 +4,10 @@ import { rowAt } from '../../db/testRows';
 
 describe('buildPhotoExtractionPrompt', () => {
   it("place l'image en premier bloc avec le bon media_type et les bonnes données", () => {
-    const { content } = buildPhotoExtractionPrompt('AAAA_base64_data', 'image/jpeg');
+    const { content } = buildPhotoExtractionPrompt({
+      imageBase64: 'AAAA_base64_data',
+      mediaType: 'image/jpeg',
+    });
 
     expect(Array.isArray(content)).toBe(true);
     const blocks = content as Array<{ type: string; [key: string]: unknown }>;
@@ -16,7 +19,7 @@ describe('buildPhotoExtractionPrompt', () => {
   });
 
   it('place le prompt texte en second bloc avec les catégories et couleurs attendues', () => {
-    const { content } = buildPhotoExtractionPrompt('AAAA', 'image/png');
+    const { content } = buildPhotoExtractionPrompt({ imageBase64: 'AAAA', mediaType: 'image/png' });
     const blocks = content as Array<{ type: string; text?: string }>;
 
     expect(rowAt(blocks, 1).type).toBe('text');
@@ -33,7 +36,7 @@ describe('buildPhotoExtractionPrompt', () => {
   });
 
   it('indique que la couleur est pertinente pour le vin ET le champagne/effervescent', () => {
-    const { content } = buildPhotoExtractionPrompt('AAAA', 'image/png');
+    const { content } = buildPhotoExtractionPrompt({ imageBase64: 'AAAA', mediaType: 'image/png' });
     const blocks = content as Array<{ type: string; text?: string }>;
     const text = rowAt(blocks, 1).text as string;
 
@@ -41,7 +44,7 @@ describe('buildPhotoExtractionPrompt', () => {
   });
 
   it('utilise un system prompt demandant du JSON seul', () => {
-    const { system } = buildPhotoExtractionPrompt('AAAA', 'image/jpeg');
+    const { system } = buildPhotoExtractionPrompt({ imageBase64: 'AAAA', mediaType: 'image/jpeg' });
     expect(system.toLowerCase()).toContain('json');
   });
 });

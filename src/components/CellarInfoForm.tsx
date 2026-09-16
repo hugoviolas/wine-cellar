@@ -43,10 +43,10 @@ export const CellarInfoForm = ({
     });
     setBusy(false);
     if (!response.ok) {
-      const message = await errorMessageFromResponse(
+      const message = await errorMessageFromResponse({
         response,
-        'Impossible d’enregistrer les infos de la cave.',
-      );
+        fallback: 'Impossible d’enregistrer les infos de la cave.',
+      });
       setError(message);
       toast.error(message);
       return;

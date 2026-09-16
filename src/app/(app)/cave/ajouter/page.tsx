@@ -15,11 +15,11 @@ const AddBottlePage = async ({
 }): Promise<ReactElement> => {
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
-  const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
+  const cellarId = await resolveViewedCellarId({ db, userId: user.id, requestedCellarId });
   const cellarQuery = requestedCellarId ? `?cellarId=${cellarId}` : '';
 
-  const crates = cellarId ? await listCrates(db, cellarId) : [];
-  const cellar = cellarId ? await getCellarById(db, cellarId) : null;
+  const crates = cellarId ? await listCrates({ db, cellarId }) : [];
+  const cellar = cellarId ? await getCellarById({ db, cellarId }) : null;
   const aiAvailable = cellar ? isAiAvailable(cellar) : false;
 
   return (

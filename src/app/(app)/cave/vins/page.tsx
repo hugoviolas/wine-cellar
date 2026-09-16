@@ -14,14 +14,14 @@ const VinsPage = async ({
 }): Promise<ReactElement> => {
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
-  const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
+  const cellarId = await resolveViewedCellarId({ db, userId: user.id, requestedCellarId });
   const cellarQuery = requestedCellarId ? `?cellarId=${cellarId}` : '';
 
   if (!cellarId) {
     return <p className="text-sm">Aucune cave associée à ce compte.</p>;
   }
 
-  const bottleRows = await listActiveBottlesByCellar(db, cellarId);
+  const bottleRows = await listActiveBottlesByCellar({ db, cellarId });
   const currentYear = new Date().getFullYear();
 
   const rows: WineListRow[] = bottleRows.map((row) => ({
@@ -33,7 +33,11 @@ const VinsPage = async ({
     vintage: row.bottle.vintage,
     quantity: row.bottle.quantity,
     rating: row.bottle.rating,
-    gardeStatus: computeGardeStatus(row.bottle.drinkFrom, row.bottle.drinkUntil, currentYear),
+    gardeStatus: computeGardeStatus({
+      drinkFrom: row.bottle.drinkFrom,
+      drinkUntil: row.bottle.drinkUntil,
+      currentYear,
+    }),
     createdAt: row.bottle.createdAt,
   }));
 

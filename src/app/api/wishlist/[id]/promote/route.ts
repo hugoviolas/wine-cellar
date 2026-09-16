@@ -21,7 +21,7 @@ export const POST = async (
   }
   const { id } = await params;
 
-  const access = await resolveWishlistItemAccess(db, auth.user.id, id);
+  const access = await resolveWishlistItemAccess({ db, userId: auth.user.id, itemId: id });
   if (access.status === 'not_found') {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -38,15 +38,15 @@ export const POST = async (
     return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
   }
 
-  const crate = await getCrateById(db, parsed.data.crateId);
+  const crate = await getCrateById({ db, crateId: parsed.data.crateId });
   if (!crate) {
     return NextResponse.json({ error: 'Clayette introuvable.' }, { status: 404 });
   }
-  const cellarAccess = await checkCellarAccess(db, auth.user.id, crate.cellarId);
+  const cellarAccess = await checkCellarAccess({ db, userId: auth.user.id, cellarId: crate.cellarId });
   if (!cellarAccess.allowed || !canEditCellarContent(cellarAccess.role)) {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
-  const { bottleId } = await promoteWishlistItem(db, access.item, parsed.data);
+  const { bottleId } = await promoteWishlistItem({ db, item: access.item, input: parsed.data });
   return NextResponse.json({ bottleId });
 };
