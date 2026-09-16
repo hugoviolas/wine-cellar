@@ -18,12 +18,12 @@ export const GET = async (request: Request): Promise<NextResponse> => {
     return NextResponse.json({ error: 'cellarId requis' }, { status: 400 });
   }
 
-  const access = await checkCellarAccess(db, user.id, cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
 
-  return NextResponse.json(await listActiveBottlesByCellar(db, cellarId));
+  return NextResponse.json(await listActiveBottlesByCellar({ db, cellarId }));
 };
 
 export const POST = async (request: Request): Promise<NextResponse> => {
@@ -39,11 +39,11 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
   const body = parsed.data;
 
-  const crate = await getCrateById(db, body.crateId);
+  const crate = await getCrateById({ db, crateId: body.crateId });
   if (!crate) {
     return NextResponse.json({ error: 'Clayette introuvable' }, { status: 404 });
   }
-  const access = await checkCellarAccess(db, user.id, crate.cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId: crate.cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
@@ -52,7 +52,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
 
   try {
-    const id = await createBottle(db, body);
+    const id = await createBottle({ db, input: body });
     return NextResponse.json({ id });
   } catch {
     return NextResponse.json({ error: 'Détails invalides pour cette catégorie' }, { status: 400 });

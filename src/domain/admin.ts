@@ -13,6 +13,14 @@ import {
   invitations,
 } from '../db/schema';
 import { newId } from '../db/id';
+import type { GetUserByIdArgs } from './interfaces/get-user-by-id-args.interface';
+import type { SetUserActiveArgs } from './interfaces/set-user-active-args.interface';
+import type { SetUserSuperAdminArgs } from './interfaces/set-user-super-admin-args.interface';
+import type { HasOtherActiveSuperAdminArgs } from './interfaces/has-other-active-super-admin-args.interface';
+import type { SetCellarAiEnabledArgs } from './interfaces/set-cellar-ai-enabled-args.interface';
+import type { DeleteCellarCascadeArgs } from './interfaces/delete-cellar-cascade-args.interface';
+import type { DeleteUserArgs } from './interfaces/delete-user-args.interface';
+import type { CreateCellarByAdminArgs } from './interfaces/create-cellar-by-admin-args.interface';
 
 export type { CreateCellarInput };
 
@@ -20,16 +28,20 @@ export const listAllUsers = async (db: Db): Promise<UserRow[]> => {
   return db.select().from(users);
 };
 
-export const getUserById = async (db: Db, userId: string): Promise<UserRow | null> => {
+export const getUserById = async ({ db, userId }: GetUserByIdArgs): Promise<UserRow | null> => {
   const [row] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return row ?? null;
 };
 
-export const setUserActive = async (db: Db, userId: string, isActive: boolean): Promise<void> => {
+export const setUserActive = async ({ db, userId, isActive }: SetUserActiveArgs): Promise<void> => {
   await db.update(users).set({ isActive }).where(eq(users.id, userId));
 };
 
-export const setUserSuperAdmin = async (db: Db, userId: string, isSuperAdmin: boolean): Promise<void> => {
+export const setUserSuperAdmin = async ({
+  db,
+  userId,
+  isSuperAdmin,
+}: SetUserSuperAdminArgs): Promise<void> => {
   await db.update(users).set({ isSuperAdmin }).where(eq(users.id, userId));
 };
 
@@ -38,7 +50,10 @@ export const setUserSuperAdmin = async (db: Db, userId: string, isSuperAdmin: bo
  * super-admin actif. Sert à empêcher de rétrograder le dernier super-admin
  * actif restant (ce qui verrouillerait `/admin/**` pour tout le monde).
  */
-export const hasOtherActiveSuperAdmin = async (db: Db, excludeUserId: string): Promise<boolean> => {
+export const hasOtherActiveSuperAdmin = async ({
+  db,
+  excludeUserId,
+}: HasOtherActiveSuperAdminArgs): Promise<boolean> => {
   const [other] = await db
     .select({ id: users.id })
     .from(users)
@@ -68,7 +83,11 @@ export const listAllCellarsWithOwner = async (db: Db): Promise<CellarWithOwner[]
     .leftJoin(users, eq(cellars.ownerId, users.id));
 };
 
-export const setCellarAiEnabled = async (db: Db, cellarId: string, aiEnabled: boolean): Promise<void> => {
+export const setCellarAiEnabled = async ({
+  db,
+  cellarId,
+  aiEnabled,
+}: SetCellarAiEnabledArgs): Promise<void> => {
   await db.update(cellars).set({ aiEnabled }).where(eq(cellars.id, cellarId));
 };
 
@@ -77,7 +96,7 @@ export const setCellarAiEnabled = async (db: Db, cellarId: string, aiEnabled: bo
  * historique de consommation, invitations et memberships. Irréversible —
  * la confirmation se fait côté UI/route, pas ici.
  */
-export const deleteCellarCascade = async (db: Db, cellarId: string): Promise<void> => {
+export const deleteCellarCascade = async ({ db, cellarId }: DeleteCellarCascadeArgs): Promise<void> => {
   // Une transaction, parce que c'est six suppressions en chaîne : une
   // erreur au milieu laisserait sinon une cave à moitié effacée (des
   // clayettes sans bouteilles, un historique orphelin), état dont
@@ -104,7 +123,7 @@ export const deleteCellarCascade = async (db: Db, cellarId: string): Promise<voi
  * plus plutôt que d'être supprimées ou bloquées — voir `listAllCellarsWithOwner`
  * et `listCellarMembersWithEmail` pour l'affichage `leftJoin` correspondant.
  */
-export const deleteUser = async (db: Db, userId: string): Promise<void> => {
+export const deleteUser = async ({ db, userId }: DeleteUserArgs): Promise<void> => {
   await db.delete(users).where(eq(users.id, userId));
 };
 
@@ -117,7 +136,7 @@ export const countMembersByCellarId = async (db: Db): Promise<Record<string, num
   return counts;
 };
 
-export const createCellarByAdmin = async (db: Db, input: CreateCellarInput): Promise<string> => {
+export const createCellarByAdmin = async ({ db, input }: CreateCellarByAdminArgs): Promise<string> => {
   const id = newId();
   const now = new Date().toISOString();
   await db.insert(cellars).values({

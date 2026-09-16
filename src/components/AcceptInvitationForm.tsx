@@ -33,7 +33,9 @@ export const AcceptInvitationForm = ({
         body: JSON.stringify(mode === 'login' ? { mode } : { mode, password }),
       });
       if (!response.ok) {
-        setError(await errorMessageFromResponse(response, 'Impossible d’accepter l’invitation.'));
+        setError(
+          await errorMessageFromResponse({ response, fallback: 'Impossible d’accepter l’invitation.' }),
+        );
         return;
       }
       router.push('/cave');

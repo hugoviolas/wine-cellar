@@ -17,12 +17,12 @@ export const GET = async (request: Request): Promise<NextResponse> => {
     return NextResponse.json({ error: 'cellarId requis' }, { status: 400 });
   }
 
-  const access = await checkCellarAccess(db, user.id, cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
 
-  return NextResponse.json(await listCrates(db, cellarId));
+  return NextResponse.json(await listCrates({ db, cellarId }));
 };
 
 export const POST = async (request: Request): Promise<NextResponse> => {
@@ -42,7 +42,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
   const input = parsed.data;
 
-  const access = await checkCellarAccess(db, user.id, input.cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId: input.cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
@@ -50,6 +50,6 @@ export const POST = async (request: Request): Promise<NextResponse> => {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
-  const id = await createCrate(db, input);
-  return NextResponse.json(await getCrateById(db, id));
+  const id = await createCrate({ db, input });
+  return NextResponse.json(await getCrateById({ db, crateId: id }));
 };

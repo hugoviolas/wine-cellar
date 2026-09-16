@@ -1,8 +1,8 @@
-import type { Db } from '../db/client';
 import { getBottle } from './bottles';
 import { getCrateById } from './crates';
 import { checkCellarAccess, type CellarRole } from './access';
 import type { BottleRow } from '../db/rows';
+import type { ResolveBottleAccessArgs } from './interfaces/resolve-bottle-access-args.interface';
 
 /**
  * La bouteille du cas 'ok' porte forcément une clayette : sans clayette,
@@ -15,12 +15,12 @@ export type BottleAccessResult =
   | { status: 'not_found' }
   | { status: 'forbidden' };
 
-export const resolveBottleAccess = async (
-  db: Db,
-  userId: string,
-  bottleId: string,
-): Promise<BottleAccessResult> => {
-  const bottle = await getBottle(db, bottleId);
+export const resolveBottleAccess = async ({
+  db,
+  userId,
+  bottleId,
+}: ResolveBottleAccessArgs): Promise<BottleAccessResult> => {
+  const bottle = await getBottle({ db, bottleId });
   if (!bottle) {
     return { status: 'not_found' };
   }
@@ -28,11 +28,11 @@ export const resolveBottleAccess = async (
   if (crateId === null) {
     return { status: 'not_found' };
   }
-  const crate = await getCrateById(db, crateId);
+  const crate = await getCrateById({ db, crateId });
   if (!crate) {
     return { status: 'not_found' };
   }
-  const access = await checkCellarAccess(db, userId, crate.cellarId);
+  const access = await checkCellarAccess({ db, userId, cellarId: crate.cellarId });
   if (!access.allowed) {
     return { status: 'forbidden' };
   }

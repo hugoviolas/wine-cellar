@@ -28,7 +28,10 @@ export const UserNoteEditor = ({
       body: JSON.stringify({ userNote: note, rating: rating === '' ? null : Number(rating) }),
     });
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible d’enregistrer la note.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible d’enregistrer la note.',
+      });
       setError(message);
       toast.error(message);
       return;

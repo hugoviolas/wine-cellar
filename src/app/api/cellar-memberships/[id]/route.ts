@@ -11,17 +11,21 @@ import {
   CannotModifyOwnerError,
 } from '@/domain/cellarMembers';
 import { readJsonBody } from '@/lib/readJsonBody';
+import type { RequireManageAccessArgs } from './interfaces/require-manage-access-args.interface';
 
 type ManageAccessResult = { cellarId: string; error: null } | { cellarId: null; error: NextResponse };
 
 const updateRoleBodySchema = z.object({ role: z.enum(['editor', 'reader']) }).strict();
 
-const requireManageAccess = async (userId: string, membershipId: string): Promise<ManageAccessResult> => {
-  const membership = await getMembershipById(db, membershipId);
+const requireManageAccess = async ({
+  userId,
+  membershipId,
+}: RequireManageAccessArgs): Promise<ManageAccessResult> => {
+  const membership = await getMembershipById({ db, membershipId });
   if (!membership) {
     return { cellarId: null, error: NextResponse.json({ error: 'Introuvable' }, { status: 404 }) };
   }
-  const access = await checkCellarAccess(db, userId, membership.cellarId);
+  const access = await checkCellarAccess({ db, userId, cellarId: membership.cellarId });
   if (!access.allowed || !canManageCellar(access.role)) {
     return { cellarId: null, error: NextResponse.json({ error: 'Accès refusé' }, { status: 403 }) };
   }
@@ -38,7 +42,7 @@ export const PATCH = async (
   }
   const { id } = await params;
 
-  const { error } = await requireManageAccess(auth.user.id, id);
+  const { error } = await requireManageAccess({ userId: auth.user.id, membershipId: id });
   if (error) {
     return error;
   }
@@ -50,7 +54,7 @@ export const PATCH = async (
   }
 
   try {
-    await updateMembershipRole(db, id, parsed.data.role);
+    await updateMembershipRole({ db, membershipId: id, role: parsed.data.role });
   } catch (err) {
     if (err instanceof CannotModifyOwnerError) {
       return NextResponse.json(
@@ -73,13 +77,13 @@ export const DELETE = async (
   }
   const { id } = await params;
 
-  const { error } = await requireManageAccess(auth.user.id, id);
+  const { error } = await requireManageAccess({ userId: auth.user.id, membershipId: id });
   if (error) {
     return error;
   }
 
   try {
-    await removeMembership(db, id);
+    await removeMembership({ db, membershipId: id });
   } catch (err) {
     if (err instanceof CannotModifyOwnerError) {
       return NextResponse.json({ error: 'Le propriétaire ne peut pas être retiré.' }, { status: 400 });

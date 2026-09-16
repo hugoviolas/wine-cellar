@@ -24,7 +24,7 @@ export const PATCH = async (
     return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
   }
 
-  await setCellarAiEnabled(db, id, parsed.data.aiEnabled);
+  await setCellarAiEnabled({ db, cellarId: id, aiEnabled: parsed.data.aiEnabled });
   return NextResponse.json({ ok: true });
 };
 
@@ -38,11 +38,11 @@ export const DELETE = async (
   }
   const { id } = await params;
 
-  const cellar = await getCellarById(db, id);
+  const cellar = await getCellarById({ db, cellarId: id });
   if (!cellar) {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
 
-  await deleteCellarCascade(db, id);
+  await deleteCellarCascade({ db, cellarId: id });
   return NextResponse.json({ ok: true });
 };

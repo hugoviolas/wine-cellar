@@ -9,38 +9,42 @@ import { firstRow } from '../db/testRows';
 describe('createUserAccount', () => {
   it('crée un compte non-admin avec le mot de passe hashé', async () => {
     const db = await createTestDb();
-    const userId = await createUserAccount(db, 'membre@example.com', 'mot-de-passe-membre');
+    const userId = await createUserAccount({
+      db,
+      email: 'membre@example.com',
+      password: 'mot-de-passe-membre',
+    });
 
     const user = firstRow(await db.select().from(users).where(eq(users.id, userId)));
     expect(user.email).toBe('membre@example.com');
     expect(user.isSuperAdmin).toBe(false);
     expect(user.isActive).toBe(true);
-    expect(await verifyPassword('mot-de-passe-membre', user.passwordHash)).toBe(true);
+    expect(await verifyPassword({ password: 'mot-de-passe-membre', hash: user.passwordHash })).toBe(true);
   });
 
   it('refuse un email déjà utilisé', async () => {
     const db = await createTestDb();
-    await createUserAccount(db, 'membre@example.com', 'x');
-    await expect(createUserAccount(db, 'membre@example.com', 'y')).rejects.toBeInstanceOf(
-      EmailAlreadyExistsError,
-    );
+    await createUserAccount({ db, email: 'membre@example.com', password: 'x' });
+    await expect(
+      createUserAccount({ db, email: 'membre@example.com', password: 'y' }),
+    ).rejects.toBeInstanceOf(EmailAlreadyExistsError);
   });
 });
 
 describe('registerSelfServeUser', () => {
   it('crée un compte, une cave "Ma Cave" avec l\'IA désactivée, et une adhésion owner', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await registerSelfServeUser(
+    const { userId, cellarId } = await registerSelfServeUser({
       db,
-      'nouveau@example.com',
-      'mot-de-passe-solide',
-    );
+      email: 'nouveau@example.com',
+      password: 'mot-de-passe-solide',
+    });
 
     const user = firstRow(await db.select().from(users).where(eq(users.id, userId)));
     expect(user.email).toBe('nouveau@example.com');
     expect(user.isSuperAdmin).toBe(false);
     expect(user.isActive).toBe(true);
-    expect(await verifyPassword('mot-de-passe-solide', user.passwordHash)).toBe(true);
+    expect(await verifyPassword({ password: 'mot-de-passe-solide', hash: user.passwordHash })).toBe(true);
 
     const cellar = firstRow(await db.select().from(cellars).where(eq(cellars.id, cellarId)));
     expect(cellar.name).toBe('Ma Cave');
@@ -56,15 +60,19 @@ describe('registerSelfServeUser', () => {
 
   it('refuse un email déjà utilisé', async () => {
     const db = await createTestDb();
-    await registerSelfServeUser(db, 'nouveau@example.com', 'x'.repeat(8));
-    await expect(registerSelfServeUser(db, 'nouveau@example.com', 'y'.repeat(8))).rejects.toBeInstanceOf(
-      EmailAlreadyExistsError,
-    );
+    await registerSelfServeUser({ db, email: 'nouveau@example.com', password: 'x'.repeat(8) });
+    await expect(
+      registerSelfServeUser({ db, email: 'nouveau@example.com', password: 'y'.repeat(8) }),
+    ).rejects.toBeInstanceOf(EmailAlreadyExistsError);
   });
 
   it("normalise l'email en minuscules", async () => {
     const db = await createTestDb();
-    const { userId } = await registerSelfServeUser(db, 'Nouveau@Example.com', 'x'.repeat(8));
+    const { userId } = await registerSelfServeUser({
+      db,
+      email: 'Nouveau@Example.com',
+      password: 'x'.repeat(8),
+    });
     const user = firstRow(await db.select().from(users).where(eq(users.id, userId)));
     expect(user.email).toBe('nouveau@example.com');
   });
@@ -79,8 +87,8 @@ describe('unicité de l’email, y compris en concurrence', () => {
   it('createUserAccount traduit la violation de contrainte en EmailAlreadyExistsError', async () => {
     const db = await createTestDb();
     const results = await Promise.allSettled([
-      createUserAccount(db, 'course@example.com', 'x'),
-      createUserAccount(db, 'course@example.com', 'y'),
+      createUserAccount({ db, email: 'course@example.com', password: 'x' }),
+      createUserAccount({ db, email: 'course@example.com', password: 'y' }),
     ]);
 
     const rejected = results.filter((r) => r.status === 'rejected');
@@ -92,8 +100,8 @@ describe('unicité de l’email, y compris en concurrence', () => {
   it('registerSelfServeUser traduit aussi la violation de contrainte', async () => {
     const db = await createTestDb();
     const results = await Promise.allSettled([
-      registerSelfServeUser(db, 'course2@example.com', 'x'),
-      registerSelfServeUser(db, 'course2@example.com', 'y'),
+      registerSelfServeUser({ db, email: 'course2@example.com', password: 'x' }),
+      registerSelfServeUser({ db, email: 'course2@example.com', password: 'y' }),
     ]);
 
     const rejected = results.filter((r) => r.status === 'rejected');

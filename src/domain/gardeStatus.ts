@@ -1,3 +1,5 @@
+import type { ComputeGardeStatusArgs } from './interfaces/compute-garde-status-args.interface';
+import type { ComputeGardeProgressArgs } from './interfaces/compute-garde-progress-args.interface';
 export type GardeStatus = 'too_young' | 'ready' | 'closing_window' | 'unknown';
 
 export const GARDE_STATUS_LABELS: Record<GardeStatus, string> = {
@@ -7,11 +9,11 @@ export const GARDE_STATUS_LABELS: Record<GardeStatus, string> = {
   unknown: 'Fenêtre de garde inconnue',
 };
 
-export const computeGardeStatus = (
-  drinkFrom: number | null,
-  drinkUntil: number | null,
-  currentYear: number,
-): GardeStatus => {
+export const computeGardeStatus = ({
+  drinkFrom,
+  drinkUntil,
+  currentYear,
+}: ComputeGardeStatusArgs): GardeStatus => {
   if (drinkFrom == null || drinkUntil == null) {
     return 'unknown';
   }
@@ -30,11 +32,11 @@ export const computeGardeStatus = (
   return 'ready';
 };
 
-export const computeGardeProgress = (
-  vintage: number | null,
-  drinkUntil: number | null,
-  currentYear: number,
-): number => {
+export const computeGardeProgress = ({
+  vintage,
+  drinkUntil,
+  currentYear,
+}: ComputeGardeProgressArgs): number => {
   if (vintage == null || drinkUntil == null || drinkUntil <= vintage) {
     return 0;
   }

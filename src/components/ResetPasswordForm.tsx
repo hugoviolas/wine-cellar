@@ -24,7 +24,12 @@ export const ResetPasswordForm = ({ token }: { token: string }): ReactElement =>
       body: JSON.stringify({ password }),
     });
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible de réinitialiser le mot de passe.'));
+      setError(
+        await errorMessageFromResponse({
+          response,
+          fallback: 'Impossible de réinitialiser le mot de passe.',
+        }),
+      );
       return;
     }
     setDone(true);

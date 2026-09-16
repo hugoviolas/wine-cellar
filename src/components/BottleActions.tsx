@@ -38,7 +38,10 @@ export const BottleActions = ({
     });
     setBusy(false);
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible de mettre à jour la quantité.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible de mettre à jour la quantité.',
+      });
       setError(message);
       toast.error(message);
       return;
@@ -60,7 +63,10 @@ export const BottleActions = ({
     });
     setBusy(false);
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible de déplacer cette bouteille.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible de déplacer cette bouteille.',
+      });
       setError(message);
       toast.error(message);
       return;
@@ -76,7 +82,10 @@ export const BottleActions = ({
     const response = await fetch(`/api/bottles/${bottleId}`, { method: 'DELETE' });
     setBusy(false);
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible de supprimer cette bouteille.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible de supprimer cette bouteille.',
+      });
       setError(message);
       toast.error(message);
       return;
@@ -123,7 +132,7 @@ export const BottleActions = ({
             >
               {otherCrates.map((crate) => (
                 <option key={crate.id} value={crate.id}>
-                  {crateLabel(crate.number, crate.name)}
+                  {crateLabel({ number: crate.number, name: crate.name })}
                 </option>
               ))}
             </select>

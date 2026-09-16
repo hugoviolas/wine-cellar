@@ -14,7 +14,7 @@ const AdminUserDetailPage = async ({
   // suffit pas à empêcher le rendu de cette page.
   await requireSuperAdmin();
   const { id } = await params;
-  const user = await getUserById(db, id);
+  const user = await getUserById({ db, userId: id });
   if (!user) {
     notFound();
   }

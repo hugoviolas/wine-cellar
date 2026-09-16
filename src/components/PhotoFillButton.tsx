@@ -77,7 +77,10 @@ export const PhotoFillButton = ({
         body: JSON.stringify({ ...extraBody, imageBase64, mediaType: file.type }),
       });
       if (!response.ok) {
-        const message = await errorMessageFromResponse(response, 'Impossible d’analyser cette photo.');
+        const message = await errorMessageFromResponse({
+          response,
+          fallback: 'Impossible d’analyser cette photo.',
+        });
         toast.error(message);
         return;
       }

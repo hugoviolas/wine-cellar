@@ -19,7 +19,7 @@ export const POST = async (
   request: Request,
   { params }: { params: Promise<{ token: string }> },
 ): Promise<NextResponse> => {
-  const limit = checkRateLimit(`reset:ip:${clientKeyFromHeaders(request.headers)}`, PER_IP);
+  const limit = checkRateLimit({ key: `reset:ip:${clientKeyFromHeaders(request.headers)}`, rule: PER_IP });
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Trop de tentatives. Réessaie dans quelques minutes.' },
@@ -35,7 +35,7 @@ export const POST = async (
   }
 
   try {
-    await resetPasswordWithToken(db, token, parsed.data.password);
+    await resetPasswordWithToken({ db, token, newPassword: parsed.data.password });
   } catch {
     return NextResponse.json({ error: 'Lien de réinitialisation invalide ou expiré.' }, { status: 400 });
   }

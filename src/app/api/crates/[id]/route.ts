@@ -36,11 +36,11 @@ export const PATCH = async (
   }
   const { user } = auth;
   const { id } = await params;
-  const crate = await getCrateById(db, id);
+  const crate = await getCrateById({ db, crateId: id });
   if (!crate) {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
-  const access = await checkCellarAccess(db, user.id, crate.cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId: crate.cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
@@ -57,10 +57,10 @@ export const PATCH = async (
   }
 
   if (parsed.data.name !== undefined) {
-    await renameCrate(db, id, parsed.data.name);
+    await renameCrate({ db, crateId: id, name: parsed.data.name });
   }
   if (parsed.data.capacity !== undefined) {
-    await updateCrateCapacity(db, id, parsed.data.capacity);
+    await updateCrateCapacity({ db, crateId: id, capacity: parsed.data.capacity });
   }
 
   return NextResponse.json({ ok: true });
@@ -76,11 +76,11 @@ export const DELETE = async (
   }
   const { user } = auth;
   const { id } = await params;
-  const crate = await getCrateById(db, id);
+  const crate = await getCrateById({ db, crateId: id });
   if (!crate) {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
-  const access = await checkCellarAccess(db, user.id, crate.cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId: crate.cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
@@ -88,13 +88,13 @@ export const DELETE = async (
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
-  if (await crateHasActiveBottles(db, id)) {
+  if (await crateHasActiveBottles({ db, crateId: id })) {
     return NextResponse.json({ error: 'Cette clayette contient encore des bouteilles.' }, { status: 409 });
   }
 
   // Les bouteilles épuisées (quantité 0) restées rattachées à cette clayette
   // deviennent orphelines (crate_id à null) grâce à la clé étrangère en
   // ON DELETE SET NULL — leur historique de consommation reste intact.
-  await deleteCrate(db, id);
+  await deleteCrate({ db, crateId: id });
   return NextResponse.json({ ok: true });
 };

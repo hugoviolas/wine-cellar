@@ -81,7 +81,7 @@ export const CrateCard = ({
   return (
     <div className="border-b border-gray-200 py-4 last:border-b-0">
       <div className="flex items-baseline justify-between gap-3 mb-2.5">
-        <h4 className="text-base italic">{crateLabel(number, name)}</h4>
+        <h4 className="text-base italic">{crateLabel({ number, name })}</h4>
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-gold" style={{ width: `${fillPercent}%` }} />
