@@ -1,6 +1,6 @@
 import type { RateLimitBucket } from './interfaces/rate-limit-bucket.interface';
 import type { RateLimitResult } from './interfaces/rate-limit-result.interface';
-import type { RateLimitRule } from './interfaces/rate-limit-rule.interface';
+import type { CheckRateLimitArgs } from './interfaces/check-rate-limit-args.interface';
 
 /**
  * Limiteur de débit en mémoire, par fenêtre fixe. Suffisant ici : l'app
@@ -11,11 +11,7 @@ import type { RateLimitRule } from './interfaces/rate-limit-rule.interface';
  */
 const buckets = new Map<string, RateLimitBucket>();
 
-export const checkRateLimit = (
-  key: string,
-  rule: RateLimitRule,
-  now: number = Date.now(),
-): RateLimitResult => {
+export const checkRateLimit = ({ key, rule, now = Date.now() }: CheckRateLimitArgs): RateLimitResult => {
   evictExpired(now);
 
   const bucket = buckets.get(key);

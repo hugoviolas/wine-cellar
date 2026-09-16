@@ -29,12 +29,12 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
   const { crateId, orderedIds } = parsed.data;
 
-  const crate = await getCrateById(db, crateId);
+  const crate = await getCrateById({ db, crateId });
   if (!crate) {
     return NextResponse.json({ error: 'Clayette introuvable' }, { status: 404 });
   }
 
-  const access = await checkCellarAccess(db, user.id, crate.cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId: crate.cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
@@ -43,7 +43,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
 
   try {
-    await reorderBottlesInCrate(db, crateId, orderedIds);
+    await reorderBottlesInCrate({ db, crateId, orderedIds });
   } catch {
     return NextResponse.json(
       { error: 'La liste fournie ne correspond pas aux bouteilles actives de cette clayette.' },

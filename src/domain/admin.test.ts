@@ -27,8 +27,11 @@ import { firstRow, rowAt } from '../db/testRows';
 describe('listAllUsers', () => {
   it('liste tous les comptes tous statuts confondus', async () => {
     const db = await createTestDb();
-    await bootstrapSuperAdmin(db, { email: 'admin@example.com', password: 'x', cellarName: 'Cave' });
-    await createUserAccount(db, 'membre@example.com', 'x');
+    await bootstrapSuperAdmin({
+      db,
+      params: { email: 'admin@example.com', password: 'x', cellarName: 'Cave' },
+    });
+    await createUserAccount({ db, email: 'membre@example.com', password: 'x' });
 
     const list = await listAllUsers(db);
     expect(list).toHaveLength(2);
@@ -38,33 +41,36 @@ describe('listAllUsers', () => {
 describe('setUserActive', () => {
   it('désactive puis réactive un compte', async () => {
     const db = await createTestDb();
-    const userId = await createUserAccount(db, 'membre@example.com', 'x');
+    const userId = await createUserAccount({ db, email: 'membre@example.com', password: 'x' });
 
-    await setUserActive(db, userId, false);
-    expect((await getUserById(db, userId))?.isActive).toBe(false);
+    await setUserActive({ db, userId, isActive: false });
+    expect((await getUserById({ db, userId }))?.isActive).toBe(false);
 
-    await setUserActive(db, userId, true);
-    expect((await getUserById(db, userId))?.isActive).toBe(true);
+    await setUserActive({ db, userId, isActive: true });
+    expect((await getUserById({ db, userId }))?.isActive).toBe(true);
   });
 });
 
 describe('setUserSuperAdmin', () => {
   it('promeut puis rétrograde un compte', async () => {
     const db = await createTestDb();
-    const userId = await createUserAccount(db, 'membre@example.com', 'x');
+    const userId = await createUserAccount({ db, email: 'membre@example.com', password: 'x' });
 
-    await setUserSuperAdmin(db, userId, true);
-    expect((await getUserById(db, userId))?.isSuperAdmin).toBe(true);
+    await setUserSuperAdmin({ db, userId, isSuperAdmin: true });
+    expect((await getUserById({ db, userId }))?.isSuperAdmin).toBe(true);
 
-    await setUserSuperAdmin(db, userId, false);
-    expect((await getUserById(db, userId))?.isSuperAdmin).toBe(false);
+    await setUserSuperAdmin({ db, userId, isSuperAdmin: false });
+    expect((await getUserById({ db, userId }))?.isSuperAdmin).toBe(false);
   });
 });
 
 describe('listAllCellarsWithOwner', () => {
   it('liste toutes les caves avec l’email du owner', async () => {
     const db = await createTestDb();
-    await bootstrapSuperAdmin(db, { email: 'a@example.com', password: 'x', cellarName: 'Cave A' });
+    await bootstrapSuperAdmin({
+      db,
+      params: { email: 'a@example.com', password: 'x', cellarName: 'Cave A' },
+    });
 
     const list = await listAllCellarsWithOwner(db);
     expect(list).toHaveLength(1);
@@ -76,10 +82,13 @@ describe('listAllCellarsWithOwner', () => {
 describe('countMembersByCellarId', () => {
   it('compte les membres par cave', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave A',
+    const { cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave A',
+      },
     });
 
     const counts = await countMembersByCellarId(db);
@@ -90,49 +99,58 @@ describe('countMembersByCellarId', () => {
 describe('hasOtherActiveSuperAdmin', () => {
   it('retourne false quand le compte exclu est le seul super-admin actif', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, {
-      email: 'seul@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'seul@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
 
-    expect(await hasOtherActiveSuperAdmin(db, userId)).toBe(false);
+    expect(await hasOtherActiveSuperAdmin({ db, excludeUserId: userId })).toBe(false);
   });
 
   it('retourne true quand un autre super-admin actif existe', async () => {
     const db = await createTestDb();
-    const { userId: firstId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId: firstId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const secondId = await createUserAccount(db, 'b@example.com', 'x');
-    await setUserSuperAdmin(db, secondId, true);
+    const secondId = await createUserAccount({ db, email: 'b@example.com', password: 'x' });
+    await setUserSuperAdmin({ db, userId: secondId, isSuperAdmin: true });
 
-    expect(await hasOtherActiveSuperAdmin(db, firstId)).toBe(true);
+    expect(await hasOtherActiveSuperAdmin({ db, excludeUserId: firstId })).toBe(true);
   });
 
   it('ignore un autre super-admin désactivé', async () => {
     const db = await createTestDb();
-    const { userId: firstId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId: firstId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const secondId = await createUserAccount(db, 'b@example.com', 'x');
-    await setUserSuperAdmin(db, secondId, true);
-    await setUserActive(db, secondId, false);
+    const secondId = await createUserAccount({ db, email: 'b@example.com', password: 'x' });
+    await setUserSuperAdmin({ db, userId: secondId, isSuperAdmin: true });
+    await setUserActive({ db, userId: secondId, isActive: false });
 
-    expect(await hasOtherActiveSuperAdmin(db, firstId)).toBe(false);
+    expect(await hasOtherActiveSuperAdmin({ db, excludeUserId: firstId })).toBe(false);
   });
 });
 
 describe('createCellarByAdmin', () => {
   it('crée une cave et son membership owner', async () => {
     const db = await createTestDb();
-    const ownerId = await createUserAccount(db, 'owner@example.com', 'x');
+    const ownerId = await createUserAccount({ db, email: 'owner@example.com', password: 'x' });
 
-    const cellarId = await createCellarByAdmin(db, { name: 'Nouvelle cave', ownerId });
+    const cellarId = await createCellarByAdmin({ db, input: { name: 'Nouvelle cave', ownerId } });
 
     const list = await listAllCellarsWithOwner(db);
     expect(list.find((c) => c.id === cellarId)?.ownerEmail).toBe('owner@example.com');
@@ -144,16 +162,19 @@ describe('createCellarByAdmin', () => {
 describe('setCellarAiEnabled', () => {
   it('active puis désactive l’IA pour une cave', async () => {
     const db = await createTestDb();
-    const { cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
 
-    await setCellarAiEnabled(db, cellarId, false);
+    await setCellarAiEnabled({ db, cellarId, aiEnabled: false });
     expect((await listAllCellarsWithOwner(db)).find((c) => c.id === cellarId)?.aiEnabled).toBe(false);
 
-    await setCellarAiEnabled(db, cellarId, true);
+    await setCellarAiEnabled({ db, cellarId, aiEnabled: true });
     expect((await listAllCellarsWithOwner(db)).find((c) => c.id === cellarId)?.aiEnabled).toBe(true);
   });
 });
@@ -161,13 +182,16 @@ describe('setCellarAiEnabled', () => {
 describe('listAllCellarsWithOwner (propriétaire supprimé)', () => {
   it('conserve la cave avec un email de propriétaire nul quand le propriétaire est supprimé', async () => {
     const db = await createTestDb();
-    const { cellarId, userId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave A',
+    const { cellarId, userId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave A',
+      },
     });
 
-    await deleteUser(db, userId);
+    await deleteUser({ db, userId });
 
     const list = await listAllCellarsWithOwner(db);
     const cellar = list.find((c) => c.id === cellarId);
@@ -179,15 +203,18 @@ describe('listAllCellarsWithOwner (propriétaire supprimé)', () => {
 describe('deleteUser', () => {
   it('supprime uniquement le compte, sans toucher aux caves ou memberships qu’il possède', async () => {
     const db = await createTestDb();
-    const { cellarId, userId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave A',
+    const { cellarId, userId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave A',
+      },
     });
 
-    await deleteUser(db, userId);
+    await deleteUser({ db, userId });
 
-    expect(await getUserById(db, userId)).toBeNull();
+    expect(await getUserById({ db, userId })).toBeNull();
     // La cave et le membership survivent intacts, seule la ligne users a disparu.
     const cellar = firstRow(await db.select().from(cellars).where(eq(cellars.id, cellarId)));
     expect(cellar).toBeDefined();
@@ -205,32 +232,44 @@ describe('deleteUser', () => {
 describe('deleteCellarCascade', () => {
   it('supprime la cave et tout ce qui lui appartient (clayettes, bouteilles, historique, invitations, memberships)', async () => {
     const db = await createTestDb();
-    const { cellarId, userId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave A',
+    const { cellarId, userId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave A',
+      },
     });
-    const crateId = await createCrate(db, { cellarId, name: 'Clayette 1', capacity: 12 });
-    const bottleId = await createBottle(db, {
-      crateId,
-      category: 'wine',
-      name: 'Vin test',
-      quantity: 2,
-      details: {},
+    const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette 1', capacity: 12 } });
+    const bottleId = await createBottle({
+      db,
+      input: {
+        crateId,
+        category: 'wine',
+        name: 'Vin test',
+        quantity: 2,
+        details: {},
+      },
     });
-    await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: new Date().toISOString() });
-    await createInvitation(db, {
-      cellarId,
-      email: 'invite@example.com',
-      role: 'editor',
-      invitedByUserId: userId,
+    await consumeBottle({
+      db,
+      input: { bottleId, consumedByUserId: userId, consumedAt: new Date().toISOString() },
+    });
+    await createInvitation({
+      db,
+      input: {
+        cellarId,
+        email: 'invite@example.com',
+        role: 'editor',
+        invitedByUserId: userId,
+      },
     });
 
-    await deleteCellarCascade(db, cellarId);
+    await deleteCellarCascade({ db, cellarId });
 
-    expect(await getCrateById(db, crateId)).toBeNull();
-    expect(await getBottle(db, bottleId)).toBeNull();
-    expect(await listConsumptionHistory(db, cellarId)).toHaveLength(0);
+    expect(await getCrateById({ db, crateId })).toBeNull();
+    expect(await getBottle({ db, bottleId })).toBeNull();
+    expect(await listConsumptionHistory({ db, cellarId })).toHaveLength(0);
     const remainingInvitations = await db
       .select()
       .from(invitations)
@@ -244,6 +283,6 @@ describe('deleteCellarCascade', () => {
     const [cellar] = await db.select().from(cellars).where(eq(cellars.id, cellarId));
     expect(cellar).toBeUndefined();
     // L'utilisateur lui-même n'est pas touché par la suppression de sa cave.
-    expect(await getUserById(db, userId)).not.toBeNull();
+    expect(await getUserById({ db, userId })).not.toBeNull();
   });
 });

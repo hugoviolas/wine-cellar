@@ -9,7 +9,7 @@ import type { ReactElement } from 'react';
 const ConsumeBottlePage = async ({ params }: { params: Promise<{ id: string }> }): Promise<ReactElement> => {
   const user = await requireUser();
   const { id } = await params;
-  const access = await resolveBottleAccess(db, user.id, id);
+  const access = await resolveBottleAccess({ db, userId: user.id, bottleId: id });
   if (access.status !== 'ok') {
     notFound();
   }

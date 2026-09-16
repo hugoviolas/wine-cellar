@@ -1,6 +1,5 @@
 import type { LogFields } from './interfaces/log-fields.interface';
-
-type LogLevel = 'info' | 'warn' | 'error';
+import type { WriteArgs } from './interfaces/write-args.interface';
 
 /**
  * Point de sortie unique des logs applicatifs. L'implémentation écrit sur
@@ -12,7 +11,7 @@ type LogLevel = 'info' | 'warn' | 'error';
  * lisible telle quelle et redevient analysable si la sortie part un jour
  * vers un agrégateur.
  */
-const write = (level: LogLevel, message: string, fields?: LogFields): void => {
+const write = ({ level, message, fields }: WriteArgs): void => {
   const line = JSON.stringify({
     level,
     time: new Date().toISOString(),
@@ -25,13 +24,13 @@ const write = (level: LogLevel, message: string, fields?: LogFields): void => {
 
 export const logger = {
   info: (message: string, fields?: LogFields): void => {
-    write('info', message, fields);
+    write({ level: 'info', message, fields });
   },
   warn: (message: string, fields?: LogFields): void => {
-    write('warn', message, fields);
+    write({ level: 'warn', message, fields });
   },
   error: (message: string, fields?: LogFields): void => {
-    write('error', message, fields);
+    write({ level: 'error', message, fields });
   },
 };
 

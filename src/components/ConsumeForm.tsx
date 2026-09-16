@@ -31,7 +31,10 @@ export const ConsumeForm = ({
       body: JSON.stringify({ consumedAt, quantity, rating, comment, occasion }),
     });
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible d’enregistrer la consommation.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible d’enregistrer la consommation.',
+      });
       setError(message);
       toast.error(message);
       return;

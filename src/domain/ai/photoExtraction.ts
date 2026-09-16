@@ -1,10 +1,10 @@
 import type { AiImageBlock, AiMessageContent, AiTextBlock } from './client';
-import type { AiImageMediaType } from './schemas';
+import type { BuildPhotoExtractionPromptArgs } from './interfaces/build-photo-extraction-prompt-args.interface';
 
-export const buildPhotoExtractionPrompt = (
-  imageBase64: string,
-  mediaType: AiImageMediaType,
-): { system: string; content: AiMessageContent } => {
+export const buildPhotoExtractionPrompt = ({
+  imageBase64,
+  mediaType,
+}: BuildPhotoExtractionPromptArgs): { system: string; content: AiMessageContent } => {
   const system =
     'Tu es un sommelier expert. Tu réponds uniquement avec un objet JSON valide, sans texte avant ni après, correspondant exactement au schéma demandé.';
 

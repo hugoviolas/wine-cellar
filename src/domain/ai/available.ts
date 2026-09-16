@@ -1,8 +1,8 @@
 import { hasApiKeyConfigured } from '../supervision';
 import { eq } from 'drizzle-orm';
-import type { Db } from '../../db/client';
 import { cellarMemberships, cellars } from '../../db/schema';
 import type { AiCellar } from './interfaces/ai-cellar.interface';
+import type { IsAiAvailableForUserArgs } from './interfaces/is-ai-available-for-user-args.interface';
 
 export type { AiCellar };
 
@@ -23,7 +23,7 @@ export const isAiAvailable = (cellar: AiCellar): boolean => {
  * est configurée. Revérifié côté serveur dans la route d'extraction dédiée
  * à la wishlist, jamais uniquement côté UI.
  */
-export const isAiAvailableForUser = async (db: Db, userId: string): Promise<boolean> => {
+export const isAiAvailableForUser = async ({ db, userId }: IsAiAvailableForUserArgs): Promise<boolean> => {
   if (!hasApiKeyConfigured()) {
     return false;
   }

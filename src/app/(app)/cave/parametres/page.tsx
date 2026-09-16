@@ -19,20 +19,20 @@ const CaveParametresPage = async ({
 }): Promise<ReactElement> => {
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
-  const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
+  const cellarId = await resolveViewedCellarId({ db, userId: user.id, requestedCellarId });
   const cellarQuery = requestedCellarId ? `?cellarId=${cellarId}` : '';
 
   if (!cellarId) {
     return <p className="text-sm">Aucune cave associée à ce compte.</p>;
   }
 
-  const access = await checkCellarAccess(db, user.id, cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId });
   if (!access.allowed || !canManageCellar(access.role)) {
     redirect('/cave');
   }
 
-  const members = await listCellarMembersWithEmail(db, cellarId);
-  const cellar = await getCellarById(db, cellarId);
+  const members = await listCellarMembersWithEmail({ db, cellarId });
+  const cellar = await getCellarById({ db, cellarId });
 
   return (
     <div className="max-w-xl">

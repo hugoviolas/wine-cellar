@@ -11,7 +11,7 @@ const main = async (): Promise<void> => {
     throw new Error('BOOTSTRAP_EMAIL et BOOTSTRAP_PASSWORD doivent être définis dans .env');
   }
 
-  const { userId, cellarId } = await bootstrapSuperAdmin(db, { email, password, cellarName });
+  const { userId, cellarId } = await bootstrapSuperAdmin({ db, params: { email, password, cellarName } });
   console.log(`Super-admin créé : ${email} (${userId})`);
   console.log(`Cave créée : ${cellarName} (${cellarId})`);
 };

@@ -1,11 +1,19 @@
 import { eq, and, gt } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db } from '../db/client';
 import type { CrateRow } from '../db/rows';
 import type { CreateCrateInput } from './interfaces/create-crate-input.interface';
 import { crates, bottles } from '../db/schema';
 import { newId } from '../db/id';
 import { FIELD_MAX } from './fieldLimits';
+import type { NextAvailableCrateNumberArgs } from './interfaces/next-available-crate-number-args.interface';
+import type { CreateCrateArgs } from './interfaces/create-crate-args.interface';
+import type { ListCratesArgs } from './interfaces/list-crates-args.interface';
+import type { ReorderCratesArgs } from './interfaces/reorder-crates-args.interface';
+import type { RenameCrateArgs } from './interfaces/rename-crate-args.interface';
+import type { UpdateCrateCapacityArgs } from './interfaces/update-crate-capacity-args.interface';
+import type { CrateHasActiveBottlesArgs } from './interfaces/crate-has-active-bottles-args.interface';
+import type { DeleteCrateArgs } from './interfaces/delete-crate-args.interface';
+import type { GetCrateByIdArgs } from './interfaces/get-crate-by-id-args.interface';
 
 export type { CreateCrateInput };
 
@@ -28,7 +36,7 @@ export const createCrateBodySchema = z
  * Plus petit numéro de clayette non utilisé dans la cave : un numéro libéré
  * par une suppression est réutilisé plutôt que de décaler les autres.
  */
-const nextAvailableCrateNumber = async (db: Db, cellarId: string): Promise<number> => {
+const nextAvailableCrateNumber = async ({ db, cellarId }: NextAvailableCrateNumberArgs): Promise<number> => {
   const rows = await db.select({ number: crates.number }).from(crates).where(eq(crates.cellarId, cellarId));
   const used = new Set(rows.map((r) => r.number));
   let n = 1;
@@ -38,9 +46,9 @@ const nextAvailableCrateNumber = async (db: Db, cellarId: string): Promise<numbe
   return n;
 };
 
-export const createCrate = async (db: Db, input: CreateCrateInput): Promise<string> => {
+export const createCrate = async ({ db, input }: CreateCrateArgs): Promise<string> => {
   const id = newId();
-  const number = await nextAvailableCrateNumber(db, input.cellarId);
+  const number = await nextAvailableCrateNumber({ db, cellarId: input.cellarId });
   const name = input.name?.trim() || null;
   await db.insert(crates).values({
     id,
@@ -54,7 +62,7 @@ export const createCrate = async (db: Db, input: CreateCrateInput): Promise<stri
   return id;
 };
 
-export const listCrates = async (db: Db, cellarId: string): Promise<CrateRow[]> => {
+export const listCrates = async ({ db, cellarId }: ListCratesArgs): Promise<CrateRow[]> => {
   return db.select().from(crates).where(eq(crates.cellarId, cellarId)).orderBy(crates.sortOrder);
 };
 
@@ -64,8 +72,8 @@ export const listCrates = async (db: Db, cellarId: string): Promise<CrateRow[]> 
  * sinon la fonction échoue sans rien modifier, pour ne pas laisser une
  * clayette d'une autre cave se faire réordonner par erreur.
  */
-export const reorderCrates = async (db: Db, cellarId: string, orderedIds: string[]): Promise<void> => {
-  const existing = await listCrates(db, cellarId);
+export const reorderCrates = async ({ db, cellarId, orderedIds }: ReorderCratesArgs): Promise<void> => {
+  const existing = await listCrates({ db, cellarId });
   const existingIds = new Set(existing.map((c) => c.id));
   const sameSet = orderedIds.length === existing.length && orderedIds.every((id) => existingIds.has(id));
   if (!sameSet) {
@@ -82,7 +90,7 @@ export const reorderCrates = async (db: Db, cellarId: string, orderedIds: string
  * nom (stocké `null`), plutôt que d'être rejeté — voir `crateLabel` pour le
  * calcul du nom par défaut affiché dans ce cas.
  */
-export const renameCrate = async (db: Db, crateId: string, name: string): Promise<void> => {
+export const renameCrate = async ({ db, crateId, name }: RenameCrateArgs): Promise<void> => {
   const trimmed = name.trim();
   await db
     .update(crates)
@@ -90,12 +98,16 @@ export const renameCrate = async (db: Db, crateId: string, name: string): Promis
     .where(eq(crates.id, crateId));
 };
 
-export const updateCrateCapacity = async (db: Db, crateId: string, capacity: number): Promise<void> => {
+export const updateCrateCapacity = async ({
+  db,
+  crateId,
+  capacity,
+}: UpdateCrateCapacityArgs): Promise<void> => {
   await db.update(crates).set({ capacity }).where(eq(crates.id, crateId));
 };
 
 /** Vrai si la clayette contient encore au moins une bouteille en stock (quantité > 0). */
-export const crateHasActiveBottles = async (db: Db, crateId: string): Promise<boolean> => {
+export const crateHasActiveBottles = async ({ db, crateId }: CrateHasActiveBottlesArgs): Promise<boolean> => {
   const [row] = await db
     .select({ id: bottles.id })
     .from(bottles)
@@ -104,11 +116,11 @@ export const crateHasActiveBottles = async (db: Db, crateId: string): Promise<bo
   return row !== undefined;
 };
 
-export const deleteCrate = async (db: Db, crateId: string): Promise<void> => {
+export const deleteCrate = async ({ db, crateId }: DeleteCrateArgs): Promise<void> => {
   await db.delete(crates).where(eq(crates.id, crateId));
 };
 
-export const getCrateById = async (db: Db, crateId: string): Promise<CrateRow | null> => {
+export const getCrateById = async ({ db, crateId }: GetCrateByIdArgs): Promise<CrateRow | null> => {
   const [row] = await db.select().from(crates).where(eq(crates.id, crateId)).limit(1);
   return row ?? null;
 };

@@ -20,7 +20,7 @@ export const PATCH = async (
   }
   const { id } = await params;
 
-  const access = await resolveHistoryEntryAccess(db, auth.user.id, id);
+  const access = await resolveHistoryEntryAccess({ db, userId: auth.user.id, entryId: id });
   if (access.status === 'not_found') {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -40,7 +40,7 @@ export const PATCH = async (
     return NextResponse.json({ error: 'Aucun champ à mettre à jour.' }, { status: 400 });
   }
 
-  await updateHistoryEntry(db, id, parsed.data);
+  await updateHistoryEntry({ db, entryId: id, input: parsed.data });
   return NextResponse.json({ ok: true });
 };
 
@@ -54,7 +54,7 @@ export const DELETE = async (
   }
   const { id } = await params;
 
-  const access = await resolveHistoryEntryAccess(db, auth.user.id, id);
+  const access = await resolveHistoryEntryAccess({ db, userId: auth.user.id, entryId: id });
   if (access.status === 'not_found') {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -65,6 +65,6 @@ export const DELETE = async (
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
-  await deleteHistoryEntry(db, id);
+  await deleteHistoryEntry({ db, entryId: id });
   return NextResponse.json({ ok: true });
 };

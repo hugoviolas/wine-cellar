@@ -19,6 +19,6 @@ export const PATCH = async (request: Request): Promise<NextResponse> => {
     return NextResponse.json({ error: 'Requête invalide.' }, { status: 400 });
   }
 
-  await setRegistrationEnabled(db, parsed.data.registrationEnabled);
+  await setRegistrationEnabled({ db, enabled: parsed.data.registrationEnabled });
   return NextResponse.json({ ok: true });
 };

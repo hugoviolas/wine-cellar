@@ -21,7 +21,7 @@ export const PATCH = async (
   }
   const { id } = await params;
 
-  const access = await resolveWishlistItemAccess(db, auth.user.id, id);
+  const access = await resolveWishlistItemAccess({ db, userId: auth.user.id, itemId: id });
   if (access.status === 'not_found') {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -48,7 +48,7 @@ export const PATCH = async (
     }
   }
 
-  await updateWishlistItem(db, id, patch);
+  await updateWishlistItem({ db, id, input: patch });
   return NextResponse.json({ ok: true });
 };
 
@@ -62,7 +62,7 @@ export const DELETE = async (
   }
   const { id } = await params;
 
-  const access = await resolveWishlistItemAccess(db, auth.user.id, id);
+  const access = await resolveWishlistItemAccess({ db, userId: auth.user.id, itemId: id });
   if (access.status === 'not_found') {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -70,6 +70,6 @@ export const DELETE = async (
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
 
-  await deleteWishlistItem(db, id);
+  await deleteWishlistItem({ db, id });
   return NextResponse.json({ ok: true });
 };

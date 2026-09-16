@@ -8,7 +8,7 @@ import type { ReactElement } from 'react';
 
 const WishlistPage = async (): Promise<ReactElement> => {
   const user = await requireUser();
-  const items = await listWishlistItems(db, user.id);
+  const items = await listWishlistItems({ db, userId: user.id });
   const pending = items.filter((item) => item.status === 'pending');
   const promoted = items.filter((item) => item.status === 'promoted');
 

@@ -28,7 +28,7 @@ export const PATCH = async (
   }
   const { id } = await params;
 
-  const target = await getUserById(db, id);
+  const target = await getUserById({ db, userId: id });
   if (!target) {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -46,7 +46,7 @@ export const PATCH = async (
     return NextResponse.json({ error: 'Tu ne peux pas désactiver ton propre compte.' }, { status: 400 });
   }
   if (parsed.data.isSuperAdmin === false && target.isSuperAdmin === true) {
-    const hasOther = await hasOtherActiveSuperAdmin(db, target.id);
+    const hasOther = await hasOtherActiveSuperAdmin({ db, excludeUserId: target.id });
     if (!hasOther) {
       return NextResponse.json(
         { error: 'Impossible de rétrograder le dernier super-admin actif.' },
@@ -56,10 +56,10 @@ export const PATCH = async (
   }
 
   if (parsed.data.isActive !== undefined) {
-    await setUserActive(db, id, parsed.data.isActive);
+    await setUserActive({ db, userId: id, isActive: parsed.data.isActive });
   }
   if (parsed.data.isSuperAdmin !== undefined) {
-    await setUserSuperAdmin(db, id, parsed.data.isSuperAdmin);
+    await setUserSuperAdmin({ db, userId: id, isSuperAdmin: parsed.data.isSuperAdmin });
   }
   return NextResponse.json({ ok: true });
 };
@@ -74,7 +74,7 @@ export const DELETE = async (
   }
   const { id } = await params;
 
-  const target = await getUserById(db, id);
+  const target = await getUserById({ db, userId: id });
   if (!target) {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -83,7 +83,7 @@ export const DELETE = async (
     return NextResponse.json({ error: 'Tu ne peux pas supprimer ton propre compte.' }, { status: 400 });
   }
   if (target.isSuperAdmin) {
-    const hasOther = await hasOtherActiveSuperAdmin(db, target.id);
+    const hasOther = await hasOtherActiveSuperAdmin({ db, excludeUserId: target.id });
     if (!hasOther) {
       return NextResponse.json(
         { error: 'Impossible de supprimer le dernier super-admin actif.' },
@@ -92,6 +92,6 @@ export const DELETE = async (
     }
   }
 
-  await deleteUser(db, id);
+  await deleteUser({ db, userId: id });
   return NextResponse.json({ ok: true });
 };

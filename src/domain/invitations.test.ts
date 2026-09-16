@@ -11,17 +11,23 @@ import { hashToken } from './token';
 describe('createInvitation', () => {
   it('crée une invitation en attente avec une date d’expiration future', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'owner@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'owner@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
 
-    const { id, token } = await createInvitation(db, {
-      cellarId,
-      email: 'invite@example.com',
-      role: 'editor',
-      invitedByUserId: userId,
+    const { id, token } = await createInvitation({
+      db,
+      input: {
+        cellarId,
+        email: 'invite@example.com',
+        role: 'editor',
+        invitedByUserId: userId,
+      },
     });
 
     const row = firstRow(await db.select().from(invitations).where(eq(invitations.id, id)));
@@ -37,84 +43,108 @@ describe('createInvitation', () => {
 describe('getInvitationByToken', () => {
   it('retourne "valid" pour une invitation en attente et non expirée', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const { token } = await createInvitation(db, {
-      cellarId,
-      email: 'invite@example.com',
-      role: 'reader',
-      invitedByUserId: userId,
+    const { token } = await createInvitation({
+      db,
+      input: {
+        cellarId,
+        email: 'invite@example.com',
+        role: 'reader',
+        invitedByUserId: userId,
+      },
     });
 
-    const lookup = await getInvitationByToken(db, token);
+    const lookup = await getInvitationByToken({ db, token });
     expect(lookup.status).toBe('valid');
   });
 
   it('retourne "not_found" pour un token inconnu', async () => {
     const db = await createTestDb();
-    expect((await getInvitationByToken(db, 'inconnu')).status).toBe('not_found');
+    expect((await getInvitationByToken({ db, token: 'inconnu' })).status).toBe('not_found');
   });
 
   it('retourne "expired" pour une invitation expirée', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const { token, id } = await createInvitation(db, {
-      cellarId,
-      email: 'invite@example.com',
-      role: 'reader',
-      invitedByUserId: userId,
+    const { token, id } = await createInvitation({
+      db,
+      input: {
+        cellarId,
+        email: 'invite@example.com',
+        role: 'reader',
+        invitedByUserId: userId,
+      },
     });
     await db
       .update(invitations)
       .set({ expiresAt: new Date(Date.now() - 1000).toISOString() })
       .where(eq(invitations.id, id));
 
-    expect((await getInvitationByToken(db, token)).status).toBe('expired');
+    expect((await getInvitationByToken({ db, token })).status).toBe('expired');
   });
 
   it('retourne "already_used" pour une invitation déjà acceptée', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const { token, id } = await createInvitation(db, {
-      cellarId,
-      email: 'invite@example.com',
-      role: 'reader',
-      invitedByUserId: userId,
+    const { token, id } = await createInvitation({
+      db,
+      input: {
+        cellarId,
+        email: 'invite@example.com',
+        role: 'reader',
+        invitedByUserId: userId,
+      },
     });
     await db.update(invitations).set({ status: 'accepted' }).where(eq(invitations.id, id));
 
-    expect((await getInvitationByToken(db, token)).status).toBe('already_used');
+    expect((await getInvitationByToken({ db, token })).status).toBe('already_used');
   });
 });
 
 describe('acceptInvitation', () => {
   it('crée le membership avec le rôle de l’invitation et marque celle-ci acceptée', async () => {
     const db = await createTestDb();
-    const { userId: ownerId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'owner@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId: ownerId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'owner@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const { token, id } = await createInvitation(db, {
-      cellarId,
-      email: 'invite@example.com',
-      role: 'editor',
-      invitedByUserId: ownerId,
+    const { token, id } = await createInvitation({
+      db,
+      input: {
+        cellarId,
+        email: 'invite@example.com',
+        role: 'editor',
+        invitedByUserId: ownerId,
+      },
     });
-    const inviteeId = await createUserAccount(db, 'invite@example.com', 'x');
+    const inviteeId = await createUserAccount({ db, email: 'invite@example.com', password: 'x' });
 
-    const result = await acceptInvitation(db, token, inviteeId);
+    const result = await acceptInvitation({ db, token, userId: inviteeId });
     expect(result.cellarId).toBe(cellarId);
 
     const membership = firstRow(
@@ -129,38 +159,50 @@ describe('acceptInvitation', () => {
 
   it('rejette un token invalide', async () => {
     const db = await createTestDb();
-    const { userId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    await expect(acceptInvitation(db, 'inconnu', userId)).rejects.toThrow();
+    await expect(acceptInvitation({ db, token: 'inconnu', userId })).rejects.toThrow();
   });
 
   it('met à jour le rôle au lieu de dupliquer le membership si l’utilisateur est déjà membre de la cave', async () => {
     const db = await createTestDb();
-    const { userId: ownerId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'owner@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId: ownerId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'owner@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const inviteeId = await createUserAccount(db, 'invite@example.com', 'x');
+    const inviteeId = await createUserAccount({ db, email: 'invite@example.com', password: 'x' });
 
-    const readerInvite = await createInvitation(db, {
-      cellarId,
-      email: 'invite@example.com',
-      role: 'reader',
-      invitedByUserId: ownerId,
+    const readerInvite = await createInvitation({
+      db,
+      input: {
+        cellarId,
+        email: 'invite@example.com',
+        role: 'reader',
+        invitedByUserId: ownerId,
+      },
     });
-    await acceptInvitation(db, readerInvite.token, inviteeId);
+    await acceptInvitation({ db, token: readerInvite.token, userId: inviteeId });
 
-    const editorInvite = await createInvitation(db, {
-      cellarId,
-      email: 'invite@example.com',
-      role: 'editor',
-      invitedByUserId: ownerId,
+    const editorInvite = await createInvitation({
+      db,
+      input: {
+        cellarId,
+        email: 'invite@example.com',
+        role: 'editor',
+        invitedByUserId: ownerId,
+      },
     });
-    await acceptInvitation(db, editorInvite.token, inviteeId);
+    await acceptInvitation({ db, token: editorInvite.token, userId: inviteeId });
 
     const memberships = await db
       .select()

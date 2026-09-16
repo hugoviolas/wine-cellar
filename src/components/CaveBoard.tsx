@@ -114,7 +114,10 @@ export const CaveBoard = ({
         body: JSON.stringify({ crateId: fromCrateId, orderedIds: reordered.map((b) => b.id) }),
       });
       if (!response.ok) {
-        const message = await errorMessageFromResponse(response, 'Impossible d’enregistrer le nouvel ordre.');
+        const message = await errorMessageFromResponse({
+          response,
+          fallback: 'Impossible d’enregistrer le nouvel ordre.',
+        });
         setError(message);
         toast.error(message);
         setBottlesByCrate(previous);
@@ -143,7 +146,10 @@ export const CaveBoard = ({
       body: JSON.stringify({ crateId: toCrateId }),
     });
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible de déplacer cette bouteille.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible de déplacer cette bouteille.',
+      });
       setError(message);
       toast.error(message);
       setBottlesByCrate(previous);

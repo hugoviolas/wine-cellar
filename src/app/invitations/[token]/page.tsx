@@ -15,7 +15,7 @@ const STATUS_MESSAGES: Record<'not_found' | 'expired' | 'already_used', string> 
 
 const InvitationPage = async ({ params }: { params: Promise<{ token: string }> }): Promise<ReactElement> => {
   const { token } = await params;
-  const lookup = await getInvitationByToken(db, token);
+  const lookup = await getInvitationByToken({ db, token });
 
   if (lookup.status !== 'valid') {
     return (

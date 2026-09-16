@@ -60,7 +60,10 @@ export const EditBottleForm = ({ bottle }: { bottle: BottleFields }): ReactEleme
     });
     setBusy(false);
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible d’enregistrer les modifications.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible d’enregistrer les modifications.',
+      });
       setError(message);
       toast.error(message);
       return;

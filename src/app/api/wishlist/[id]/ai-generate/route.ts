@@ -22,7 +22,7 @@ export const POST = async (
 
   // Accès strictement privé, sans passe-droit super-admin : la wishlist est
   // une donnée personnelle (voir resolveWishlistItemAccess).
-  const access = await resolveWishlistItemAccess(db, auth.user.id, id);
+  const access = await resolveWishlistItemAccess({ db, userId: auth.user.id, itemId: id });
   if (access.status === 'not_found') {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -33,29 +33,32 @@ export const POST = async (
 
   // Un item de wishlist n'appartient à aucune cave : le coupe-circuit IA se
   // joue donc à la maille utilisateur, comme pour l'extraction par photo.
-  if (!(await isAiAvailableForUser(db, auth.user.id))) {
+  if (!(await isAiAvailableForUser({ db, userId: auth.user.id }))) {
     return NextResponse.json({ error: 'Fonction IA indisponible.' }, { status: 403 });
   }
 
   const category = item.category;
-  const quotaExceeded = checkAiQuota(auth.user.id);
+  const quotaExceeded = checkAiQuota({
+    userId: auth.user.id,
+    isSuperAdmin: auth.user.isSuperAdmin,
+  });
   if (quotaExceeded) {
     return quotaExceeded;
   }
 
-  const { system, content } = buildBottleAnalysisPrompt(
-    toBottleAnalysisInput({
+  const { system, content } = buildBottleAnalysisPrompt({
+    bottle: toBottleAnalysisInput({
       name: item.name,
       producer: item.producer,
       vintage: item.vintage,
       category: item.category,
       region: item.region,
       color: item.color,
-      grapeVarieties: getGrapeVarieties(category, item.details),
-      appellation: getAppellation(category, item.details),
+      grapeVarieties: getGrapeVarieties({ category, details: item.details }),
+      appellation: getAppellation({ category, details: item.details }),
     }),
-    new Date().getFullYear(),
-  );
+    currentYear: new Date().getFullYear(),
+  });
 
   const result = await callAiForRoute({
     route: 'wishlist/ai-generate',
@@ -68,9 +71,9 @@ export const POST = async (
     return result.error;
   }
 
-  await saveWishlistAiAnalysis(
+  await saveWishlistAiAnalysis({
     db,
-    {
+    item: {
       id: item.id,
       category,
       drinkFrom: item.drinkFrom,
@@ -78,7 +81,7 @@ export const POST = async (
       region: item.region,
       details: item.details,
     },
-    result.data,
-  );
+    analysis: result.data,
+  });
   return NextResponse.json({ ok: true });
 };

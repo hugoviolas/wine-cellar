@@ -28,7 +28,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
   const { cellarId, orderedIds } = parsed.data;
 
-  const access = await checkCellarAccess(db, user.id, cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId });
   if (!access.allowed) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
   }
@@ -37,7 +37,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
 
   try {
-    await reorderCrates(db, cellarId, orderedIds);
+    await reorderCrates({ db, cellarId, orderedIds });
   } catch {
     return NextResponse.json(
       { error: 'La liste fournie ne correspond pas aux clayettes de cette cave.' },

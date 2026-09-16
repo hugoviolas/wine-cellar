@@ -23,10 +23,10 @@ export const InviteMemberForm = ({ cellarId }: { cellarId: string }): ReactEleme
       body: JSON.stringify({ cellarId, email, role }),
     });
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible de créer l’invitation.'));
+      setError(await errorMessageFromResponse({ response, fallback: 'Impossible de créer l’invitation.' }));
       return;
     }
-    const token = await stringFieldFromResponse(response, 'token');
+    const token = await stringFieldFromResponse({ response, field: 'token' });
     if (token === null) {
       setError('Invitation créée, mais le lien est illisible — recharge la page.');
       return;

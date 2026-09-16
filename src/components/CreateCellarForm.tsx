@@ -21,7 +21,7 @@ export const CreateCellarForm = ({ users }: { users: UserOption[] }): ReactEleme
       body: JSON.stringify({ name, ownerId }),
     });
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible de créer cette cave.'));
+      setError(await errorMessageFromResponse({ response, fallback: 'Impossible de créer cette cave.' }));
       return;
     }
     setName('');

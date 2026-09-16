@@ -26,7 +26,7 @@ export const POST = async (
   }
   const { id } = await params;
 
-  const access = await resolveBottleAccess(db, auth.user.id, id);
+  const access = await resolveBottleAccess({ db, userId: auth.user.id, bottleId: id });
   if (access.status === 'not_found') {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -37,8 +37,8 @@ export const POST = async (
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
-  const crate = await getCrateById(db, access.bottle.crateId);
-  const cellar = crate ? await getCellarById(db, crate.cellarId) : null;
+  const crate = await getCrateById({ db, crateId: access.bottle.crateId });
+  const cellar = crate ? await getCellarById({ db, cellarId: crate.cellarId }) : null;
   if (!cellar || !isAiAvailable(cellar)) {
     return NextResponse.json({ error: 'Fonction IA indisponible pour cette cave.' }, { status: 403 });
   }
@@ -50,15 +50,21 @@ export const POST = async (
     category: access.bottle.category,
     region: access.bottle.region,
     color: access.bottle.color,
-    grapeVarieties: getGrapeVarieties(access.bottle.category, access.bottle.details),
-    appellation: getAppellation(access.bottle.category, access.bottle.details),
+    grapeVarieties: getGrapeVarieties({ category: access.bottle.category, details: access.bottle.details }),
+    appellation: getAppellation({ category: access.bottle.category, details: access.bottle.details }),
   };
-  const quotaExceeded = checkAiQuota(auth.user.id);
+  const quotaExceeded = checkAiQuota({
+    userId: auth.user.id,
+    isSuperAdmin: auth.user.isSuperAdmin,
+  });
   if (quotaExceeded) {
     return quotaExceeded;
   }
 
-  const { system, content } = buildBottleAnalysisPrompt(bottleForPrompt, new Date().getFullYear());
+  const { system, content } = buildBottleAnalysisPrompt({
+    bottle: bottleForPrompt,
+    currentYear: new Date().getFullYear(),
+  });
 
   const result = await callAiForRoute({
     route: 'bottles/ai-generate',
@@ -71,6 +77,6 @@ export const POST = async (
     return result.error;
   }
 
-  await saveBottleAiAnalysis(db, access.bottle, result.data);
+  await saveBottleAiAnalysis({ db, bottle: access.bottle, analysis: result.data });
   return NextResponse.json({ ok: true });
 };

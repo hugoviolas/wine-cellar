@@ -43,7 +43,10 @@ export const HistoryEntryActions = ({
     });
     setBusy(false);
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible d’enregistrer les modifications.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible d’enregistrer les modifications.',
+      });
       setError(message);
       toast.error(message);
       return;
@@ -58,7 +61,9 @@ export const HistoryEntryActions = ({
     const response = await fetch(`/api/history/${entryId}`, { method: 'DELETE' });
     setBusy(false);
     if (!response.ok) {
-      toast.error(await errorMessageFromResponse(response, 'Impossible de supprimer cette entrée.'));
+      toast.error(
+        await errorMessageFromResponse({ response, fallback: 'Impossible de supprimer cette entrée.' }),
+      );
       return;
     }
     toast.success('Entrée supprimée.');

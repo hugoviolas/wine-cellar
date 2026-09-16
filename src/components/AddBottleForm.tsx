@@ -101,7 +101,10 @@ export const AddBottleForm = ({
       }),
     });
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible d’ajouter cette bouteille.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible d’ajouter cette bouteille.',
+      });
       setError(message);
       toast.error(message);
       return;
@@ -143,7 +146,7 @@ export const AddBottleForm = ({
           >
             {crates.map((crate) => (
               <option key={crate.id} value={crate.id}>
-                {crateLabel(crate.number, crate.name)}
+                {crateLabel({ number: crate.number, name: crate.name })}
               </option>
             ))}
           </select>

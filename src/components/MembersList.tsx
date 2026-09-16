@@ -19,7 +19,7 @@ export const MembersList = ({ initialMembers }: { initialMembers: Member[] }): R
       body: JSON.stringify({ role }),
     });
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible de changer ce rôle.'));
+      setError(await errorMessageFromResponse({ response, fallback: 'Impossible de changer ce rôle.' }));
       return;
     }
     setMembers(members.map((m) => (m.membershipId === membershipId ? { ...m, role } : m)));
@@ -30,7 +30,7 @@ export const MembersList = ({ initialMembers }: { initialMembers: Member[] }): R
     setError(null);
     const response = await fetch(`/api/cellar-memberships/${membershipId}`, { method: 'DELETE' });
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible de retirer ce membre.'));
+      setError(await errorMessageFromResponse({ response, fallback: 'Impossible de retirer ce membre.' }));
       return;
     }
     setMembers(members.filter((m) => m.membershipId !== membershipId));

@@ -1,18 +1,18 @@
 import { eq } from 'drizzle-orm';
-import type { Db } from '../../db/client';
 import { bottles } from '../../db/schema';
 import type { AiMessageContent } from './client';
 import { buildAiAnalysisPatch } from './analysisPatch';
-import type { AiBottleAnalysis } from './schemas';
 import type { BottleAnalysisInput } from './interfaces/bottle-analysis-input.interface';
 import type { BottleForAiSave } from './interfaces/bottle-for-ai-save.interface';
+import type { BuildBottleAnalysisPromptArgs } from './interfaces/build-bottle-analysis-prompt-args.interface';
+import type { SaveBottleAiAnalysisArgs } from './interfaces/save-bottle-ai-analysis-args.interface';
 
 export type { BottleAnalysisInput, BottleForAiSave };
 
-export const buildBottleAnalysisPrompt = (
-  bottle: BottleAnalysisInput,
-  currentYear: number,
-): { system: string; content: AiMessageContent } => {
+export const buildBottleAnalysisPrompt = ({
+  bottle,
+  currentYear,
+}: BuildBottleAnalysisPromptArgs): { system: string; content: AiMessageContent } => {
   const system =
     'Tu es un sommelier expert. Tu réponds uniquement avec un objet JSON valide, sans texte avant ni après, correspondant exactement au schéma demandé.';
   const content = `Analyse cette bouteille et réponds avec un objet JSON de cette forme exacte :
@@ -55,11 +55,11 @@ Bouteille :
  * ou par une génération précédente) ne sont jamais écrasés (voir le spec
  * IA, section Chantier A).
  */
-export const saveBottleAiAnalysis = async (
-  db: Db,
-  bottle: BottleForAiSave,
-  analysis: AiBottleAnalysis,
-): Promise<void> => {
-  const patch = buildAiAnalysisPatch(bottle, analysis);
+export const saveBottleAiAnalysis = async ({
+  db,
+  bottle,
+  analysis,
+}: SaveBottleAiAnalysisArgs): Promise<void> => {
+  const patch = buildAiAnalysisPatch({ target: bottle, analysis });
   await db.update(bottles).set(patch).where(eq(bottles.id, bottle.id));
 };

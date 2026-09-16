@@ -60,7 +60,7 @@ const SortableCrateRow = ({
           {...attributes}
           {...listeners}
           className="cursor-grab touch-none text-gray-400 px-1 select-none"
-          aria-label={`Réorganiser ${crateLabel(crate.number, crate.name)}`}
+          aria-label={`Réorganiser ${crateLabel({ number: crate.number, name: crate.name })}`}
         >
           ⋮⋮
         </button>
@@ -138,7 +138,10 @@ export const CrateManager = ({
       body: JSON.stringify({ cellarId, name, capacity }),
     });
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible d’ajouter cette clayette.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible d’ajouter cette clayette.',
+      });
       setError(message);
       toast.error(message);
       return;
@@ -162,7 +165,10 @@ export const CrateManager = ({
       body: JSON.stringify({ name, capacity }),
     });
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible de mettre à jour cette clayette.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible de mettre à jour cette clayette.',
+      });
       setError(message);
       toast.error(message);
       return;
@@ -183,7 +189,10 @@ export const CrateManager = ({
     setError(null);
     const response = await fetch(`/api/crates/${id}`, { method: 'DELETE' });
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, 'Impossible de supprimer cette clayette.');
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: 'Impossible de supprimer cette clayette.',
+      });
       setError(message);
       toast.error(message);
       return;
@@ -211,7 +220,9 @@ export const CrateManager = ({
       body: JSON.stringify({ cellarId, orderedIds: reordered.map((c) => c.id) }),
     });
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible d’enregistrer le nouvel ordre.'));
+      setError(
+        await errorMessageFromResponse({ response, fallback: 'Impossible d’enregistrer le nouvel ordre.' }),
+      );
       setCrates(previousOrder);
       return;
     }

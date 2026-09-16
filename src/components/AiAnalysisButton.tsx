@@ -27,7 +27,10 @@ export const AiAnalysisButton = ({
     try {
       const response = await fetch(endpoint, { method: 'POST' });
       if (!response.ok) {
-        const message = await errorMessageFromResponse(response, "Impossible de générer l'analyse IA.");
+        const message = await errorMessageFromResponse({
+          response,
+          fallback: "Impossible de générer l'analyse IA.",
+        });
         toast.error(message);
         return;
       }

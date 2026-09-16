@@ -17,7 +17,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
 
   try {
-    const id = await createWishlistItem(db, { ...parsed.data, userId: auth.user.id });
+    const id = await createWishlistItem({ db, input: { ...parsed.data, userId: auth.user.id } });
     return NextResponse.json({ id });
   } catch {
     return NextResponse.json({ error: 'Détails invalides pour cette catégorie' }, { status: 400 });

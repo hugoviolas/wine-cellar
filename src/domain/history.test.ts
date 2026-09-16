@@ -19,47 +19,71 @@ import type { HistoryEntryWithReachability } from './interfaces/history-entry-wi
 describe('listConsumptionHistory', () => {
   it('retourne uniquement l’historique de la cave demandée, du plus récent au plus ancien', async () => {
     const db = await createTestDb();
-    const caveA = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave A',
+    const caveA = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave A',
+      },
     });
-    const caveB = await bootstrapSuperAdmin(db, {
-      email: 'b@example.com',
-      password: 'x',
-      cellarName: 'Cave B',
-    });
-
-    const crateA = await createCrate(db, { cellarId: caveA.cellarId, name: 'C1', capacity: 6 });
-    const crateB = await createCrate(db, { cellarId: caveB.cellarId, name: 'C1', capacity: 6 });
-
-    const bottleA1 = await createBottle(db, {
-      crateId: crateA,
-      category: 'wine',
-      name: 'Vin A1',
-      quantity: 2,
-      details: {},
-    });
-    const bottleA2 = await createBottle(db, {
-      crateId: crateA,
-      category: 'wine',
-      name: 'Vin A2',
-      quantity: 1,
-      details: {},
-    });
-    const bottleB = await createBottle(db, {
-      crateId: crateB,
-      category: 'wine',
-      name: 'Vin B',
-      quantity: 1,
-      details: {},
+    const caveB = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'b@example.com',
+        password: 'x',
+        cellarName: 'Cave B',
+      },
     });
 
-    await consumeBottle(db, { bottleId: bottleA1, consumedByUserId: caveA.userId, consumedAt: '2026-01-01' });
-    await consumeBottle(db, { bottleId: bottleA2, consumedByUserId: caveA.userId, consumedAt: '2026-06-01' });
-    await consumeBottle(db, { bottleId: bottleB, consumedByUserId: caveB.userId, consumedAt: '2026-03-01' });
+    const crateA = await createCrate({ db, input: { cellarId: caveA.cellarId, name: 'C1', capacity: 6 } });
+    const crateB = await createCrate({ db, input: { cellarId: caveB.cellarId, name: 'C1', capacity: 6 } });
 
-    const historyA = await listConsumptionHistory(db, caveA.cellarId);
+    const bottleA1 = await createBottle({
+      db,
+      input: {
+        crateId: crateA,
+        category: 'wine',
+        name: 'Vin A1',
+        quantity: 2,
+        details: {},
+      },
+    });
+    const bottleA2 = await createBottle({
+      db,
+      input: {
+        crateId: crateA,
+        category: 'wine',
+        name: 'Vin A2',
+        quantity: 1,
+        details: {},
+      },
+    });
+    const bottleB = await createBottle({
+      db,
+      input: {
+        crateId: crateB,
+        category: 'wine',
+        name: 'Vin B',
+        quantity: 1,
+        details: {},
+      },
+    });
+
+    await consumeBottle({
+      db,
+      input: { bottleId: bottleA1, consumedByUserId: caveA.userId, consumedAt: '2026-01-01' },
+    });
+    await consumeBottle({
+      db,
+      input: { bottleId: bottleA2, consumedByUserId: caveA.userId, consumedAt: '2026-06-01' },
+    });
+    await consumeBottle({
+      db,
+      input: { bottleId: bottleB, consumedByUserId: caveB.userId, consumedAt: '2026-03-01' },
+    });
+
+    const historyA = await listConsumptionHistory({ db, cellarId: caveA.cellarId });
     expect(historyA).toHaveLength(2);
     expect(rowAt(historyA, 0).bottleNameSnapshot).toBe('Vin A2');
     expect(rowAt(historyA, 1).bottleNameSnapshot).toBe('Vin A1');
@@ -67,24 +91,30 @@ describe('listConsumptionHistory', () => {
 
   it('signale une bouteille comme injoignable si sa clayette a depuis été supprimée', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const crateId = await createCrate(db, { cellarId, name: 'Clayette', capacity: 6 });
-    const bottleId = await createBottle(db, {
-      crateId,
-      category: 'wine',
-      name: 'Vin',
-      quantity: 1,
-      details: {},
+    const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette', capacity: 6 } });
+    const bottleId = await createBottle({
+      db,
+      input: {
+        crateId,
+        category: 'wine',
+        name: 'Vin',
+        quantity: 1,
+        details: {},
+      },
     });
 
-    await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-01-01' });
-    await deleteCrate(db, crateId);
+    await consumeBottle({ db, input: { bottleId, consumedByUserId: userId, consumedAt: '2026-01-01' } });
+    await deleteCrate({ db, crateId });
 
-    const history = await listConsumptionHistory(db, cellarId);
+    const history = await listConsumptionHistory({ db, cellarId });
     expect(history).toHaveLength(1);
     expect(rowAt(history, 0).bottleId).toBe(bottleId);
     expect(rowAt(history, 0).bottleReachable).toBeNull();
@@ -92,23 +122,29 @@ describe('listConsumptionHistory', () => {
 
   it('signale une bouteille comme joignable tant que sa clayette existe encore', async () => {
     const db = await createTestDb();
-    const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-      email: 'a@example.com',
-      password: 'x',
-      cellarName: 'Cave',
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: {
+        email: 'a@example.com',
+        password: 'x',
+        cellarName: 'Cave',
+      },
     });
-    const crateId = await createCrate(db, { cellarId, name: 'Clayette', capacity: 6 });
-    const bottleId = await createBottle(db, {
-      crateId,
-      category: 'wine',
-      name: 'Vin',
-      quantity: 2,
-      details: {},
+    const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette', capacity: 6 } });
+    const bottleId = await createBottle({
+      db,
+      input: {
+        crateId,
+        category: 'wine',
+        name: 'Vin',
+        quantity: 2,
+        details: {},
+      },
     });
 
-    await consumeBottle(db, { bottleId, consumedByUserId: userId, consumedAt: '2026-01-01' });
+    await consumeBottle({ db, input: { bottleId, consumedByUserId: userId, consumedAt: '2026-01-01' } });
 
-    const history = await listConsumptionHistory(db, cellarId);
+    const history = await listConsumptionHistory({ db, cellarId });
     expect(rowAt(history, 0).bottleReachable).toBe(crateId);
   });
 });
@@ -122,29 +158,38 @@ interface SetupHistoryEntryResult {
 
 const setupHistoryEntry = async (): Promise<SetupHistoryEntryResult> => {
   const db = await createTestDb();
-  const { userId, cellarId } = await bootstrapSuperAdmin(db, {
-    email: 'a@example.com',
-    password: 'x',
-    cellarName: 'Cave',
+  const { userId, cellarId } = await bootstrapSuperAdmin({
+    db,
+    params: {
+      email: 'a@example.com',
+      password: 'x',
+      cellarName: 'Cave',
+    },
   });
-  const crateId = await createCrate(db, { cellarId, name: 'Clayette', capacity: 6 });
-  const bottleId = await createBottle(db, {
-    crateId,
-    category: 'wine',
-    name: 'Vin',
-    quantity: 2,
-    details: {},
+  const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette', capacity: 6 } });
+  const bottleId = await createBottle({
+    db,
+    input: {
+      crateId,
+      category: 'wine',
+      name: 'Vin',
+      quantity: 2,
+      details: {},
+    },
   });
-  await consumeBottle(db, {
-    bottleId,
-    consumedByUserId: userId,
-    consumedAt: '2026-01-01',
-    quantity: 1,
-    rating: 3,
-    comment: 'Correct',
-    occasion: 'Repas',
+  await consumeBottle({
+    db,
+    input: {
+      bottleId,
+      consumedByUserId: userId,
+      consumedAt: '2026-01-01',
+      quantity: 1,
+      rating: 3,
+      comment: 'Correct',
+      occasion: 'Repas',
+    },
   });
-  const entry = firstRow(await listConsumptionHistory(db, cellarId));
+  const entry = firstRow(await listConsumptionHistory({ db, cellarId }));
   return { db, userId, cellarId, entry };
 };
 
@@ -152,7 +197,7 @@ describe('resolveHistoryEntryAccess', () => {
   it('autorise un membre de la cave', async () => {
     const { db, userId, entry } = await setupHistoryEntry();
 
-    const result = await resolveHistoryEntryAccess(db, userId, entry.id);
+    const result = await resolveHistoryEntryAccess({ db, userId, entryId: entry.id });
     expect(result.status).toBe('ok');
     if (result.status !== 'ok') {
       throw new Error('accès inattendu');
@@ -163,16 +208,16 @@ describe('resolveHistoryEntryAccess', () => {
 
   it('refuse un utilisateur sans lien avec la cave', async () => {
     const { db, entry } = await setupHistoryEntry();
-    const outsiderId = await createUserAccount(db, 'outsider@example.com', 'x');
+    const outsiderId = await createUserAccount({ db, email: 'outsider@example.com', password: 'x' });
 
-    const result = await resolveHistoryEntryAccess(db, outsiderId, entry.id);
+    const result = await resolveHistoryEntryAccess({ db, userId: outsiderId, entryId: entry.id });
     expect(result).toEqual({ status: 'forbidden' });
   });
 
   it('retourne not_found pour une entrée inconnue', async () => {
     const { db, userId } = await setupHistoryEntry();
 
-    const result = await resolveHistoryEntryAccess(db, userId, 'entree-inconnue');
+    const result = await resolveHistoryEntryAccess({ db, userId, entryId: 'entree-inconnue' });
     expect(result).toEqual({ status: 'not_found' });
   });
 });
@@ -195,13 +240,17 @@ describe('updateHistoryEntry', () => {
   it('met à jour les champs modifiables sans toucher aux snapshots', async () => {
     const { db, entry } = await setupHistoryEntry();
 
-    await updateHistoryEntry(db, entry.id, {
-      comment: 'Finalement excellent',
-      rating: 5,
-      occasion: 'Anniversaire',
+    await updateHistoryEntry({
+      db,
+      entryId: entry.id,
+      input: {
+        comment: 'Finalement excellent',
+        rating: 5,
+        occasion: 'Anniversaire',
+      },
     });
 
-    const updated = firstRow(await listConsumptionHistory(db, entry.cellarId));
+    const updated = firstRow(await listConsumptionHistory({ db, cellarId: entry.cellarId }));
     expect(updated.comment).toBe('Finalement excellent');
     expect(updated.rating).toBe(5);
     expect(updated.occasion).toBe('Anniversaire');
@@ -213,8 +262,8 @@ describe('deleteHistoryEntry', () => {
   it('supprime l’entrée', async () => {
     const { db, entry } = await setupHistoryEntry();
 
-    await deleteHistoryEntry(db, entry.id);
+    await deleteHistoryEntry({ db, entryId: entry.id });
 
-    expect(await listConsumptionHistory(db, entry.cellarId)).toHaveLength(0);
+    expect(await listConsumptionHistory({ db, cellarId: entry.cellarId })).toHaveLength(0);
   });
 });

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Ma Cave">
+  <title>Ma Cave</title>
+  <!--
+    Dessin vectoriel plutôt qu'un .ico matriciel : l'onglet, la barre de
+    favoris et l'écran d'accueil demandent des tailles très différentes, et
+    un seul fichier les sert toutes sans jamais être rééchantillonné.
+
+    Un verre plein, en silhouette : à 16 pixels il ne reste qu'une forme et
+    deux aplats, donc tout détail (contour fin, reflet, bouteille à côté)
+    se transformerait en bouillie. Les couleurs sont celles de l'app —
+    forest, cream, et le bordeaux qui sert déjà de liseré aux vins rouges.
+
+    La panse est plus large que le buvant, comme sur un vrai verre à vin :
+    des côtés droits donnaient une coupe, pas un verre.
+  -->
+  <rect width="32" height="32" rx="7" fill="#20342b" />
+  <g fill="#f4f1ea">
+    <path d="M11 6.4h10c1.7 2.6 1.7 8.6-4.2 11.5v4.6h3.4a1 1 0 0 1 0 2h-8.4a1 1 0 0 1 0-2h3.4v-4.6C9.3 15 9.3 9 11 6.4Z" />
+  </g>
+  <!--
+    Le vin occupe le bas de la panse : la limite haute est droite, comme
+    une surface de liquide au repos, ce qui suffit à lire « verre rempli »
+    sans aucun contour.
+  -->
+  <path d="M10.2 11.2h11.6c-.7 2.9-2.5 4.8-5.8 6.1-3.3-1.3-5.1-3.2-5.8-6.1Z" fill="#7a2331" />
+</svg>

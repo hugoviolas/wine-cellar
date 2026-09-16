@@ -1,13 +1,15 @@
 import { eq } from 'drizzle-orm';
-import type { Db } from '../db/client';
 import { passwordResetTokens, users } from '../db/schema';
 import { newId } from '../db/id';
 import { generateToken, hashToken } from './token';
 import { hashPassword } from './auth';
+import type { CreateResetTokenArgs } from './interfaces/create-reset-token-args.interface';
+import type { ValidateResetTokenArgs } from './interfaces/validate-reset-token-args.interface';
+import type { ResetPasswordWithTokenArgs } from './interfaces/reset-password-with-token-args.interface';
 
 const RESET_TTL_MS = 24 * 60 * 60 * 1000;
 
-export const createResetToken = async (db: Db, userId: string): Promise<string> => {
+export const createResetToken = async ({ db, userId }: CreateResetTokenArgs): Promise<string> => {
   // Le jeton n'existe qu'ici et dans le lien remis au super-admin : la
   // base ne reçoit que son empreinte (voir domain/token.ts).
   const token = generateToken();
@@ -28,7 +30,10 @@ export type ResetTokenLookup =
   | { status: 'expired' }
   | { status: 'already_used' };
 
-export const validateResetToken = async (db: Db, token: string): Promise<ResetTokenLookup> => {
+export const validateResetToken = async ({
+  db,
+  token,
+}: ValidateResetTokenArgs): Promise<ResetTokenLookup> => {
   const [row] = await db
     .select()
     .from(passwordResetTokens)
@@ -50,8 +55,12 @@ export const validateResetToken = async (db: Db, token: string): Promise<ResetTo
   return { status: 'valid', userId: row.userId };
 };
 
-export const resetPasswordWithToken = async (db: Db, token: string, newPassword: string): Promise<void> => {
-  const lookup = await validateResetToken(db, token);
+export const resetPasswordWithToken = async ({
+  db,
+  token,
+  newPassword,
+}: ResetPasswordWithTokenArgs): Promise<void> => {
+  const lookup = await validateResetToken({ db, token });
   if (lookup.status !== 'valid') {
     throw new Error('Lien de réinitialisation invalide.');
   }
