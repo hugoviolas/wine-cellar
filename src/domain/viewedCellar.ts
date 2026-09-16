@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
-import type { Db } from '../db/client';
 import { cellarMemberships } from '../db/schema';
 import { checkCellarAccess } from './access';
+import type { ResolveViewedCellarIdArgs } from './interfaces/resolve-viewed-cellar-id-args.interface';
 
 /**
  * Résout la cave à afficher pour cette requête : `requestedCellarId` (ex.
@@ -12,13 +12,13 @@ import { checkCellarAccess } from './access';
  * cellarId demandé mais non autorisé est silencieusement ignoré plutôt que
  * de révéler quoi que ce soit sur son existence.
  */
-export const resolveViewedCellarId = async (
-  db: Db,
-  userId: string,
-  requestedCellarId: string | undefined,
-): Promise<string | null> => {
+export const resolveViewedCellarId = async ({
+  db,
+  userId,
+  requestedCellarId,
+}: ResolveViewedCellarIdArgs): Promise<string | null> => {
   if (requestedCellarId) {
-    const access = await checkCellarAccess(db, userId, requestedCellarId);
+    const access = await checkCellarAccess({ db, userId, cellarId: requestedCellarId });
     if (access.allowed) {
       return requestedCellarId;
     }

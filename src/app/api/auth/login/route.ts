@@ -45,16 +45,16 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   const ipKey = `login:ip:${clientKeyFromHeaders(request.headers)}`;
   const emailKey = `login:email:${email.toLowerCase()}`;
 
-  const ipLimit = checkRateLimit(ipKey, PER_IP);
+  const ipLimit = checkRateLimit({ key: ipKey, rule: PER_IP });
   if (!ipLimit.allowed) {
     return tooManyAttempts(ipLimit.retryAfterSeconds);
   }
-  const emailLimit = checkRateLimit(emailKey, PER_EMAIL);
+  const emailLimit = checkRateLimit({ key: emailKey, rule: PER_EMAIL });
   if (!emailLimit.allowed) {
     return tooManyAttempts(emailLimit.retryAfterSeconds);
   }
 
-  const user = await authenticateUser(db, email, password);
+  const user = await authenticateUser({ db, email, password });
   if (!user) {
     return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 });
   }

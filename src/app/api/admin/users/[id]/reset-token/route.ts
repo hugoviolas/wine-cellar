@@ -14,11 +14,11 @@ export const POST = async (
   }
   const { id } = await params;
 
-  const target = await getUserById(db, id);
+  const target = await getUserById({ db, userId: id });
   if (!target) {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
 
-  const token = await createResetToken(db, id);
+  const token = await createResetToken({ db, userId: id });
   return NextResponse.json({ token });
 };

@@ -23,7 +23,10 @@ export const POST = async (
   request: Request,
   { params }: { params: Promise<{ token: string }> },
 ): Promise<NextResponse> => {
-  const limit = checkRateLimit(`invitation:ip:${clientKeyFromHeaders(request.headers)}`, PER_IP);
+  const limit = checkRateLimit({
+    key: `invitation:ip:${clientKeyFromHeaders(request.headers)}`,
+    rule: PER_IP,
+  });
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Trop de tentatives. Réessaie dans quelques minutes.' },
@@ -32,7 +35,7 @@ export const POST = async (
   }
 
   const { token } = await params;
-  const lookup = await getInvitationByToken(db, token);
+  const lookup = await getInvitationByToken({ db, token });
   if (lookup.status !== 'valid') {
     return NextResponse.json({ error: 'Invitation invalide ou expirée.' }, { status: 400 });
   }
@@ -66,7 +69,11 @@ export const POST = async (
       );
     }
     try {
-      userId = await createUserAccount(db, lookup.invitation.email, parsed.data.password);
+      userId = await createUserAccount({
+        db,
+        email: lookup.invitation.email,
+        password: parsed.data.password,
+      });
     } catch (err) {
       if (err instanceof EmailAlreadyExistsError) {
         return NextResponse.json(
@@ -76,7 +83,11 @@ export const POST = async (
       }
       throw err;
     }
-    const authedUser = await authenticateUser(db, lookup.invitation.email, parsed.data.password);
+    const authedUser = await authenticateUser({
+      db,
+      email: lookup.invitation.email,
+      password: parsed.data.password,
+    });
     if (!authedUser) {
       throw new Error('Échec inattendu de connexion après création du compte.');
     }
@@ -86,6 +97,6 @@ export const POST = async (
     await session.save();
   }
 
-  const { cellarId } = await acceptInvitation(db, token, userId);
+  const { cellarId } = await acceptInvitation({ db, token, userId });
   return NextResponse.json({ cellarId });
 };

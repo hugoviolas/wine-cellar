@@ -7,6 +7,7 @@ import { canEditCellarContent } from '@/domain/permissions';
 import { resolveBottleAccess, type BottleAccessResult } from '@/domain/bottleAccess';
 import { parseBottleDetails } from '@/domain/bottleCategories';
 import { readJsonBody } from '@/lib/readJsonBody';
+import type { RequireBottleAccessArgs } from './interfaces/require-bottle-access-args.interface';
 
 type BottleAccessOutcome =
   | {
@@ -16,8 +17,11 @@ type BottleAccessOutcome =
     }
   | { bottle: null; role: null; error: NextResponse };
 
-const requireBottleAccess = async (userId: string, bottleId: string): Promise<BottleAccessOutcome> => {
-  const result = await resolveBottleAccess(db, userId, bottleId);
+const requireBottleAccess = async ({
+  userId,
+  bottleId,
+}: RequireBottleAccessArgs): Promise<BottleAccessOutcome> => {
+  const result = await resolveBottleAccess({ db, userId, bottleId });
   if (result.status === 'not_found') {
     return { bottle: null, role: null, error: NextResponse.json({ error: 'Introuvable' }, { status: 404 }) };
   }
@@ -36,7 +40,7 @@ export const GET = async (
     return auth.error;
   }
   const { id } = await params;
-  const { bottle, error } = await requireBottleAccess(auth.user.id, id);
+  const { bottle, error } = await requireBottleAccess({ userId: auth.user.id, bottleId: id });
   if (error) {
     return error;
   }
@@ -52,7 +56,7 @@ export const PATCH = async (
     return auth.error;
   }
   const { id } = await params;
-  const { bottle, role, error } = await requireBottleAccess(auth.user.id, id);
+  const { bottle, role, error } = await requireBottleAccess({ userId: auth.user.id, bottleId: id });
   if (error) {
     return error;
   }
@@ -79,8 +83,8 @@ export const PATCH = async (
   }
 
   if (parsed.data.crateId) {
-    const currentCrate = await getCrateById(db, bottle.crateId);
-    const targetCrate = await getCrateById(db, parsed.data.crateId);
+    const currentCrate = await getCrateById({ db, crateId: bottle.crateId });
+    const targetCrate = await getCrateById({ db, crateId: parsed.data.crateId });
     if (!targetCrate) {
       return NextResponse.json({ error: 'Clayette de destination introuvable.' }, { status: 404 });
     }
@@ -101,7 +105,7 @@ export const PATCH = async (
     }
   }
 
-  await updateBottle(db, id, patch);
+  await updateBottle({ db, bottleId: id, input: patch });
   return NextResponse.json({ ok: true });
 };
 
@@ -114,13 +118,13 @@ export const DELETE = async (
     return auth.error;
   }
   const { id } = await params;
-  const { role, error } = await requireBottleAccess(auth.user.id, id);
+  const { role, error } = await requireBottleAccess({ userId: auth.user.id, bottleId: id });
   if (error) {
     return error;
   }
   if (!canEditCellarContent(role)) {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
-  await deleteBottle(db, id);
+  await deleteBottle({ db, bottleId: id });
   return NextResponse.json({ ok: true });
 };

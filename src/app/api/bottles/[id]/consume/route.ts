@@ -16,7 +16,7 @@ export const POST = async (
   const { user } = auth;
   const { id } = await params;
 
-  const access = await resolveBottleAccess(db, user.id, id);
+  const access = await resolveBottleAccess({ db, userId: user.id, bottleId: id });
   if (access.status === 'not_found') {
     return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
   }
@@ -31,14 +31,17 @@ export const POST = async (
   const body = parsed.data;
 
   try {
-    const historyId = await consumeBottle(db, {
-      bottleId: id,
-      consumedByUserId: user.id,
-      consumedAt: body.consumedAt ?? new Date().toISOString().slice(0, 10),
-      quantity: body.quantity,
-      rating: body.rating,
-      comment: body.comment,
-      occasion: body.occasion,
+    const historyId = await consumeBottle({
+      db,
+      input: {
+        bottleId: id,
+        consumedByUserId: user.id,
+        consumedAt: body.consumedAt ?? new Date().toISOString().slice(0, 10),
+        quantity: body.quantity,
+        rating: body.rating,
+        comment: body.comment,
+        occasion: body.occasion,
+      },
     });
     return NextResponse.json({ historyId });
   } catch (err) {

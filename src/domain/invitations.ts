@@ -1,11 +1,13 @@
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db } from '../db/client';
 import { invitations, cellarMemberships } from '../db/schema';
 import { newId } from '../db/id';
 import { generateToken, hashToken } from './token';
 import type { CreateInvitationInput } from './interfaces/create-invitation-input.interface';
 import { FIELD_MAX } from './fieldLimits';
+import type { CreateInvitationArgs } from './interfaces/create-invitation-args.interface';
+import type { GetInvitationByTokenArgs } from './interfaces/get-invitation-by-token-args.interface';
+import type { AcceptInvitationArgs } from './interfaces/accept-invitation-args.interface';
 
 export type { CreateInvitationInput };
 
@@ -19,10 +21,10 @@ export const createInvitationBodySchema = z
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-export const createInvitation = async (
-  db: Db,
-  input: CreateInvitationInput,
-): Promise<{ id: string; token: string }> => {
+export const createInvitation = async ({
+  db,
+  input,
+}: CreateInvitationArgs): Promise<{ id: string; token: string }> => {
   const id = newId();
   // Le jeton n'existe qu'ici et dans le lien renvoyé à l'appelant : la
   // base ne reçoit que son empreinte (voir domain/token.ts).
@@ -50,7 +52,10 @@ export type InvitationLookup =
   | { status: 'expired' }
   | { status: 'already_used' };
 
-export const getInvitationByToken = async (db: Db, token: string): Promise<InvitationLookup> => {
+export const getInvitationByToken = async ({
+  db,
+  token,
+}: GetInvitationByTokenArgs): Promise<InvitationLookup> => {
   const [invitation] = await db
     .select()
     .from(invitations)
@@ -68,12 +73,12 @@ export const getInvitationByToken = async (db: Db, token: string): Promise<Invit
   return { status: 'valid', invitation };
 };
 
-export const acceptInvitation = async (
-  db: Db,
-  token: string,
-  userId: string,
-): Promise<{ cellarId: string }> => {
-  const lookup = await getInvitationByToken(db, token);
+export const acceptInvitation = async ({
+  db,
+  token,
+  userId,
+}: AcceptInvitationArgs): Promise<{ cellarId: string }> => {
+  const lookup = await getInvitationByToken({ db, token });
   if (lookup.status !== 'valid') {
     throw new Error('Invitation invalide.');
   }

@@ -1,4 +1,5 @@
 import { readJsonBody } from './readJsonBody';
+import type { StringFieldFromResponseArgs } from './interfaces/string-field-from-response-args.interface';
 
 /**
  * Champ texte d'une réponse d'API (`{ token }`, `{ bottleId }`, ...). Le
@@ -7,7 +8,10 @@ import { readJsonBody } from './readJsonBody';
  * inattendue donne `null` au lieu d'une valeur `undefined` recopiée telle
  * quelle dans une URL.
  */
-export const stringFieldFromResponse = async (response: Response, field: string): Promise<string | null> => {
+export const stringFieldFromResponse = async ({
+  response,
+  field,
+}: StringFieldFromResponseArgs): Promise<string | null> => {
   const body: unknown = await readJsonBody(response);
   if (typeof body !== 'object' || body === null || !(field in body)) {
     return null;

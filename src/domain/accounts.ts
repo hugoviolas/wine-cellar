@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm';
-import type { Db } from '../db/client';
 import { users, cellars, cellarMemberships } from '../db/schema';
 import { hashPassword } from './auth';
 import { newId } from '../db/id';
+import type { CreateUserAccountArgs } from './interfaces/create-user-account-args.interface';
+import type { RegisterSelfServeUserArgs } from './interfaces/register-self-serve-user-args.interface';
 
 export class EmailAlreadyExistsError extends Error {}
 
@@ -27,7 +28,7 @@ const isEmailUniqueViolation = (error: unknown): boolean => {
   return text.includes('UNIQUE constraint failed: users.email');
 };
 
-export const createUserAccount = async (db: Db, email: string, password: string): Promise<string> => {
+export const createUserAccount = async ({ db, email, password }: CreateUserAccountArgs): Promise<string> => {
   const normalizedEmail = email.toLowerCase();
   const [existing] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
   if (existing) {
@@ -63,11 +64,11 @@ export const createUserAccount = async (db: Db, email: string, password: string)
  * ne doit pas avoir accès par défaut à la clé API IA partagée (le
  * super-admin l'active au cas par cas depuis /admin/caves).
  */
-export const registerSelfServeUser = async (
-  db: Db,
-  email: string,
-  password: string,
-): Promise<{ userId: string; cellarId: string }> => {
+export const registerSelfServeUser = async ({
+  db,
+  email,
+  password,
+}: RegisterSelfServeUserArgs): Promise<{ userId: string; cellarId: string }> => {
   const normalizedEmail = email.toLowerCase();
   const [existing] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
   if (existing) {

@@ -27,7 +27,7 @@ export const SignupForm = (): ReactElement => {
         body: JSON.stringify({ email, password }),
       });
       if (!response.ok) {
-        setError(await errorMessageFromResponse(response, 'Impossible de créer ton compte.'));
+        setError(await errorMessageFromResponse({ response, fallback: 'Impossible de créer ton compte.' }));
         return;
       }
       router.push('/accueil');

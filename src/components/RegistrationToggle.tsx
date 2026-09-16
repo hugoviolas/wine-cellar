@@ -18,7 +18,9 @@ export const RegistrationToggle = ({ initialEnabled }: { initialEnabled: boolean
       body: JSON.stringify({ registrationEnabled: !enabled }),
     });
     if (!response.ok) {
-      setError(await errorMessageFromResponse(response, 'Impossible de mettre à jour ce réglage.'));
+      setError(
+        await errorMessageFromResponse({ response, fallback: 'Impossible de mettre à jour ce réglage.' }),
+      );
       return;
     }
     setEnabled(!enabled);

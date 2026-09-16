@@ -22,26 +22,34 @@ import { stringArrayOrEmpty } from '@/lib/stringArray';
 const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> }): Promise<ReactElement> => {
   const user = await requireUser();
   const { id } = await params;
-  const access = await resolveBottleAccess(db, user.id, id);
+  const access = await resolveBottleAccess({ db, userId: user.id, bottleId: id });
   if (access.status !== 'ok') {
     notFound();
   }
   const bottle = access.bottle;
 
-  const currentCrate = await getCrateById(db, bottle.crateId);
+  const currentCrate = await getCrateById({ db, crateId: bottle.crateId });
   const siblingCrates = currentCrate
-    ? (await listCrates(db, currentCrate.cellarId)).filter((c) => c.id !== currentCrate.id)
+    ? (await listCrates({ db, cellarId: currentCrate.cellarId })).filter((c) => c.id !== currentCrate.id)
     : [];
-  const cellar = currentCrate ? await getCellarById(db, currentCrate.cellarId) : null;
+  const cellar = currentCrate ? await getCellarById({ db, cellarId: currentCrate.cellarId }) : null;
   const aiAvailable = cellar ? isAiAvailable(cellar) : false;
   const pairings = stringArrayOrEmpty(bottle.aiPairings);
 
   const currentYear = new Date().getFullYear();
-  const status = computeGardeStatus(bottle.drinkFrom, bottle.drinkUntil, currentYear);
-  const progress = computeGardeProgress(bottle.vintage, bottle.drinkUntil, currentYear);
+  const status = computeGardeStatus({
+    drinkFrom: bottle.drinkFrom,
+    drinkUntil: bottle.drinkUntil,
+    currentYear,
+  });
+  const progress = computeGardeProgress({
+    vintage: bottle.vintage,
+    drinkUntil: bottle.drinkUntil,
+    currentYear,
+  });
 
-  const grapeVarieties = getGrapeVarieties(bottle.category, bottle.details);
-  const appellation = getAppellation(bottle.category, bottle.details);
+  const grapeVarieties = getGrapeVarieties({ category: bottle.category, details: bottle.details });
+  const appellation = getAppellation({ category: bottle.category, details: bottle.details });
 
   return (
     <div className="max-w-lg">
@@ -52,7 +60,7 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
         <h2 className="text-xl mb-1">{bottle.name}</h2>
         <p className="text-xs text-gray-500 mb-4">
           {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} · {bottle.category} ·{' '}
-          {currentCrate ? crateLabel(currentCrate.number, currentCrate.name) : '—'}
+          {currentCrate ? crateLabel({ number: currentCrate.number, name: currentCrate.name }) : '—'}
         </p>
 
         {(appellation || grapeVarieties.length > 0) && (

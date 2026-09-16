@@ -24,7 +24,7 @@ const LoginPage = (): ReactElement => {
         body: JSON.stringify({ email, password }),
       });
       if (!response.ok) {
-        setError(await errorMessageFromResponse(response, 'Une erreur est survenue'));
+        setError(await errorMessageFromResponse({ response, fallback: 'Une erreur est survenue' }));
         return;
       }
       router.push('/accueil');

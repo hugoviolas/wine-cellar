@@ -41,11 +41,11 @@ export const checkAiQuota = ({
   if (isSuperAdmin) {
     return null;
   }
-  const hourly = checkRateLimit(`ai:hour:${userId}`, PER_HOUR, now);
+  const hourly = checkRateLimit({ key: `ai:hour:${userId}`, rule: PER_HOUR, now });
   if (!hourly.allowed) {
     return quotaExceeded(hourly.retryAfterSeconds);
   }
-  const daily = checkRateLimit(`ai:day:${userId}`, PER_DAY, now);
+  const daily = checkRateLimit({ key: `ai:day:${userId}`, rule: PER_DAY, now });
   if (!daily.allowed) {
     return quotaExceeded(daily.retryAfterSeconds);
   }

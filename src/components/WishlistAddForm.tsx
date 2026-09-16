@@ -86,7 +86,10 @@ export const WishlistAddForm = ({ aiAvailable }: { aiAvailable: boolean }): Reac
       }),
     });
     if (!response.ok) {
-      const message = await errorMessageFromResponse(response, "Impossible d'ajouter cette bouteille.");
+      const message = await errorMessageFromResponse({
+        response,
+        fallback: "Impossible d'ajouter cette bouteille.",
+      });
       setError(message);
       toast.error(message);
       return;

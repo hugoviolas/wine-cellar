@@ -22,6 +22,6 @@ export const POST = async (request: Request): Promise<NextResponse> => {
     return NextResponse.json({ error: 'Nom et propriétaire requis.' }, { status: 400 });
   }
 
-  const id = await createCellarByAdmin(db, parsed.data);
+  const id = await createCellarByAdmin({ db, input: parsed.data });
   return NextResponse.json({ id });
 };

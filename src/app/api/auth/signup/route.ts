@@ -30,7 +30,7 @@ const signupBodySchema = z
   .strict();
 
 export const POST = async (request: Request): Promise<NextResponse> => {
-  const limit = checkRateLimit(`signup:ip:${clientKeyFromHeaders(request.headers)}`, PER_IP);
+  const limit = checkRateLimit({ key: `signup:ip:${clientKeyFromHeaders(request.headers)}`, rule: PER_IP });
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Trop de tentatives. Réessaie dans quelques minutes.' },
@@ -51,7 +51,11 @@ export const POST = async (request: Request): Promise<NextResponse> => {
 
   let userId: string;
   try {
-    ({ userId } = await registerSelfServeUser(db, parsed.data.email, parsed.data.password));
+    ({ userId } = await registerSelfServeUser({
+      db,
+      email: parsed.data.email,
+      password: parsed.data.password,
+    }));
   } catch (err) {
     if (err instanceof EmailAlreadyExistsError) {
       // Message volontairement muet sur l'existence du compte : confirmer

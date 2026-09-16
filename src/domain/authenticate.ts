@@ -1,16 +1,16 @@
 import { eq } from 'drizzle-orm';
-import type { Db } from '../db/client';
 import { users } from '../db/schema';
 import { verifyPassword } from './auth';
 import type { AuthenticatedUser } from './interfaces/authenticated-user.interface';
+import type { AuthenticateUserArgs } from './interfaces/authenticate-user-args.interface';
 
 export type { AuthenticatedUser };
 
-export const authenticateUser = async (
-  db: Db,
-  email: string,
-  password: string,
-): Promise<AuthenticatedUser | null> => {
+export const authenticateUser = async ({
+  db,
+  email,
+  password,
+}: AuthenticateUserArgs): Promise<AuthenticatedUser | null> => {
   const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
   if (!user) {
     return null;
@@ -18,7 +18,7 @@ export const authenticateUser = async (
   if (!user.isActive) {
     return null;
   }
-  const valid = await verifyPassword(password, user.passwordHash);
+  const valid = await verifyPassword({ password, hash: user.passwordHash });
   if (!valid) {
     return null;
   }

@@ -1,6 +1,5 @@
 import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
-import type { Db } from '../db/client';
 import { wishlistItems } from '../db/schema';
 import { newId } from '../db/id';
 import { parseBottleDetails } from './bottleCategories';
@@ -13,6 +12,14 @@ import type { CreateWishlistItemInput } from './interfaces/create-wishlist-item-
 import type { PromotionTarget } from './interfaces/promotion-target.interface';
 import type { UpdateWishlistItemInput } from './interfaces/update-wishlist-item-input.interface';
 import { FIELD_MAX } from './fieldLimits';
+import type { CreateWishlistItemArgs } from './interfaces/create-wishlist-item-args.interface';
+import type { ListWishlistItemsArgs } from './interfaces/list-wishlist-items-args.interface';
+import type { GetWishlistItemArgs } from './interfaces/get-wishlist-item-args.interface';
+import type { ResolveWishlistItemAccessArgs } from './interfaces/resolve-wishlist-item-access-args.interface';
+import type { UpdateWishlistItemArgs } from './interfaces/update-wishlist-item-args.interface';
+import type { DeleteWishlistItemArgs } from './interfaces/delete-wishlist-item-args.interface';
+import type { PromoteWishlistItemArgs } from './interfaces/promote-wishlist-item-args.interface';
+import type { ListPromotionTargetsArgs } from './interfaces/list-promotion-targets-args.interface';
 
 export type { CreateWishlistItemInput, PromotionTarget, UpdateWishlistItemInput };
 
@@ -31,7 +38,7 @@ export const createWishlistItemBodySchema = z
   })
   .strict();
 
-export const createWishlistItem = async (db: Db, input: CreateWishlistItemInput): Promise<string> => {
+export const createWishlistItem = async ({ db, input }: CreateWishlistItemArgs): Promise<string> => {
   const details = parseBottleDetails(input.category, input.details);
   const id = newId();
   await db.insert(wishlistItems).values({
@@ -55,7 +62,10 @@ export const createWishlistItem = async (db: Db, input: CreateWishlistItemInput)
   return id;
 };
 
-export const listWishlistItems = async (db: Db, userId: string): Promise<WishlistItemRow[]> => {
+export const listWishlistItems = async ({
+  db,
+  userId,
+}: ListWishlistItemsArgs): Promise<WishlistItemRow[]> => {
   return db
     .select()
     .from(wishlistItems)
@@ -63,7 +73,7 @@ export const listWishlistItems = async (db: Db, userId: string): Promise<Wishlis
     .orderBy(desc(wishlistItems.createdAt), desc(wishlistItems.name));
 };
 
-export const getWishlistItem = async (db: Db, id: string): Promise<WishlistItemRow | null> => {
+export const getWishlistItem = async ({ db, id }: GetWishlistItemArgs): Promise<WishlistItemRow | null> => {
   const [row] = await db.select().from(wishlistItems).where(eq(wishlistItems.id, id)).limit(1);
   return row ?? null;
 };
@@ -78,12 +88,12 @@ export type WishlistItemAccessResult =
  * bypass super-admin (contrairement à checkCellarAccess) — la wishlist est
  * une donnée personnelle, pas une ressource de cave.
  */
-export const resolveWishlistItemAccess = async (
-  db: Db,
-  userId: string,
-  itemId: string,
-): Promise<WishlistItemAccessResult> => {
-  const item = await getWishlistItem(db, itemId);
+export const resolveWishlistItemAccess = async ({
+  db,
+  userId,
+  itemId,
+}: ResolveWishlistItemAccessArgs): Promise<WishlistItemAccessResult> => {
+  const item = await getWishlistItem({ db, id: itemId });
   if (!item) {
     return { status: 'not_found' };
   }
@@ -108,15 +118,11 @@ export const updateWishlistItemBodySchema = z
   })
   .strict();
 
-export const updateWishlistItem = async (
-  db: Db,
-  id: string,
-  input: UpdateWishlistItemInput,
-): Promise<void> => {
+export const updateWishlistItem = async ({ db, id, input }: UpdateWishlistItemArgs): Promise<void> => {
   await db.update(wishlistItems).set(input).where(eq(wishlistItems.id, id));
 };
 
-export const deleteWishlistItem = async (db: Db, id: string): Promise<void> => {
+export const deleteWishlistItem = async ({ db, id }: DeleteWishlistItemArgs): Promise<void> => {
   await db.delete(wishlistItems).where(eq(wishlistItems.id, id));
 };
 
@@ -134,11 +140,11 @@ export const promoteWishlistItemBodySchema = z
  * fait qu'une fois promue, la bouteille bénéficie du flux IA existant sans
  * rien de spécifique à écrire ici.
  */
-export const promoteWishlistItem = async (
-  db: Db,
-  item: WishlistItemRow,
-  input: { crateId: string; quantity: number },
-): Promise<{ bottleId: string }> => {
+export const promoteWishlistItem = async ({
+  db,
+  item,
+  input,
+}: PromoteWishlistItemArgs): Promise<{ bottleId: string }> => {
   if (item.status !== 'pending') {
     throw new Error('Cet item a déjà été ajouté à une cave.');
   }
@@ -148,32 +154,35 @@ export const promoteWishlistItem = async (
   // « à acheter » alors que la bouteille était déjà en cave, ou un item
   // promu pointant vers une bouteille inexistante.
   return db.transaction(async (tx) => {
-    const bottleId = await createBottle(tx, {
-      crateId: input.crateId,
-      category: item.category,
-      name: item.name,
-      producer: item.producer ?? undefined,
-      vintage: item.vintage ?? undefined,
-      region: item.region ?? undefined,
-      color: item.color ?? undefined,
-      abv: item.abv ?? undefined,
-      volumeMl: item.volumeMl ?? undefined,
-      quantity: input.quantity,
-      details: item.details,
-      // Le commentaire de l'item devient la note de la bouteille : sans ça
-      // il resterait visible seulement dans la wishlist, alors que c'est sur
-      // la fiche bouteille qu'on le relira. L'item le conserve de son côté.
-      userNote: item.comment ?? undefined,
-      // L'analyse et la fenêtre de garde suivent aussi : elles ont été
-      // produites sur cette bouteille-là, les régénérer coûterait un appel
-      // pour un résultat équivalent. La régénération reste possible depuis
-      // la fiche si le millésime ou la région ont été corrigés entre-temps.
-      drinkFrom: item.drinkFrom ?? undefined,
-      drinkUntil: item.drinkUntil ?? undefined,
-      aiAnalysis: item.aiAnalysis,
-      aiPairings: item.aiPairings,
-      aiTastingAdvice: item.aiTastingAdvice,
-      aiGeneratedAt: item.aiGeneratedAt,
+    const bottleId = await createBottle({
+      db: tx,
+      input: {
+        crateId: input.crateId,
+        category: item.category,
+        name: item.name,
+        producer: item.producer ?? undefined,
+        vintage: item.vintage ?? undefined,
+        region: item.region ?? undefined,
+        color: item.color ?? undefined,
+        abv: item.abv ?? undefined,
+        volumeMl: item.volumeMl ?? undefined,
+        quantity: input.quantity,
+        details: item.details,
+        // Le commentaire de l'item devient la note de la bouteille : sans ça
+        // il resterait visible seulement dans la wishlist, alors que c'est sur
+        // la fiche bouteille qu'on le relira. L'item le conserve de son côté.
+        userNote: item.comment ?? undefined,
+        // L'analyse et la fenêtre de garde suivent aussi : elles ont été
+        // produites sur cette bouteille-là, les régénérer coûterait un appel
+        // pour un résultat équivalent. La régénération reste possible depuis
+        // la fiche si le millésime ou la région ont été corrigés entre-temps.
+        drinkFrom: item.drinkFrom ?? undefined,
+        drinkUntil: item.drinkUntil ?? undefined,
+        aiAnalysis: item.aiAnalysis,
+        aiPairings: item.aiPairings,
+        aiTastingAdvice: item.aiTastingAdvice,
+        aiGeneratedAt: item.aiGeneratedAt,
+      },
     });
 
     await tx
@@ -191,7 +200,10 @@ export const promoteWishlistItem = async (
  * utilisateur normal seulement celles où sa cellar_membership a un rôle
  * owner/editor (canEditCellarContent).
  */
-export const listPromotionTargets = async (db: Db, userId: string): Promise<PromotionTarget[]> => {
+export const listPromotionTargets = async ({
+  db,
+  userId,
+}: ListPromotionTargetsArgs): Promise<PromotionTarget[]> => {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
   let editableCellars: (typeof cellars.$inferSelect)[];
@@ -208,7 +220,7 @@ export const listPromotionTargets = async (db: Db, userId: string): Promise<Prom
 
   const targets: PromotionTarget[] = [];
   for (const cellar of editableCellars) {
-    const crateRows = await listCrates(db, cellar.id);
+    const crateRows = await listCrates({ db, cellarId: cellar.id });
     targets.push({
       cellarId: cellar.id,
       cellarName: cellar.name,

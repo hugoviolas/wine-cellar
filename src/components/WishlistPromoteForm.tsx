@@ -34,11 +34,14 @@ export const WishlistPromoteForm = ({
     if (!response.ok) {
       setBusy(false);
       toast.error(
-        await errorMessageFromResponse(response, "Impossible d'ajouter cette bouteille à la cave."),
+        await errorMessageFromResponse({
+          response,
+          fallback: "Impossible d'ajouter cette bouteille à la cave.",
+        }),
       );
       return;
     }
-    const bottleId = await stringFieldFromResponse(response, 'bottleId');
+    const bottleId = await stringFieldFromResponse({ response, field: 'bottleId' });
     toast.success('Bouteille ajoutée à la cave.');
     router.push(bottleId === null ? '/cave' : `/bottles/${bottleId}`);
     router.refresh();
@@ -58,7 +61,7 @@ export const WishlistPromoteForm = ({
             <optgroup key={target.cellarId} label={target.cellarName}>
               {target.crates.map((crate) => (
                 <option key={crate.id} value={crate.id}>
-                  {crateLabel(crate.number, crate.name)}
+                  {crateLabel({ number: crate.number, name: crate.name })}
                 </option>
               ))}
             </optgroup>

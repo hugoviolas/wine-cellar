@@ -1,7 +1,7 @@
 import { parseBottleDetails } from '../bottleCategories';
 import type { AiAnalysisPatch } from './interfaces/ai-analysis-patch.interface';
-import type { AiAnalysisTarget } from './interfaces/ai-analysis-target.interface';
-import type { AiBottleAnalysis } from './schemas';
+import type { BuildAiAnalysisPatchArgs } from './interfaces/build-ai-analysis-patch-args.interface';
+import type { MergedDetailsArgs } from './interfaces/merged-details-args.interface';
 
 /**
  * Champs à écrire après une génération IA, pour une bouteille comme pour un
@@ -14,10 +14,7 @@ import type { AiBottleAnalysis } from './schemas';
  * la main, extrait d'une photo ou produit par une génération précédente
  * n'est jamais écrasé.
  */
-export const buildAiAnalysisPatch = (
-  target: AiAnalysisTarget,
-  analysis: AiBottleAnalysis,
-): AiAnalysisPatch => {
+export const buildAiAnalysisPatch = ({ target, analysis }: BuildAiAnalysisPatchArgs): AiAnalysisPatch => {
   const patch: AiAnalysisPatch = {
     aiAnalysis: analysis.analysis,
     aiPairings: analysis.pairings,
@@ -35,7 +32,7 @@ export const buildAiAnalysisPatch = (
     patch.region = analysis.region;
   }
 
-  const details = mergedDetails(target, analysis);
+  const details = mergedDetails({ target, analysis });
   if (details !== null) {
     patch.details = details;
   }
@@ -47,7 +44,7 @@ export const buildAiAnalysisPatch = (
  * rien n'a changé — seules les catégories `wine` et `sparkling` portent ces
  * champs.
  */
-const mergedDetails = (target: AiAnalysisTarget, analysis: AiBottleAnalysis): unknown => {
+const mergedDetails = ({ target, analysis }: MergedDetailsArgs): unknown => {
   if (target.category !== 'wine' && target.category !== 'sparkling') {
     return null;
   }

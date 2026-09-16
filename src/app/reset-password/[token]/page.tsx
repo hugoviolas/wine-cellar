@@ -15,7 +15,7 @@ const ResetPasswordPage = async ({
   params: Promise<{ token: string }>;
 }): Promise<ReactElement> => {
   const { token } = await params;
-  const lookup = await validateResetToken(db, token);
+  const lookup = await validateResetToken({ db, token });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-cream">

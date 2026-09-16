@@ -1,8 +1,9 @@
 import type { SessionValidityUser } from './interfaces/session-validity-user.interface';
+import type { IsSessionStillValidArgs } from './interfaces/is-session-still-valid-args.interface';
 
 export type { SessionValidityUser };
 
-export const isSessionStillValid = (user: SessionValidityUser, issuedAt: string | undefined): boolean => {
+export const isSessionStillValid = ({ user, issuedAt }: IsSessionStillValidArgs): boolean => {
   // Aucun geste d'invalidation sur ce compte : rien à comparer. C'est le
   // cas de tous les comptes existants au moment du déploiement de cette
   // fonctionnalité — leurs sessions en cours ne sont pas cassées.

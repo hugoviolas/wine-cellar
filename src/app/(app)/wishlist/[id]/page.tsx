@@ -15,17 +15,17 @@ import { stringArrayOrEmpty } from '@/lib/stringArray';
 const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> }): Promise<ReactElement> => {
   const user = await requireUser();
   const { id } = await params;
-  const access = await resolveWishlistItemAccess(db, user.id, id);
+  const access = await resolveWishlistItemAccess({ db, userId: user.id, itemId: id });
   if (access.status !== 'ok') {
     notFound();
   }
   const item = access.item;
-  const promotionTargets = (item.status === 'pending' ? await listPromotionTargets(db, user.id) : []).filter(
-    (target) => target.crates.length > 0,
-  );
+  const promotionTargets = (
+    item.status === 'pending' ? await listPromotionTargets({ db, userId: user.id }) : []
+  ).filter((target) => target.crates.length > 0);
   // Génération proposée seulement tant que l'item est en attente : une fois
   // promu, c'est la fiche bouteille qui porte l'analyse et sa régénération.
-  const aiAvailable = item.status === 'pending' && (await isAiAvailableForUser(db, user.id));
+  const aiAvailable = item.status === 'pending' && (await isAiAvailableForUser({ db, userId: user.id }));
   const pairings = stringArrayOrEmpty(item.aiPairings);
 
   return (
@@ -122,8 +122,8 @@ const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> })
           vintage: item.vintage,
           region: item.region,
           color: item.color,
-          grapeVarieties: getGrapeVarieties(item.category, item.details),
-          appellation: getAppellation(item.category, item.details),
+          grapeVarieties: getGrapeVarieties({ category: item.category, details: item.details }),
+          appellation: getAppellation({ category: item.category, details: item.details }),
           comment: item.comment,
         }}
       />

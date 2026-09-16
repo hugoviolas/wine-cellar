@@ -18,19 +18,19 @@ const CavePage = async ({
 }): Promise<ReactElement> => {
   const user = await requireUser();
   const { cellarId: requestedCellarId } = await searchParams;
-  const cellarId = await resolveViewedCellarId(db, user.id, requestedCellarId);
+  const cellarId = await resolveViewedCellarId({ db, userId: user.id, requestedCellarId });
 
   if (!cellarId) {
     return <p className="text-sm">Aucune cave associée à ce compte.</p>;
   }
 
-  const access = await checkCellarAccess(db, user.id, cellarId);
+  const access = await checkCellarAccess({ db, userId: user.id, cellarId });
   const canManage = access.allowed && canManageCellar(access.role);
   const canEdit = access.allowed && canEditCellarContent(access.role);
 
-  const crates = await listCrates(db, cellarId);
-  const bottleRows = await listActiveBottlesByCellar(db, cellarId);
-  const cellar = await getCellarById(db, cellarId);
+  const crates = await listCrates({ db, cellarId });
+  const bottleRows = await listActiveBottlesByCellar({ db, cellarId });
+  const cellar = await getCellarById({ db, cellarId });
 
   const totalBottles = bottleRows.reduce((sum, row) => sum + row.bottle.quantity, 0);
   const totalCapacity = crates.reduce((sum, crate) => sum + crate.capacity, 0);

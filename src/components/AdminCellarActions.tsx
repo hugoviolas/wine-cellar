@@ -29,7 +29,9 @@ export const AdminCellarActions = ({
     });
     setBusy(false);
     if (!response.ok) {
-      toast.error(await errorMessageFromResponse(response, 'Impossible de mettre à jour cette cave.'));
+      toast.error(
+        await errorMessageFromResponse({ response, fallback: 'Impossible de mettre à jour cette cave.' }),
+      );
       return;
     }
     setAiEnabled(next);
@@ -42,7 +44,9 @@ export const AdminCellarActions = ({
     const response = await fetch(`/api/admin/cellars/${cellarId}`, { method: 'DELETE' });
     setBusy(false);
     if (!response.ok) {
-      toast.error(await errorMessageFromResponse(response, 'Impossible de supprimer cette cave.'));
+      toast.error(
+        await errorMessageFromResponse({ response, fallback: 'Impossible de supprimer cette cave.' }),
+      );
       return;
     }
     toast.success('Cave supprimée.');

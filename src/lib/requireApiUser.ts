@@ -22,7 +22,7 @@ export const requireApiUser = async (): Promise<ApiUserResult> => {
   }
   // Session antérieure à une réinitialisation de mot de passe : le cookie
   // est intact et déchiffrable, mais ne vaut plus rien.
-  if (!isSessionStillValid(user, session.issuedAt)) {
+  if (!isSessionStillValid({ user, issuedAt: session.issuedAt })) {
     session.destroy();
     return { error: unauthorized() };
   }

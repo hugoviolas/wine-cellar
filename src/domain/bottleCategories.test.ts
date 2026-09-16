@@ -61,31 +61,32 @@ describe('parseBottleDetails', () => {
 
 describe('getGrapeVarieties', () => {
   it('lit les cépages pour un vin', () => {
-    expect(getGrapeVarieties('wine', { grapeVarieties: ['Niellucciu', 'Syrah'] })).toEqual([
-      'Niellucciu',
-      'Syrah',
-    ]);
+    expect(
+      getGrapeVarieties({ category: 'wine', details: { grapeVarieties: ['Niellucciu', 'Syrah'] } }),
+    ).toEqual(['Niellucciu', 'Syrah']);
   });
 
   it('lit les cépages pour un effervescent', () => {
-    expect(getGrapeVarieties('sparkling', { grapeVarieties: ['Chardonnay'] })).toEqual(['Chardonnay']);
+    expect(getGrapeVarieties({ category: 'sparkling', details: { grapeVarieties: ['Chardonnay'] } })).toEqual(
+      ['Chardonnay'],
+    );
   });
 
   it('renvoie [] pour une catégorie sans cépages', () => {
-    expect(getGrapeVarieties('beer', { style: 'IPA' })).toEqual([]);
+    expect(getGrapeVarieties({ category: 'beer', details: { style: 'IPA' } })).toEqual([]);
   });
 });
 
 describe('getAppellation', () => {
   it('lit l’appellation pour un vin', () => {
-    expect(getAppellation('wine', { appellation: 'Patrimonio' })).toBe('Patrimonio');
+    expect(getAppellation({ category: 'wine', details: { appellation: 'Patrimonio' } })).toBe('Patrimonio');
   });
 
   it('renvoie null si absente', () => {
-    expect(getAppellation('wine', {})).toBeNull();
+    expect(getAppellation({ category: 'wine', details: {} })).toBeNull();
   });
 
   it('renvoie null pour une catégorie sans appellation', () => {
-    expect(getAppellation('sparkling', { grapeVarieties: ['Chardonnay'] })).toBeNull();
+    expect(getAppellation({ category: 'sparkling', details: { grapeVarieties: ['Chardonnay'] } })).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { appSettings } from '../db/schema';
+import type { SetRegistrationEnabledArgs } from './interfaces/set-registration-enabled-args.interface';
 
 const SETTINGS_ID = 'singleton';
 
@@ -14,7 +15,7 @@ export const getAppSettings = async (db: Db): Promise<{ registrationEnabled: boo
   return defaults;
 };
 
-export const setRegistrationEnabled = async (db: Db, enabled: boolean): Promise<void> => {
+export const setRegistrationEnabled = async ({ db, enabled }: SetRegistrationEnabledArgs): Promise<void> => {
   await getAppSettings(db);
   await db.update(appSettings).set({ registrationEnabled: enabled }).where(eq(appSettings.id, SETTINGS_ID));
 };

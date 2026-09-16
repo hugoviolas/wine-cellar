@@ -1,13 +1,16 @@
-import type { Db } from '../db/client';
 import { users, cellars, cellarMemberships } from '../db/schema';
 import { hashPassword } from './auth';
 import { newId } from '../db/id';
 import type { BootstrapParams } from './interfaces/bootstrap-params.interface';
 import type { BootstrapResult } from './interfaces/bootstrap-result.interface';
+import type { BootstrapSuperAdminArgs } from './interfaces/bootstrap-super-admin-args.interface';
 
 export type { BootstrapParams };
 
-export const bootstrapSuperAdmin = async (db: Db, params: BootstrapParams): Promise<BootstrapResult> => {
+export const bootstrapSuperAdmin = async ({
+  db,
+  params,
+}: BootstrapSuperAdminArgs): Promise<BootstrapResult> => {
   const now = new Date().toISOString();
   const userId = newId();
   await db.insert(users).values({
