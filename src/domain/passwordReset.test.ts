@@ -6,6 +6,7 @@ import { verifyPassword } from './auth';
 import { createResetToken, validateResetToken, resetPasswordWithToken } from './passwordReset';
 import { passwordResetTokens, users } from '../db/schema';
 import { firstRow } from '../db/testRows';
+import { hashToken } from './token';
 
 describe('createResetToken / validateResetToken', () => {
   it('génère un token valide et non expiré', async () => {
@@ -37,7 +38,7 @@ describe('createResetToken / validateResetToken', () => {
     await db
       .update(passwordResetTokens)
       .set({ expiresAt: new Date(Date.now() - 1000).toISOString() })
-      .where(eq(passwordResetTokens.token, token));
+      .where(eq(passwordResetTokens.tokenHash, hashToken(token)));
 
     expect((await validateResetToken(db, token)).status).toBe('expired');
   });
