@@ -104,7 +104,7 @@ export const invitations = sqliteTable('invitations', {
     .references(() => cellars.id),
   email: text('email').notNull(),
   role: text('role', { enum: ['editor', 'reader'] }).notNull(),
-  token: text('token').notNull().unique(),
+  tokenHash: text('token_hash').notNull().unique(),
   status: text('status', { enum: ['pending', 'accepted', 'expired'] })
     .notNull()
     .default('pending'),
@@ -116,7 +116,7 @@ export const invitations = sqliteTable('invitations', {
 export const passwordResetTokens = sqliteTable('password_reset_tokens', {
   id: text('id').primaryKey(),
   userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
-  token: text('token').notNull().unique(),
+  tokenHash: text('token_hash').notNull().unique(),
   expiresAt: text('expires_at').notNull(),
   usedAt: text('used_at'),
   createdAt: text('created_at').notNull(),

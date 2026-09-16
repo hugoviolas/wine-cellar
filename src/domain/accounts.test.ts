@@ -69,3 +69,35 @@ describe('registerSelfServeUser', () => {
     expect(user.email).toBe('nouveau@example.com');
   });
 });
+
+describe('unicité de l’email, y compris en concurrence', () => {
+  // La vérification d'existence et l'insertion sont deux requêtes
+  // distinctes : deux inscriptions simultanées sur la même adresse peuvent
+  // passer la vérification toutes les deux. C'est l'index unique de la
+  // base qui tranche, et l'erreur qu'il lève doit ressortir comme un
+  // conflit d'email — sinon la route répond 500 au lieu de 409.
+  it('createUserAccount traduit la violation de contrainte en EmailAlreadyExistsError', async () => {
+    const db = await createTestDb();
+    const results = await Promise.allSettled([
+      createUserAccount(db, 'course@example.com', 'x'),
+      createUserAccount(db, 'course@example.com', 'y'),
+    ]);
+
+    const rejected = results.filter((r) => r.status === 'rejected');
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.status === 'rejected' && rejected[0].reason).toBeInstanceOf(EmailAlreadyExistsError);
+    expect(await db.select().from(users).where(eq(users.email, 'course@example.com'))).toHaveLength(1);
+  });
+
+  it('registerSelfServeUser traduit aussi la violation de contrainte', async () => {
+    const db = await createTestDb();
+    const results = await Promise.allSettled([
+      registerSelfServeUser(db, 'course2@example.com', 'x'),
+      registerSelfServeUser(db, 'course2@example.com', 'y'),
+    ]);
+
+    const rejected = results.filter((r) => r.status === 'rejected');
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.status === 'rejected' && rejected[0].reason).toBeInstanceOf(EmailAlreadyExistsError);
+  });
+});

@@ -3,15 +3,16 @@ import { z } from 'zod';
 import type { Db } from '../db/client';
 import { invitations, cellarMemberships } from '../db/schema';
 import { newId } from '../db/id';
-import { generateToken } from './token';
+import { generateToken, hashToken } from './token';
 import type { CreateInvitationInput } from './interfaces/create-invitation-input.interface';
+import { FIELD_MAX } from './fieldLimits';
 
 export type { CreateInvitationInput };
 
 export const createInvitationBodySchema = z
   .object({
     cellarId: z.string().min(1),
-    email: z.string().email(),
+    email: z.string().email().max(FIELD_MAX.email),
     role: z.enum(['editor', 'reader']),
   })
   .strict();
@@ -23,6 +24,8 @@ export const createInvitation = async (
   input: CreateInvitationInput,
 ): Promise<{ id: string; token: string }> => {
   const id = newId();
+  // Le jeton n'existe qu'ici et dans le lien renvoyé à l'appelant : la
+  // base ne reçoit que son empreinte (voir domain/token.ts).
   const token = generateToken();
   const now = new Date();
   await db.insert(invitations).values({
@@ -30,7 +33,7 @@ export const createInvitation = async (
     cellarId: input.cellarId,
     email: input.email.toLowerCase(),
     role: input.role,
-    token,
+    tokenHash: hashToken(token),
     status: 'pending',
     invitedByUserId: input.invitedByUserId,
     expiresAt: new Date(now.getTime() + INVITATION_TTL_MS).toISOString(),
@@ -48,7 +51,11 @@ export type InvitationLookup =
   | { status: 'already_used' };
 
 export const getInvitationByToken = async (db: Db, token: string): Promise<InvitationLookup> => {
-  const [invitation] = await db.select().from(invitations).where(eq(invitations.token, token)).limit(1);
+  const [invitation] = await db
+    .select()
+    .from(invitations)
+    .where(eq(invitations.tokenHash, hashToken(token)))
+    .limit(1);
   if (!invitation) {
     return { status: 'not_found' };
   }

@@ -55,6 +55,15 @@ export const getSession = async (): Promise<IronSession<SessionData>> => {
     cookieOptions: {
       secure: isCookieSecure(),
       maxAge: SESSION_TTL_SECONDS,
+      // `httpOnly` et `sameSite` explicites, bien qu'ils correspondent aux
+      // défauts d'iron-session : ce sont les deux protections qui font que
+      // le cookie reste hors de portée d'un script de page et d'un POST
+      // venu d'un autre site. Les laisser implicites, c'est les confier à
+      // une valeur par défaut qu'une montée de version peut changer sans
+      // que rien ici ne le signale — or `proxy.ts` s'appuie sur
+      // `sameSite: 'lax'` dans son propre raisonnement.
+      httpOnly: true,
+      sameSite: 'lax' as const,
     },
   };
   return getIronSession<SessionData>(await cookies(), sessionOptions);

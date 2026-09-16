@@ -6,6 +6,7 @@ import { getAppSettings } from '@/domain/appSettings';
 import { registerSelfServeUser, EmailAlreadyExistsError } from '@/domain/accounts';
 import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
 import { readJsonBody } from '@/lib/readJsonBody';
+import { FIELD_MAX } from '@/domain/fieldLimits';
 
 /**
  * Sur l'énumération de comptes : tant que l'inscription est ouverte et
@@ -23,8 +24,8 @@ const PER_IP = { limit: 5, windowMs: 60 * 60 * 1000 };
 
 const signupBodySchema = z
   .object({
-    email: z.string().email(),
-    password: z.string().min(8),
+    email: z.string().email().max(FIELD_MAX.email),
+    password: z.string().min(8).max(FIELD_MAX.password),
   })
   .strict();
 

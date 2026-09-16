@@ -6,13 +6,19 @@ import { checkCellarAccess } from '@/domain/access';
 import { canManageCellar } from '@/domain/permissions';
 import { updateCellarInfo } from '@/domain/cellars';
 import { readJsonBody } from '@/lib/readJsonBody';
+import { FIELD_MAX } from '@/domain/fieldLimits';
 
 const updateCellarInfoBodySchema = z
   .object({
-    name: z.string().trim().min(1, 'Le nom de la cave ne peut pas être vide.').optional(),
-    brand: z.string().nullable().optional(),
-    model: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Le nom de la cave ne peut pas être vide.')
+      .max(FIELD_MAX.shortText)
+      .optional(),
+    brand: z.string().max(FIELD_MAX.shortText).nullable().optional(),
+    model: z.string().max(FIELD_MAX.shortText).nullable().optional(),
+    notes: z.string().max(FIELD_MAX.longText).nullable().optional(),
   })
   .strict();
 

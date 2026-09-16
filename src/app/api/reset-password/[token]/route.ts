@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { resetPasswordWithToken } from '@/domain/passwordReset';
 import { checkRateLimit, clientKeyFromHeaders } from '@/lib/rateLimit';
 import { readJsonBody } from '@/lib/readJsonBody';
+import { FIELD_MAX } from '@/domain/fieldLimits';
 
 /**
  * Route publique dont le seul secret est le jeton de l'URL. Celui-ci fait
@@ -12,7 +13,7 @@ import { readJsonBody } from '@/lib/readJsonBody';
  */
 const PER_IP = { limit: 10, windowMs: 15 * 60 * 1000 };
 
-const resetBodySchema = z.object({ password: z.string().min(8) }).strict();
+const resetBodySchema = z.object({ password: z.string().min(8).max(FIELD_MAX.password) }).strict();
 
 export const POST = async (
   request: Request,

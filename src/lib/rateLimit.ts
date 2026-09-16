@@ -31,27 +31,45 @@ export const checkRateLimit = (
   return { allowed: true, retryAfterSeconds: 0 };
 };
 
-/** Réinitialise l'état du limiteur — réservé aux tests. */
+/**
+ * Libère une clé. Sert après une authentification réussie : sans ça, le
+ * seau par email comptait toutes les tentatives, y compris les bonnes —
+ * connaître une adresse suffisait donc à empêcher son propriétaire de se
+ * connecter pendant toute la fenêtre. Seuls les échecs doivent compter.
+ */
+export const resetRateLimit = (key: string): void => {
+  buckets.delete(key);
+};
+
+/** Réinitialise l'état complet du limiteur — réservé aux tests. */
 export const resetRateLimits = (): void => {
   buckets.clear();
 };
 
 /**
- * Adresse du client. `cf-connecting-ip` d'abord : en production le seul
- * chemin d'entrée est le tunnel Cloudflare, qui réécrit cet en-tête et
- * empêche donc de l'usurper. `x-forwarded-for` ensuite pour un éventuel
- * reverse-proxy local, puis une clé constante en dernier recours (préprod
- * sur le LAN, accès direct) : un seau partagé limite alors tout le monde
- * ensemble, ce qui est plus sûr que de ne rien limiter du tout.
+ * Adresse du client, telle qu'on peut raisonnablement lui faire confiance.
+ *
+ * `cf-connecting-ip` d'abord : en production le seul chemin d'entrée est le
+ * tunnel Cloudflare, qui réécrit cet en-tête à chaque requête et empêche
+ * donc de l'usurper.
+ *
+ * `x-forwarded-for` seulement si le déploiement déclare `TRUST_FORWARDED_FOR`.
+ * Cet en-tête n'est qu'une chaîne posée par le client : sans un proxy en
+ * amont qui le réécrive, n'importe qui pouvait en changer à chaque requête
+ * et s'offrir un seau neuf à volonté — le limiteur ne protégeait alors plus
+ * rien sur tout déploiement joignable directement (la préprod sur le LAN).
+ *
+ * Sans en-tête digne de foi, clé constante : un seau partagé limite tout le
+ * monde ensemble, ce qui est moins précis mais reste une limite, alors
+ * qu'une clé usurpable n'en est pas une.
  */
 export const clientKeyFromHeaders = (headers: Headers): string => {
   const cloudflareIp = headers.get('cf-connecting-ip');
   if (cloudflareIp) {
     return cloudflareIp.trim();
   }
-  const forwarded = headers.get('x-forwarded-for');
-  if (forwarded) {
-    const first = forwarded.split(',')[0]?.trim();
+  if (process.env.TRUST_FORWARDED_FOR === 'true') {
+    const first = headers.get('x-forwarded-for')?.split(',')[0]?.trim();
     if (first) {
       return first;
     }

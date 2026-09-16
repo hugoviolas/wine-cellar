@@ -6,6 +6,7 @@ import { createUserAccount } from './accounts';
 import { createInvitation, getInvitationByToken, acceptInvitation } from './invitations';
 import { invitations, cellarMemberships } from '../db/schema';
 import { firstRow, rowAt } from '../db/testRows';
+import { hashToken } from './token';
 
 describe('createInvitation', () => {
   it('crée une invitation en attente avec une date d’expiration future', async () => {
@@ -25,7 +26,10 @@ describe('createInvitation', () => {
 
     const row = firstRow(await db.select().from(invitations).where(eq(invitations.id, id)));
     expect(row.status).toBe('pending');
-    expect(row.token).toBe(token);
+    // La base ne stocke que l'empreinte : le jeton du lien ne doit se
+    // retrouver nulle part tel quel.
+    expect(row.tokenHash).toBe(hashToken(token));
+    expect(row.tokenHash).not.toBe(token);
     expect(new Date(row.expiresAt).getTime()).toBeGreaterThan(Date.now());
   });
 });

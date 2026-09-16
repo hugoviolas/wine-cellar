@@ -2,17 +2,19 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { passwordResetTokens, users } from '../db/schema';
 import { newId } from '../db/id';
-import { generateToken } from './token';
+import { generateToken, hashToken } from './token';
 import { hashPassword } from './auth';
 
 const RESET_TTL_MS = 24 * 60 * 60 * 1000;
 
 export const createResetToken = async (db: Db, userId: string): Promise<string> => {
+  // Le jeton n'existe qu'ici et dans le lien remis au super-admin : la
+  // base ne reçoit que son empreinte (voir domain/token.ts).
   const token = generateToken();
   await db.insert(passwordResetTokens).values({
     id: newId(),
     userId,
-    token,
+    tokenHash: hashToken(token),
     expiresAt: new Date(Date.now() + RESET_TTL_MS).toISOString(),
     usedAt: null,
     createdAt: new Date().toISOString(),
@@ -30,7 +32,7 @@ export const validateResetToken = async (db: Db, token: string): Promise<ResetTo
   const [row] = await db
     .select()
     .from(passwordResetTokens)
-    .where(eq(passwordResetTokens.token, token))
+    .where(eq(passwordResetTokens.tokenHash, hashToken(token)))
     .limit(1);
   // `userId` nul : le compte a été supprimé depuis (voir deleteUser dans
   // domain/admin.ts, qui met les jetons de réinitialisation orphelins à
@@ -66,5 +68,5 @@ export const resetPasswordWithToken = async (db: Db, token: string, newPassword:
   await db
     .update(passwordResetTokens)
     .set({ usedAt: new Date().toISOString() })
-    .where(eq(passwordResetTokens.token, token));
+    .where(eq(passwordResetTokens.tokenHash, hashToken(token)));
 };

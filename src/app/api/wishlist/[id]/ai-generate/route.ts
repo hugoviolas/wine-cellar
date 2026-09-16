@@ -8,6 +8,7 @@ import { saveWishlistAiAnalysis, toBottleAnalysisInput } from '@/domain/ai/wishl
 import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
 import { aiBottleAnalysisSchema } from '@/domain/ai/schemas';
 import { callAiForRoute } from '@/domain/ai/callForRoute';
+import { checkAiQuota } from '@/domain/ai/quota';
 
 export const POST = async (
   _request: Request,
@@ -37,6 +38,11 @@ export const POST = async (
   }
 
   const category = item.category;
+  const quotaExceeded = checkAiQuota(auth.user.id);
+  if (quotaExceeded) {
+    return quotaExceeded;
+  }
+
   const { system, content } = buildBottleAnalysisPrompt(
     toBottleAnalysisInput({
       name: item.name,

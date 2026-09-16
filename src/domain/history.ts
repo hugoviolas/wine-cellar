@@ -4,6 +4,7 @@ import type { Db } from '../db/client';
 import { consumptionHistory, bottles } from '../db/schema';
 import { checkCellarAccess, type CellarRole } from './access';
 import type { HistoryEntryWithReachability } from './interfaces/history-entry-with-reachability.interface';
+import { FIELD_MAX } from './fieldLimits';
 
 /**
  * `bottleReachable` : vrai seulement si la bouteille existe encore ET a
@@ -59,11 +60,11 @@ export const resolveHistoryEntryAccess = async (
  */
 export const updateHistoryEntryBodySchema = z
   .object({
-    consumedAt: z.string().min(1).optional(),
+    consumedAt: z.string().min(1).max(FIELD_MAX.shortText).optional(),
     quantity: z.number().int().min(1).optional(),
     rating: z.number().int().min(0).max(5).nullable().optional(),
-    comment: z.string().nullable().optional(),
-    occasion: z.string().nullable().optional(),
+    comment: z.string().max(FIELD_MAX.longText).nullable().optional(),
+    occasion: z.string().max(FIELD_MAX.shortText).nullable().optional(),
   })
   .strict();
 export type UpdateHistoryEntryInput = z.infer<typeof updateHistoryEntryBodySchema>;

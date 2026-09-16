@@ -8,6 +8,7 @@ import { isAiAvailable } from '@/domain/ai/available';
 import { extractFromPhotoRequestSchema, aiPhotoExtractionSchema } from '@/domain/ai/schemas';
 import { buildPhotoExtractionPrompt } from '@/domain/ai/photoExtraction';
 import { callAiForRoute } from '@/domain/ai/callForRoute';
+import { checkAiQuota } from '@/domain/ai/quota';
 import { readJsonBody } from '@/lib/readJsonBody';
 
 export const POST = async (request: Request): Promise<NextResponse> => {
@@ -34,6 +35,11 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   const cellar = await getCellarById(db, cellarId);
   if (!cellar || !isAiAvailable(cellar)) {
     return NextResponse.json({ error: 'Fonction IA indisponible pour cette cave.' }, { status: 403 });
+  }
+
+  const quotaExceeded = checkAiQuota(auth.user.id);
+  if (quotaExceeded) {
+    return quotaExceeded;
   }
 
   const { system, content } = buildPhotoExtractionPrompt(imageBase64, mediaType);
