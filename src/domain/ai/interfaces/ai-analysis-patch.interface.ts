@@ -6,6 +6,7 @@ export interface AiAnalysisPatch {
   aiGeneratedAt: string;
   drinkFrom?: number;
   drinkUntil?: number;
-  region?: string;
+  region?: string | null;
+  subRegion?: string | null;
   details?: unknown;
 }

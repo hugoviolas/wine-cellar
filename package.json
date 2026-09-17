@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "bootstrap": "tsx scripts/bootstrap.ts",
+    "db:backfill-geography": "tsx scripts/backfill-geography.ts",
     "docker:start": "docker compose up start",
     "docker:watch": "docker compose up build",
     "docker:up": "docker compose up"

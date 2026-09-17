@@ -10,5 +10,6 @@ export interface AiAnalysisTarget {
   readonly drinkFrom: number | null;
   readonly drinkUntil: number | null;
   readonly region: string | null;
+  readonly subRegion: string | null;
   readonly details: unknown;
 }

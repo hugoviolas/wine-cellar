@@ -5,6 +5,7 @@ export interface WishlistItemFields {
   producer: string | null;
   vintage: number | null;
   region: string | null;
+  subRegion: string | null;
   color: string | null;
   grapeVarieties: string[];
   appellation: string | null;

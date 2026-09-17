@@ -41,7 +41,8 @@ const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> })
       {item.producer && <p className="text-sm text-gray-600 mb-1">{item.producer}</p>}
       <div className="text-xs text-gray-500 space-y-1 mb-4">
         <p>
-          {item.vintage ?? 'NV'} · {item.region ?? '—'} · {CATEGORY_LABELS[item.category] ?? item.category}
+          {item.vintage ?? 'NV'} · {factLine([item.region, item.subRegion]) || '—'} ·{' '}
+          {CATEGORY_LABELS[item.category] ?? item.category}
         </p>
         {wineFacts && <p>{wineFacts}</p>}
       </div>
@@ -129,6 +130,7 @@ const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> })
           producer: item.producer,
           vintage: item.vintage,
           region: item.region,
+          subRegion: item.subRegion,
           color: item.color,
           grapeVarieties,
           appellation,

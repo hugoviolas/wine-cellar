@@ -14,7 +14,11 @@ const analysis: AiBottleAnalysis = {
   tastingAdvice: 'Carafer une heure, servir à 17 °C.',
   drinkFromYear: 2027,
   drinkUntilYear: 2034,
+  // Le modèle met ici une appellation dans le champ région — c'est
+  // exactement ce que la résolution doit corriger, donc on le garde tel quel
+  // dans la fixture plutôt que d'écrire une réponse déjà propre.
   region: 'Patrimonio',
+  subRegion: null,
   grapeVarieties: ['Niellucciu'],
   appellation: 'Patrimonio',
 };
@@ -44,6 +48,7 @@ describe('saveWishlistAiAnalysis', () => {
         drinkFrom: null,
         drinkUntil: null,
         region: null,
+        subRegion: null,
         details: { grapeVarieties: [] },
       },
       analysis,
@@ -56,7 +61,9 @@ describe('saveWishlistAiAnalysis', () => {
     expect(item?.aiGeneratedAt).not.toBeNull();
     expect(item?.drinkFrom).toBe(2027);
     expect(item?.drinkUntil).toBe(2034);
-    expect(item?.region).toBe('Patrimonio');
+    // « Patrimonio » proposé comme région est reconnu comme une appellation
+    // corse : la région stockée est la grande région, pas l'AOC.
+    expect(item?.region).toBe('Corse');
     expect(item?.details).toEqual({ grapeVarieties: ['Niellucciu'], appellation: 'Patrimonio' });
   });
 
@@ -76,6 +83,7 @@ describe('saveWishlistAiAnalysis', () => {
         drinkFrom: 2025,
         drinkUntil: 2030,
         region: 'Corse',
+        subRegion: null,
         details: { grapeVarieties: ['Sciaccarellu'], appellation: 'Ajaccio' },
       },
       analysis,
@@ -99,6 +107,7 @@ describe('saveWishlistAiAnalysis', () => {
       drinkFrom: null,
       drinkUntil: null,
       region: null,
+      subRegion: null,
       details: { grapeVarieties: [] },
     };
 
@@ -134,7 +143,15 @@ describe('saveWishlistAiAnalysis', () => {
 
     await saveWishlistAiAnalysis({
       db,
-      item: { id, category: 'beer', drinkFrom: null, drinkUntil: null, region: null, details: {} },
+      item: {
+        id,
+        category: 'beer',
+        drinkFrom: null,
+        drinkUntil: null,
+        region: null,
+        subRegion: null,
+        details: {},
+      },
       analysis,
     });
 

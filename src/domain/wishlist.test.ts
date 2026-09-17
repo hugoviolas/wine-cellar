@@ -603,6 +603,7 @@ describe('promotion et analyse IA', () => {
         drinkFrom: null,
         drinkUntil: null,
         region: null,
+        subRegion: null,
         details: { grapeVarieties: [] },
       },
       analysis: {
@@ -612,6 +613,7 @@ describe('promotion et analyse IA', () => {
         drinkFromYear: 2027,
         drinkUntilYear: 2034,
         region: 'Patrimonio',
+        subRegion: null,
         grapeVarieties: ['Niellucciu'],
         appellation: 'Patrimonio',
       },

@@ -16,6 +16,7 @@ export interface WishlistItemForAi {
   vintage: number | null;
   category: string;
   region: string | null;
+  subRegion: string | null;
   color: string | null;
   grapeVarieties: string[];
   appellation: string | null;

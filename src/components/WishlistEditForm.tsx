@@ -18,6 +18,7 @@ export const WishlistEditForm = ({ item }: { item: WishlistItemFields }): ReactE
   const [producer, setProducer] = useState(item.producer ?? '');
   const [vintage, setVintage] = useState(item.vintage?.toString() ?? '');
   const [region, setRegion] = useState(item.region ?? '');
+  const [subRegion, setSubRegion] = useState(item.subRegion ?? '');
   const [color, setColor] = useState(item.color ?? '');
   const [grapeVarieties, setGrapeVarieties] = useState(item.grapeVarieties.join(', '));
   const [appellation, setAppellation] = useState(item.appellation ?? '');
@@ -38,6 +39,7 @@ export const WishlistEditForm = ({ item }: { item: WishlistItemFields }): ReactE
         producer: producer.trim() || null,
         vintage: vintage.trim() ? Number(vintage) : null,
         region: region.trim() || null,
+        subRegion: subRegion.trim() || null,
         color: color || null,
         details: buildBottleDetails({
           category: item.category,
@@ -121,7 +123,12 @@ export const WishlistEditForm = ({ item }: { item: WishlistItemFields }): ReactE
         </div>
       )}
 
-      <RegionInput value={region} onChange={setRegion} />
+      <RegionInput
+        value={region}
+        subRegion={subRegion}
+        onChange={setRegion}
+        onSubRegionChange={setSubRegion}
+      />
 
       {(item.category === 'wine' || item.category === 'sparkling') && (
         <div>

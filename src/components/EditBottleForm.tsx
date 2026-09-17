@@ -19,6 +19,7 @@ export const EditBottleForm = ({ bottle }: { bottle: BottleFields }): ReactEleme
   const [producer, setProducer] = useState(bottle.producer ?? '');
   const [vintage, setVintage] = useState(bottle.vintage?.toString() ?? '');
   const [region, setRegion] = useState(bottle.region ?? '');
+  const [subRegion, setSubRegion] = useState(bottle.subRegion ?? '');
   const [color, setColor] = useState(bottle.color ?? '');
   const [abv, setAbv] = useState(bottle.abv?.toString() ?? '');
   const [volumeMl, setVolumeMl] = useState(bottle.volumeMl?.toString() ?? '');
@@ -40,6 +41,7 @@ export const EditBottleForm = ({ bottle }: { bottle: BottleFields }): ReactEleme
         producer: producer.trim() || null,
         vintage: vintage.trim() ? Number(vintage) : null,
         region: region.trim() || null,
+        subRegion: subRegion.trim() || null,
         color: color || null,
         abv: abv.trim() ? Number(abv) : null,
         volumeMl: volumeMl.trim() ? Number(volumeMl) : null,
@@ -120,7 +122,12 @@ export const EditBottleForm = ({ bottle }: { bottle: BottleFields }): ReactEleme
         </div>
       )}
 
-      <RegionInput value={region} onChange={setRegion} />
+      <RegionInput
+        value={region}
+        subRegion={subRegion}
+        onChange={setRegion}
+        onSubRegionChange={setSubRegion}
+      />
 
       {(bottle.category === 'wine' || bottle.category === 'sparkling') && (
         <div>
