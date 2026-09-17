@@ -7,10 +7,11 @@ import { isAiAvailableForUser } from '@/domain/ai/available';
 import { AiAnalysisButton } from '@/components/AiAnalysisButton';
 import { getGrapeVarieties, getAppellation, getClassification } from '@/domain/bottleCategories';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
+import { FactList } from '@/components/FactList';
 import { WishlistEditForm } from '@/components/WishlistEditForm';
 import { WishlistPromoteForm } from '@/components/WishlistPromoteForm';
 import type { ReactElement } from 'react';
-import { stringArrayOrEmpty, factLine } from '@/lib/stringArray';
+import { stringArrayOrEmpty } from '@/lib/stringArray';
 
 const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> }): Promise<ReactElement> => {
   const user = await requireUser();
@@ -30,7 +31,16 @@ const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> })
   const grapeVarieties = getGrapeVarieties({ category: item.category, details: item.details });
   const appellation = getAppellation({ category: item.category, details: item.details });
   const classification = getClassification({ category: item.category, details: item.details });
-  const wineFacts = factLine([appellation, classification, grapeVarieties.join(', ')]);
+  const hasVintageNotion = item.category === 'wine' || item.category === 'sparkling';
+  const facts = [
+    { label: 'Catégorie', value: item.category === 'wine' ? null : CATEGORY_LABELS[item.category] },
+    { label: 'Millésime', value: item.vintage ?? (hasVintageNotion ? 'NV' : null) },
+    { label: 'Région', value: item.region },
+    { label: 'Sous-région', value: item.subRegion },
+    { label: 'Appellation', value: appellation },
+    { label: 'Classement', value: classification },
+    { label: 'Cépages', value: grapeVarieties.join(', ') },
+  ];
 
   return (
     <div className="max-w-md">
@@ -38,13 +48,9 @@ const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> })
         ← Retour à la wishlist
       </Link>
       <h2 className="text-xl mb-1">{item.name}</h2>
-      {item.producer && <p className="text-sm text-gray-600 mb-1">{item.producer}</p>}
-      <div className="text-xs text-gray-500 space-y-1 mb-4">
-        <p>
-          {item.vintage ?? 'NV'} · {factLine([item.region, item.subRegion]) || '—'} ·{' '}
-          {CATEGORY_LABELS[item.category] ?? item.category}
-        </p>
-        {wineFacts && <p>{wineFacts}</p>}
+      {item.producer && <p className="text-sm text-gray-600 mb-3">{item.producer}</p>}
+      <div className="mb-6">
+        <FactList facts={facts} />
       </div>
 
       {item.comment && (

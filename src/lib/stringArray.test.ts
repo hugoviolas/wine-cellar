@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { factLine } from './stringArray';
+import { factLine, factValue } from './stringArray';
 
 describe('factLine', () => {
   it('joint les valeurs présentes par un point médian', () => {
@@ -16,5 +16,23 @@ describe('factLine', () => {
 
   it('garde le zéro numérique, qui est une valeur et non un vide', () => {
     expect(factLine([0, 'ml'])).toBe('0 · ml');
+  });
+});
+
+describe('factValue', () => {
+  it('rend la valeur telle quelle quand elle est renseignée', () => {
+    expect(factValue('Rhône')).toBe('Rhône');
+    expect(factValue(2021)).toBe('2021');
+  });
+
+  it('renvoie null pour null, undefined, vide ou blanc', () => {
+    expect(factValue(null)).toBeNull();
+    expect(factValue(undefined)).toBeNull();
+    expect(factValue('')).toBeNull();
+    expect(factValue('   ')).toBeNull();
+  });
+
+  it('garde le zéro numérique, qui est une valeur et non un vide', () => {
+    expect(factValue(0)).toBe('0');
   });
 });

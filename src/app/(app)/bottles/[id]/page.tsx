@@ -11,6 +11,7 @@ import { getGrapeVarieties, getAppellation, getClassification } from '@/domain/b
 import { crateLabel } from '@/lib/crateLabel';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { GardeBadge } from '@/components/GardeBadge';
+import { FactList } from '@/components/FactList';
 import { GardeGauge } from '@/components/GardeGauge';
 import { UserNoteEditor } from '@/components/UserNoteEditor';
 import { BottleActions } from '@/components/BottleActions';
@@ -18,7 +19,7 @@ import { EditBottleForm } from '@/components/EditBottleForm';
 import { AiAnalysisButton } from '@/components/AiAnalysisButton';
 import { wineColorStripeClass } from '@/lib/wineColor';
 import type { ReactElement } from 'react';
-import { stringArrayOrEmpty, factLine } from '@/lib/stringArray';
+import { stringArrayOrEmpty } from '@/lib/stringArray';
 
 const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> }): Promise<ReactElement> => {
   const user = await requireUser();
@@ -53,47 +54,70 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
   const appellation = getAppellation({ category: bottle.category, details: bottle.details });
   const classification = getClassification({ category: bottle.category, details: bottle.details });
 
-  const wineFacts = factLine([appellation, classification, grapeVarieties.join(', ')]);
-  const containerFacts = factLine([
-    bottle.abv !== null ? `${bottle.abv} %` : null,
-    bottle.volumeMl !== null ? `${bottle.volumeMl} ml` : null,
-  ]);
+  // « NV » (non millésimé) est une convention du vin et de l'effervescent :
+  // l'afficher sur une bière ou un spiritueux n'aurait aucun sens, la ligne
+  // disparaît simplement.
+  const hasVintageNotion = bottle.category === 'wine' || bottle.category === 'sparkling';
+
+  // La catégorie n'est affichée que si elle n'est pas « Vin » : dans une
+  // cave à vin, la ligne n'apprend rien — elle ne sert qu'à distinguer une
+  // bière ou un spiritueux du reste.
+  const facts = [
+    { label: 'Catégorie', value: bottle.category === 'wine' ? null : CATEGORY_LABELS[bottle.category] },
+    { label: 'Millésime', value: bottle.vintage ?? (hasVintageNotion ? 'NV' : null) },
+    { label: 'Région', value: bottle.region },
+    { label: 'Sous-région', value: bottle.subRegion },
+    { label: 'Appellation', value: appellation },
+    { label: 'Classement', value: classification },
+    { label: 'Cépages', value: grapeVarieties.join(', ') },
+    { label: 'Degré', value: bottle.abv !== null ? `${bottle.abv} %` : null },
+    { label: 'Volume', value: bottle.volumeMl !== null ? `${bottle.volumeMl} ml` : null },
+  ];
 
   return (
     <div className="max-w-lg">
       <Link href="/cave" className="text-xs text-forest mb-2 inline-block">
         ← Retour à la cave
       </Link>
-      <div className={`pl-4 ${wineColorStripeClass(bottle.color)}`}>
+      <div className={`pl-4 mb-6 ${wineColorStripeClass(bottle.color)}`}>
         <h2 className="text-xl mb-1">{bottle.name}</h2>
-        {bottle.producer && <p className="text-sm text-gray-600 mb-1">{bottle.producer}</p>}
-        <div className="text-xs text-gray-500 space-y-1 mb-4">
-          <p>
-            {bottle.vintage ?? 'NV'} · {factLine([bottle.region, bottle.subRegion]) || '—'} ·{' '}
-            {CATEGORY_LABELS[bottle.category] ?? bottle.category} ·{' '}
-            {currentCrate ? crateLabel({ number: currentCrate.number, name: currentCrate.name }) : '—'}
-          </p>
-          {wineFacts && <p>{wineFacts}</p>}
-          {containerFacts && <p>{containerFacts}</p>}
-        </div>
+        {bottle.producer && <p className="text-sm text-gray-600 mb-3">{bottle.producer}</p>}
 
-        <div className="flex gap-2 mb-6">
+        {/*
+          Ces trois-là ne décrivent pas le vin mais sa place dans ta cave :
+          ils vont ensemble, et pas dans la liste des caractéristiques.
+        */}
+        <div className="flex flex-wrap gap-2 mb-4">
           <GardeBadge status={status} />
+          {currentCrate && (
+            <span className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
+              {crateLabel({ number: currentCrate.number, name: currentCrate.name })}
+            </span>
+          )}
           <span className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1">
             {bottle.quantity} bouteille{bottle.quantity > 1 ? 's' : ''} en cave
           </span>
         </div>
+
+        <FactList facts={facts} />
       </div>
 
-      <section className="mb-6">
-        <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Fenêtre de garde</h4>
-        <GardeGauge
-          progress={progress}
-          vintage={bottle.vintage}
-          drinkFrom={bottle.drinkFrom}
-          drinkUntil={bottle.drinkUntil}
-        />
-      </section>
+      {/*
+        `GardeGauge` ne rend rien sans fenêtre connue : sans cette garde, le
+        titre de section restait seul au-dessus du vide (visible sur une
+        bière, qui n'a pas de notion de garde).
+      */}
+      {bottle.drinkFrom !== null && bottle.drinkUntil !== null && (
+        <section className="mb-6">
+          <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Fenêtre de garde</h4>
+          <GardeGauge
+            progress={progress}
+            vintage={bottle.vintage}
+            drinkFrom={bottle.drinkFrom}
+            drinkUntil={bottle.drinkUntil}
+          />
+        </section>
+      )}
 
       {aiAvailable && (
         <AiAnalysisButton
