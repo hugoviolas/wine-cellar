@@ -10,3 +10,16 @@ export const stringArrayOrEmpty = (value: unknown): string[] => {
   }
   return value.filter((item): item is string => typeof item === 'string');
 };
+
+/**
+ * Ligne de caractéristiques séparées par des points médians, montée depuis
+ * des valeurs dont beaucoup sont nulles ou vides (producteur, appellation,
+ * note...). Filtrer puis joindre évite les séparateurs orphelins que
+ * produisent les `{x && <span>{x} · </span>}` enchaînés.
+ */
+export const factLine = (facts: ReadonlyArray<string | number | null | undefined>): string => {
+  return facts
+    .map((fact) => (typeof fact === 'number' ? String(fact) : fact))
+    .filter((fact): fact is string => Boolean(fact))
+    .join(' · ');
+};

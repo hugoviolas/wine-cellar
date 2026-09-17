@@ -10,4 +10,5 @@ export interface BottleFields {
   volumeMl: number | null;
   grapeVarieties: string[];
   appellation: string | null;
+  classification: string | null;
 }

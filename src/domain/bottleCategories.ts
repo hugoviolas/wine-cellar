@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { FIELD_MAX } from './fieldLimits';
 import type { GetGrapeVarietiesArgs } from './interfaces/get-grape-varieties-args.interface';
 import type { GetAppellationArgs } from './interfaces/get-appellation-args.interface';
+import type { GetClassificationArgs } from './interfaces/get-classification-args.interface';
 
 /**
  * Champ libre d'une fiche détail : borné comme partout ailleurs (voir
@@ -17,6 +18,18 @@ const shortTextList = (): z.ZodDefault<z.ZodArray<z.ZodString>> => {
   return z.array(shortText()).max(FIELD_MAX.listItems).default([]);
 };
 
+/**
+ * Règle d'or de ce fichier : **toute clé déclarée ici doit avoir un champ de
+ * saisie correspondant dans les formulaires**, parce que `details` est
+ * remplacé en entier à chaque édition (voir `buildBottleDetails` dans
+ * lib/bottleDetails.ts et le PATCH de `api/bottles/[id]`). Une clé sans
+ * input serait effacée à la première modification de la bouteille.
+ *
+ * Les catégories hors vin n'ont volontairement aucun champ spécifique :
+ * elles servent à ranger une bouteille, pas à la détailler. `details` reste
+ * une colonne JSON, donc leur en rajouter plus tard ne coûtera aucune
+ * migration — seulement les inputs qui vont avec.
+ */
 export const wineDetailsSchema = z.object({
   grapeVarieties: shortTextList(),
   appellation: shortText().optional(),
@@ -25,30 +38,13 @@ export const wineDetailsSchema = z.object({
 
 export const sparklingDetailsSchema = z.object({
   grapeVarieties: shortTextList(),
-  dosage: shortText().optional(),
-  method: shortText().optional(),
-  disgorgementDate: shortText().optional(),
 });
 
-export const ciderDetailsSchema = z.object({
-  appleVarieties: shortTextList(),
-  method: z.enum(['bouche', 'fermier']).optional(),
-  sweetness: z.enum(['doux', 'brut']).optional(),
-});
+export const ciderDetailsSchema = z.object({});
 
-export const beerDetailsSchema = z.object({
-  style: shortText().optional(),
-  ibu: z.number().optional(),
-  ebc: z.number().optional(),
-  fermentation: shortText().optional(),
-});
+export const beerDetailsSchema = z.object({});
 
-export const spiritDetailsSchema = z.object({
-  spiritType: shortText().optional(),
-  cask: shortText().optional(),
-  age: z.number().optional(),
-  origin: shortText().optional(),
-});
+export const spiritDetailsSchema = z.object({});
 
 export const detailsSchemaByCategory = {
   wine: wineDetailsSchema,
@@ -81,4 +77,12 @@ export const getAppellation = ({ category, details }: GetAppellationArgs): strin
     return null;
   }
   return parseBottleDetails('wine', details).appellation ?? null;
+};
+
+/** `classification` (Grand Cru, Premier Cru...) n'existe que pour wine. */
+export const getClassification = ({ category, details }: GetClassificationArgs): string | null => {
+  if (category !== 'wine') {
+    return null;
+  }
+  return parseBottleDetails('wine', details).classification ?? null;
 };

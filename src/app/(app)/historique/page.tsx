@@ -7,6 +7,7 @@ import { checkCellarAccess } from '@/domain/access';
 import { canEditCellarContent } from '@/domain/permissions';
 import { listConsumptionHistory } from '@/domain/history';
 import { HistoryEntryActions } from '@/components/HistoryEntryActions';
+import { factLine } from '@/lib/stringArray';
 import type { ReactElement } from 'react';
 
 const HistoriquePage = async (): Promise<ReactElement> => {
@@ -32,17 +33,23 @@ const HistoriquePage = async (): Promise<ReactElement> => {
       <h2 className="text-lg mb-4">Historique</h2>
       <ul className="bg-white rounded divide-y divide-gray-100">
         {entries.map((entry) => {
+          // Le producteur et le millésime étaient déjà figés en base à la
+          // consommation, mais jamais affichés : deux homonymes de millésimes
+          // différents se confondaient dans la liste.
+          const meta = factLine([
+            entry.bottleProducerSnapshot,
+            entry.bottleVintageSnapshot,
+            entry.quantity > 1 ? `×${entry.quantity}` : null,
+            entry.occasion,
+            entry.rating !== null ? `Note ${entry.rating}/5` : null,
+          ]);
           const content = (
             <>
               <div className="flex justify-between">
                 <span className="font-serif italic">{entry.bottleNameSnapshot}</span>
                 <span className="text-xs text-gray-500">{entry.consumedAt}</span>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {entry.quantity > 1 && <span>×{entry.quantity} · </span>}
-                {entry.occasion && <span>{entry.occasion} · </span>}
-                {entry.rating != null && <span>Note {entry.rating}/5</span>}
-              </div>
+              {meta && <div className="text-xs text-gray-500 mt-1">{meta}</div>}
               {entry.comment && <p className="text-xs mt-1">{entry.comment}</p>}
             </>
           );

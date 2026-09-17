@@ -60,10 +60,12 @@ describe('bottles', () => {
         db,
         input: {
           crateId,
-          category: 'cider',
-          name: 'Cidre du Perche',
+          category: 'wine',
+          name: 'Château Bancal',
           quantity: 1,
-          details: { method: 'industriel' },
+          // `grapeVarieties` attend un tableau : une chaîne doit être refusée
+          // plutôt que stockée telle quelle dans la colonne JSON.
+          details: { grapeVarieties: 'Merlot' },
         },
       }),
     ).rejects.toThrow();
