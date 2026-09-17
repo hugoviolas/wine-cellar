@@ -62,7 +62,8 @@ describe('createWishlistItem / getWishlistItem', () => {
     await expect(
       createWishlistItem({
         db,
-        input: { userId, category: 'cider', name: 'Cidre', details: { method: 'industriel' } },
+        // `grapeVarieties` attend un tableau, pas une chaîne.
+        input: { userId, category: 'wine', name: 'Vin', details: { grapeVarieties: 'Merlot' } },
       }),
     ).rejects.toThrow();
   });

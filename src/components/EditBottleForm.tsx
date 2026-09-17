@@ -6,6 +6,7 @@ import { WINE_COLOR_LABELS } from '@/lib/wineColor';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { useToast } from '@/components/Toast';
 import { RegionInput } from '@/components/RegionInput';
+import { buildBottleDetails } from '@/lib/bottleDetails';
 import type { BottleFields } from './interfaces/bottle-fields.interface';
 import { errorMessageFromResponse } from '@/lib/apiError';
 import type { ReactElement } from 'react';
@@ -23,22 +24,9 @@ export const EditBottleForm = ({ bottle }: { bottle: BottleFields }): ReactEleme
   const [volumeMl, setVolumeMl] = useState(bottle.volumeMl?.toString() ?? '');
   const [grapeVarieties, setGrapeVarieties] = useState(bottle.grapeVarieties.join(', '));
   const [appellation, setAppellation] = useState(bottle.appellation ?? '');
+  const [classification, setClassification] = useState(bottle.classification ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const buildDetails = (): Record<string, unknown> | undefined => {
-    const grapeVarietiesArray = grapeVarieties
-      .split(',')
-      .map((v) => v.trim())
-      .filter(Boolean);
-    if (bottle.category === 'wine') {
-      return { grapeVarieties: grapeVarietiesArray, appellation: appellation.trim() || undefined };
-    }
-    if (bottle.category === 'sparkling') {
-      return { grapeVarieties: grapeVarietiesArray };
-    }
-    return undefined;
-  };
 
   const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
@@ -55,7 +43,12 @@ export const EditBottleForm = ({ bottle }: { bottle: BottleFields }): ReactEleme
         color: color || null,
         abv: abv.trim() ? Number(abv) : null,
         volumeMl: volumeMl.trim() ? Number(volumeMl) : null,
-        details: buildDetails(),
+        details: buildBottleDetails({
+          category: bottle.category,
+          grapeVarieties,
+          appellation,
+          classification,
+        }),
       }),
     });
     setBusy(false);
@@ -142,15 +135,27 @@ export const EditBottleForm = ({ bottle }: { bottle: BottleFields }): ReactEleme
       )}
 
       {bottle.category === 'wine' && (
-        <div>
-          <label className="block text-xs uppercase tracking-wide mb-1">Appellation</label>
-          <input
-            value={appellation}
-            onChange={(e) => setAppellation(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            placeholder="Patrimonio"
-          />
-        </div>
+        <>
+          <div>
+            <label className="block text-xs uppercase tracking-wide mb-1">Appellation</label>
+            <input
+              value={appellation}
+              onChange={(e) => setAppellation(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              placeholder="Patrimonio"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wide mb-1">Classement</label>
+            <input
+              value={classification}
+              onChange={(e) => setClassification(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              placeholder="Grand Cru Classé"
+            />
+          </div>
+        </>
       )}
 
       <div className="flex gap-4">

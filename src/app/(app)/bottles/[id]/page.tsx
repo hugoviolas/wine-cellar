@@ -7,8 +7,9 @@ import { computeGardeStatus, computeGardeProgress } from '@/domain/gardeStatus';
 import { getCrateById, listCrates } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
-import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
+import { getGrapeVarieties, getAppellation, getClassification } from '@/domain/bottleCategories';
 import { crateLabel } from '@/lib/crateLabel';
+import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { GardeBadge } from '@/components/GardeBadge';
 import { GardeGauge } from '@/components/GardeGauge';
 import { UserNoteEditor } from '@/components/UserNoteEditor';
@@ -17,7 +18,7 @@ import { EditBottleForm } from '@/components/EditBottleForm';
 import { AiAnalysisButton } from '@/components/AiAnalysisButton';
 import { wineColorStripeClass } from '@/lib/wineColor';
 import type { ReactElement } from 'react';
-import { stringArrayOrEmpty } from '@/lib/stringArray';
+import { stringArrayOrEmpty, factLine } from '@/lib/stringArray';
 
 const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> }): Promise<ReactElement> => {
   const user = await requireUser();
@@ -50,6 +51,13 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
 
   const grapeVarieties = getGrapeVarieties({ category: bottle.category, details: bottle.details });
   const appellation = getAppellation({ category: bottle.category, details: bottle.details });
+  const classification = getClassification({ category: bottle.category, details: bottle.details });
+
+  const wineFacts = factLine([appellation, classification, grapeVarieties.join(', ')]);
+  const containerFacts = factLine([
+    bottle.abv !== null ? `${bottle.abv} %` : null,
+    bottle.volumeMl !== null ? `${bottle.volumeMl} ml` : null,
+  ]);
 
   return (
     <div className="max-w-lg">
@@ -58,18 +66,16 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
       </Link>
       <div className={`pl-4 ${wineColorStripeClass(bottle.color)}`}>
         <h2 className="text-xl mb-1">{bottle.name}</h2>
-        <p className="text-xs text-gray-500 mb-4">
-          {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} · {bottle.category} ·{' '}
-          {currentCrate ? crateLabel({ number: currentCrate.number, name: currentCrate.name }) : '—'}
-        </p>
-
-        {(appellation || grapeVarieties.length > 0) && (
-          <p className="text-xs text-gray-500 mb-4">
-            {appellation}
-            {appellation && grapeVarieties.length > 0 ? ' · ' : ''}
-            {grapeVarieties.join(', ')}
+        {bottle.producer && <p className="text-sm text-gray-600 mb-1">{bottle.producer}</p>}
+        <div className="text-xs text-gray-500 space-y-1 mb-4">
+          <p>
+            {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} ·{' '}
+            {CATEGORY_LABELS[bottle.category] ?? bottle.category} ·{' '}
+            {currentCrate ? crateLabel({ number: currentCrate.number, name: currentCrate.name }) : '—'}
           </p>
-        )}
+          {wineFacts && <p>{wineFacts}</p>}
+          {containerFacts && <p>{containerFacts}</p>}
+        </div>
 
         <div className="flex gap-2 mb-6">
           <GardeBadge status={status} />
@@ -151,6 +157,7 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
             volumeMl: bottle.volumeMl,
             grapeVarieties,
             appellation,
+            classification,
           }}
         />
       </section>

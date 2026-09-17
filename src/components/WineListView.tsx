@@ -129,6 +129,7 @@ export const WineListView = ({ rows }: { rows: WineListRow[] }): ReactElement =>
           <thead>
             <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-100">
               <th className="px-2 sm:px-3 py-2">Nom</th>
+              <th className="px-2 sm:px-3 py-2 hidden sm:table-cell">Producteur</th>
               <th className="px-2 sm:px-3 py-2 hidden sm:table-cell">Catégorie</th>
               <th className="px-2 sm:px-3 py-2">Couleur</th>
               <th className="px-2 sm:px-3 py-2">Millésime</th>
@@ -145,6 +146,9 @@ export const WineListView = ({ rows }: { rows: WineListRow[] }): ReactElement =>
                   <Link href={`/bottles/${row.id}`} className="text-forest underline">
                     {row.name}
                   </Link>
+                </td>
+                <td className="px-2 sm:px-3 py-2 max-w-[160px] truncate hidden sm:table-cell">
+                  {row.producer ?? '—'}
                 </td>
                 <td className="px-2 sm:px-3 py-2 whitespace-nowrap hidden sm:table-cell">
                   {CATEGORY_LABELS[row.category] ?? row.category}
@@ -167,7 +171,7 @@ export const WineListView = ({ rows }: { rows: WineListRow[] }): ReactElement =>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-gray-400">
+                <td colSpan={9} className="px-3 py-6 text-center text-gray-400">
                   Aucune bouteille ne correspond à ces critères.
                 </td>
               </tr>
