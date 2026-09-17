@@ -7,6 +7,7 @@ export interface CreateWishlistItemInput {
   producer?: string;
   vintage?: number;
   region?: string;
+  subRegion?: string;
   color?: string;
   abv?: number;
   volumeMl?: number;

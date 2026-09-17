@@ -69,7 +69,7 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
         {bottle.producer && <p className="text-sm text-gray-600 mb-1">{bottle.producer}</p>}
         <div className="text-xs text-gray-500 space-y-1 mb-4">
           <p>
-            {bottle.vintage ?? 'NV'} · {bottle.region ?? '—'} ·{' '}
+            {bottle.vintage ?? 'NV'} · {factLine([bottle.region, bottle.subRegion]) || '—'} ·{' '}
             {CATEGORY_LABELS[bottle.category] ?? bottle.category} ·{' '}
             {currentCrate ? crateLabel({ number: currentCrate.number, name: currentCrate.name }) : '—'}
           </p>
@@ -152,6 +152,7 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
             producer: bottle.producer,
             vintage: bottle.vintage,
             region: bottle.region,
+            subRegion: bottle.subRegion,
             color: bottle.color,
             abv: bottle.abv,
             volumeMl: bottle.volumeMl,

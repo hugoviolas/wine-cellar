@@ -15,6 +15,7 @@ export const toBottleAnalysisInput = (item: WishlistItemForAi): BottleAnalysisIn
     vintage: item.vintage,
     category: item.category,
     region: item.region,
+    subRegion: item.subRegion,
     color: item.color,
     grapeVarieties: item.grapeVarieties,
     appellation: item.appellation,
@@ -25,9 +26,10 @@ export const toBottleAnalysisInput = (item: WishlistItemForAi): BottleAnalysisIn
  * Mêmes règles d'écrasement que `saveBottleAiAnalysis`, dont c'est le
  * pendant pour la wishlist : les quatre champs `ai*` sont toujours
  * réécrits, y compris à la régénération, tandis que `drinkFrom`,
- * `drinkUntil`, `region`, les cépages et l'appellation ne sont remplis que
- * s'ils sont vides — ce que tu as saisi à la main ne doit jamais être
- * écrasé par une génération.
+ * `drinkUntil`, les cépages et l'appellation ne sont remplis que s'ils sont
+ * vides — ce que tu as saisi à la main ne doit jamais être écrasé par une
+ * génération. `region` et `subRegion` sont l'exception documentée dans
+ * `buildAiAnalysisPatch` : ils sont résolus, pas remplis.
  */
 export const saveWishlistAiAnalysis = async ({
   db,

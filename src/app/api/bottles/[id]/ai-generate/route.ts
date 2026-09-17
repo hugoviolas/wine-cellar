@@ -49,6 +49,7 @@ export const POST = async (
     vintage: access.bottle.vintage,
     category: access.bottle.category,
     region: access.bottle.region,
+    subRegion: access.bottle.subRegion,
     color: access.bottle.color,
     grapeVarieties: getGrapeVarieties({ category: access.bottle.category, details: access.bottle.details }),
     appellation: getAppellation({ category: access.bottle.category, details: access.bottle.details }),

@@ -7,6 +7,7 @@ import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { useToast } from '@/components/Toast';
 import { PhotoFillButton, type PhotoExtractionResult } from '@/components/PhotoFillButton';
 import { RegionInput } from '@/components/RegionInput';
+import { resolveWineGeography } from '@/domain/wineGeography';
 import { buildBottleDetails } from '@/lib/bottleDetails';
 import { errorMessageFromResponse } from '@/lib/apiError';
 import type { ReactElement } from 'react';
@@ -19,6 +20,7 @@ export const WishlistAddForm = ({ aiAvailable }: { aiAvailable: boolean }): Reac
   const [name, setName] = useState('');
   const [producer, setProducer] = useState('');
   const [region, setRegion] = useState('');
+  const [subRegion, setSubRegion] = useState('');
   const [grapeVarieties, setGrapeVarieties] = useState('');
   const [appellation, setAppellation] = useState('');
   const [classification, setClassification] = useState('');
@@ -33,8 +35,18 @@ export const WishlistAddForm = ({ aiAvailable }: { aiAvailable: boolean }): Reac
     if (data.producer) {
       setProducer(data.producer);
     }
-    if (data.region) {
-      setRegion(data.region);
+    // La géographie extraite passe par le résolveur avant d'atterrir dans
+    // le formulaire : une étiquette lue « Saint-Julien » remplit Bordeaux /
+    // Haut-Médoc, et tu vois la correction avant d'enregistrer plutôt qu'à
+    // la relecture de la fiche.
+    if (data.region || data.subRegion || data.appellation) {
+      const geography = resolveWineGeography({
+        region: data.region,
+        subRegion: data.subRegion,
+        appellation: data.appellation,
+      });
+      setRegion(geography.region ?? '');
+      setSubRegion(geography.subRegion ?? '');
     }
     if (data.grapeVarieties && data.grapeVarieties.length > 0) {
       setGrapeVarieties(data.grapeVarieties.join(', '));
@@ -67,6 +79,7 @@ export const WishlistAddForm = ({ aiAvailable }: { aiAvailable: boolean }): Reac
         name,
         producer: producer || undefined,
         region: region || undefined,
+        subRegion: subRegion || undefined,
         color: (category === 'wine' || category === 'sparkling') && color ? color : undefined,
         vintage: vintage ? Number(vintage) : undefined,
         details: buildBottleDetails({ category, grapeVarieties, appellation, classification }),
@@ -162,7 +175,12 @@ export const WishlistAddForm = ({ aiAvailable }: { aiAvailable: boolean }): Reac
           />
         </div>
 
-        <RegionInput value={region} onChange={setRegion} />
+        <RegionInput
+          value={region}
+          subRegion={subRegion}
+          onChange={setRegion}
+          onSubRegionChange={setSubRegion}
+        />
 
         {(category === 'wine' || category === 'sparkling') && (
           <div>
