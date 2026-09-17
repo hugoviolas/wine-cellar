@@ -59,11 +59,8 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
   // disparaît simplement.
   const hasVintageNotion = bottle.category === 'wine' || bottle.category === 'sparkling';
 
-  // La catégorie n'est affichée que si elle n'est pas « Vin » : dans une
-  // cave à vin, la ligne n'apprend rien — elle ne sert qu'à distinguer une
-  // bière ou un spiritueux du reste.
   const facts = [
-    { label: 'Catégorie', value: bottle.category === 'wine' ? null : CATEGORY_LABELS[bottle.category] },
+    { label: 'Catégorie', value: CATEGORY_LABELS[bottle.category] ?? bottle.category },
     { label: 'Millésime', value: bottle.vintage ?? (hasVintageNotion ? 'NV' : null) },
     { label: 'Région', value: bottle.region },
     { label: 'Sous-région', value: bottle.subRegion },

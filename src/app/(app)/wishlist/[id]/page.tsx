@@ -33,7 +33,7 @@ const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> })
   const classification = getClassification({ category: item.category, details: item.details });
   const hasVintageNotion = item.category === 'wine' || item.category === 'sparkling';
   const facts = [
-    { label: 'Catégorie', value: item.category === 'wine' ? null : CATEGORY_LABELS[item.category] },
+    { label: 'Catégorie', value: CATEGORY_LABELS[item.category] ?? item.category },
     { label: 'Millésime', value: item.vintage ?? (hasVintageNotion ? 'NV' : null) },
     { label: 'Région', value: item.region },
     { label: 'Sous-région', value: item.subRegion },
