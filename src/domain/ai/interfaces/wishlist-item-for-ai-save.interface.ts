@@ -6,5 +6,6 @@ export interface WishlistItemForAiSave {
   drinkFrom: number | null;
   drinkUntil: number | null;
   region: string | null;
+  subRegion: string | null;
   details: unknown;
 }

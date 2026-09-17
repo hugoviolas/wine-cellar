@@ -4,6 +4,7 @@ export interface BottleAnalysisInput {
   vintage: number | null;
   category: string;
   region: string | null;
+  subRegion: string | null;
   color: string | null;
   grapeVarieties: string[];
   appellation: string | null;

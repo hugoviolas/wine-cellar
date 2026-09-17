@@ -1,4 +1,5 @@
-import { parseBottleDetails } from '../bottleCategories';
+import { parseBottleDetails, getAppellation } from '../bottleCategories';
+import { resolveWineGeography } from '../wineGeography';
 import type { AiAnalysisPatch } from './interfaces/ai-analysis-patch.interface';
 import type { BuildAiAnalysisPatchArgs } from './interfaces/build-ai-analysis-patch-args.interface';
 import type { MergedDetailsArgs } from './interfaces/merged-details-args.interface';
@@ -9,10 +10,17 @@ import type { MergedDetailsArgs } from './interfaces/merged-details-args.interfa
  * avaient jusqu'ici recopiées ligne pour ligne chacun de leur côté.
  *
  * Les quatre champs `ai*` sont toujours réécrits, y compris à une
- * régénération. `drinkFrom`, `drinkUntil`, `region`, les cépages et
- * l'appellation ne sont remplis que s'ils sont vides : ce qui a été saisi à
- * la main, extrait d'une photo ou produit par une génération précédente
- * n'est jamais écrasé.
+ * régénération. `drinkFrom`, les cépages et l'appellation ne sont remplis
+ * que s'ils sont vides : ce qui a été saisi à la main, extrait d'une photo
+ * ou produit par une génération précédente n'est jamais écrasé.
+ *
+ * `region` et `subRegion` font exception. Ils ne sont pas « remplis » mais
+ * *résolus* : la géographie canonique se déduit de l'appellation effective
+ * (voir `resolveWineGeography`), donc une génération qui apporte enfin
+ * l'appellation doit pouvoir recaler une région saisie trop fine — un
+ * Saint-Julien rangé en « Haut-Médoc » devient Bordeaux / Haut-Médoc. Le
+ * résolveur étant idempotent, une géographie déjà correcte est réécrite à
+ * l'identique plutôt que d'être laissée incohérente.
  */
 export const buildAiAnalysisPatch = ({ target, analysis }: BuildAiAnalysisPatchArgs): AiAnalysisPatch => {
   const patch: AiAnalysisPatch = {
@@ -28,14 +36,23 @@ export const buildAiAnalysisPatch = ({ target, analysis }: BuildAiAnalysisPatchA
   if (target.drinkUntil === null && analysis.drinkUntilYear !== null) {
     patch.drinkUntil = analysis.drinkUntilYear;
   }
-  if (target.region === null && analysis.region !== null) {
-    patch.region = analysis.region;
-  }
 
   const details = mergedDetails({ target, analysis });
   if (details !== null) {
     patch.details = details;
   }
+
+  // La géographie se résout sur l'état d'après : l'appellation fraîchement
+  // fusionnée est justement celle qui permet de trancher la région.
+  const effectiveDetails = details ?? target.details;
+  const geography = resolveWineGeography({
+    region: target.region ?? analysis.region,
+    subRegion: target.subRegion ?? analysis.subRegion,
+    appellation: getAppellation({ category: target.category, details: effectiveDetails }),
+  });
+  patch.region = geography.region;
+  patch.subRegion = geography.subRegion;
+
   return patch;
 };
 

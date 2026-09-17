@@ -24,6 +24,7 @@ export const aiBottleAnalysisSchema = z.object({
   drinkFromYear: z.number().int().nullable(),
   drinkUntilYear: z.number().int().nullable(),
   region: aiShortText().nullable(),
+  subRegion: aiShortText().nullable(),
   grapeVarieties: z.array(aiShortText()).max(FIELD_MAX.listItems).nullable(),
   appellation: aiShortText().nullable(),
 });
@@ -37,6 +38,7 @@ export const aiPhotoExtractionSchema = z.object({
   category: z.enum(['wine', 'sparkling', 'cider', 'beer', 'spirit']).nullable(),
   color: z.enum(['rouge', 'blanc', 'rose', 'autre']).nullable(),
   region: aiShortText().nullable(),
+  subRegion: aiShortText().nullable(),
   grapeVarieties: z.array(aiShortText()).max(FIELD_MAX.listItems).nullable(),
   appellation: aiShortText().nullable(),
 });

@@ -80,22 +80,23 @@ redémarrages des conteneurs.
 
 ## Scripts
 
-| Commande            | Rôle                                                         |
-| ------------------- | ------------------------------------------------------------ |
-| `yarn dev`          | Serveur de développement                                     |
-| `yarn build`        | Build de production                                          |
-| `yarn build:watch`  | Vérification de types en continu (`tsc --watch`, sans build) |
-| `yarn start`        | Serveur de production (après `yarn build`)                   |
-| `yarn test`         | Suite de tests Vitest (logique métier de `src/domain/*`)     |
-| `yarn lint`         | ESLint (type-aware) + conventions du projet                  |
-| `yarn format`       | Vérifie le formatage Prettier (exécuté aussi en CI)          |
-| `yarn format:fix`   | Applique le formatage Prettier                               |
-| `yarn db:generate`  | Génère une migration Drizzle à partir du schéma              |
-| `yarn db:migrate`   | Applique les migrations à la base                            |
-| `yarn bootstrap`    | Crée le compte super-admin et sa cave initiale               |
-| `yarn docker:start` | `docker compose up start` (lance l'app en conteneur)         |
-| `yarn docker:watch` | `docker compose up build` (vérification de types en continu) |
-| `yarn docker:up`    | `docker compose up` (les deux services ensemble)             |
+| Commande                     | Rôle                                                         |
+| ---------------------------- | ------------------------------------------------------------ |
+| `yarn dev`                   | Serveur de développement                                     |
+| `yarn build`                 | Build de production                                          |
+| `yarn build:watch`           | Vérification de types en continu (`tsc --watch`, sans build) |
+| `yarn start`                 | Serveur de production (après `yarn build`)                   |
+| `yarn test`                  | Suite de tests Vitest (logique métier de `src/domain/*`)     |
+| `yarn lint`                  | ESLint (type-aware) + conventions du projet                  |
+| `yarn format`                | Vérifie le formatage Prettier (exécuté aussi en CI)          |
+| `yarn format:fix`            | Applique le formatage Prettier                               |
+| `yarn db:generate`           | Génère une migration Drizzle à partir du schéma              |
+| `yarn db:migrate`            | Applique les migrations à la base                            |
+| `yarn bootstrap`             | Crée le compte super-admin et sa cave initiale               |
+| `yarn db:backfill-geography` | Recale région/sous-région des lignes existantes (idempotent) |
+| `yarn docker:start`          | `docker compose up start` (lance l'app en conteneur)         |
+| `yarn docker:watch`          | `docker compose up build` (vérification de types en continu) |
+| `yarn docker:up`             | `docker compose up` (les deux services ensemble)             |
 
 ## Organisation du code
 
@@ -107,3 +108,15 @@ redémarrages des conteneurs.
   domaine et formatent la réponse.
 - `src/app/(app)/**` — pages rendues côté serveur, protégées par `requireUser()`.
 - `src/db/*` — schéma Drizzle, migrations et fabrique de base de test.
+
+## Géographie viticole
+
+Une bouteille porte trois niveaux, du plus large au plus précis : `region`
+(Bordeaux), `sub_region` (Haut-Médoc) et l'appellation, dans `details` pour le
+vin (Saint-Julien). `src/domain/wineGeography.ts` tient la table de
+rattachement et le résolveur qui les recale les uns sur les autres — une AOC
+connue détermine sa région, et une sous-région saisie dans le champ Région est
+promue au bon niveau. Toute écriture (saisie, extraction par photo, génération
+IA) y passe, et `yarn db:backfill-geography` l'applique aux lignes déjà en
+base. Les tables sont volontairement partielles : une valeur inconnue est
+conservée telle quelle, jamais effacée.

@@ -2,7 +2,8 @@ import { eq, and, gt } from 'drizzle-orm';
 import { z } from 'zod';
 import { bottles, crates } from '../db/schema';
 import { newId } from '../db/id';
-import { parseBottleDetails } from './bottleCategories';
+import { parseBottleDetails, getAppellation } from './bottleCategories';
+import { resolveWineGeography } from './wineGeography';
 import type { BottleRow } from '../db/rows';
 import type { BottleWithCrate } from './interfaces/bottle-with-crate.interface';
 import type { CreateBottleInput } from './interfaces/create-bottle-input.interface';
@@ -34,6 +35,7 @@ export const createBottleBodySchema = z
     producer: z.string().max(FIELD_MAX.shortText).optional(),
     vintage: z.number().int().optional(),
     region: z.string().max(FIELD_MAX.shortText).optional(),
+    subRegion: z.string().max(FIELD_MAX.shortText).optional(),
     color: z.string().max(FIELD_MAX.shortText).optional(),
     abv: z.number().nonnegative().optional(),
     volumeMl: z.number().int().positive().optional(),
@@ -46,6 +48,11 @@ export const createBottleBodySchema = z
 
 export const createBottle = async ({ db, input }: CreateBottleArgs): Promise<string> => {
   const details = parseBottleDetails(input.category, input.details);
+  const geography = resolveWineGeography({
+    region: input.region,
+    subRegion: input.subRegion,
+    appellation: getAppellation({ category: input.category, details }),
+  });
   const id = newId();
   const siblingCount = (
     await db.select({ id: bottles.id }).from(bottles).where(eq(bottles.crateId, input.crateId))
@@ -58,7 +65,8 @@ export const createBottle = async ({ db, input }: CreateBottleArgs): Promise<str
     name: input.name,
     producer: input.producer ?? null,
     vintage: input.vintage ?? null,
-    region: input.region ?? null,
+    region: geography.region,
+    subRegion: geography.subRegion,
     color: input.color ?? null,
     abv: input.abv ?? null,
     volumeMl: input.volumeMl ?? null,
@@ -124,6 +132,7 @@ export const updateBottleBodySchema = z
     producer: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     vintage: z.number().int().nullable().optional(),
     region: z.string().max(FIELD_MAX.shortText).nullable().optional(),
+    subRegion: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     color: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     abv: z.number().nullable().optional(),
     volumeMl: z.number().int().nullable().optional(),
@@ -137,7 +146,39 @@ export const updateBottleBodySchema = z
   })
   .strict();
 
-export const updateBottle = async ({ db, bottleId, input }: UpdateBottleArgs): Promise<void> => {
+/**
+ * Patch enrichi de la région et de la sous-région canoniques.
+ *
+ * Le calcul doit porter sur l'état *après* application du patch, pas sur le
+ * patch seul : changer la seule appellation doit pouvoir recaler la région,
+ * et changer la seule région doit rester cohérent avec l'appellation déjà
+ * stockée. D'où la relecture de la ligne courante dès que l'un des trois
+ * champs concernés bouge.
+ */
+const withResolvedGeography = async ({
+  db,
+  bottleId,
+  input,
+}: UpdateBottleArgs): Promise<UpdateBottleInput> => {
+  const touchesGeography = 'region' in input || 'subRegion' in input || 'details' in input;
+  if (!touchesGeography) {
+    return input;
+  }
+  const current = await getBottle({ db, bottleId });
+  if (!current) {
+    return input;
+  }
+  const details = 'details' in input ? input.details : current.details;
+  const geography = resolveWineGeography({
+    region: 'region' in input ? input.region : current.region,
+    subRegion: 'subRegion' in input ? input.subRegion : current.subRegion,
+    appellation: getAppellation({ category: current.category, details }),
+  });
+  return { ...input, region: geography.region, subRegion: geography.subRegion };
+};
+
+export const updateBottle = async ({ db, bottleId, input: rawInput }: UpdateBottleArgs): Promise<void> => {
+  const input = await withResolvedGeography({ db, bottleId, input: rawInput });
   if (input.crateId) {
     // Une bouteille déplacée vers une autre clayette est ajoutée à la fin
     // de celle-ci — son ancien sortOrder n'a aucun sens dans ce nouveau

@@ -63,6 +63,10 @@ export const bottles = sqliteTable('bottles', {
   producer: text('producer'),
   vintage: integer('vintage'),
   region: text('region'),
+  // Niveau intermédiaire entre la région et l'appellation (Haut-Médoc, Côte
+  // de Nuits...). Colonne plutôt que clé de `details` : elle suit `region`,
+  // qui vaut pour toutes les catégories, et non le JSON propre au vin.
+  subRegion: text('sub_region'),
   color: text('color'),
   abv: real('abv'),
   volumeMl: integer('volume_ml'),
@@ -139,6 +143,7 @@ export const wishlistItems = sqliteTable('wishlist_items', {
   producer: text('producer'),
   vintage: integer('vintage'),
   region: text('region'),
+  subRegion: text('sub_region'),
   color: text('color'),
   abv: real('abv'),
   volumeMl: integer('volume_ml'),

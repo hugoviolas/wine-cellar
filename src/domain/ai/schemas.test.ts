@@ -14,6 +14,7 @@ describe('aiBottleAnalysisSchema', () => {
     drinkFromYear: 2027,
     drinkUntilYear: 2032,
     region: 'Bordeaux',
+    subRegion: 'Haut-Médoc',
     grapeVarieties: ['Cabernet Sauvignon', 'Merlot'],
     appellation: 'Margaux',
   };
@@ -28,6 +29,7 @@ describe('aiBottleAnalysisSchema', () => {
       drinkFromYear: null,
       drinkUntilYear: null,
       region: null,
+      subRegion: null,
       grapeVarieties: null,
       appellation: null,
     });
@@ -66,6 +68,7 @@ describe('aiPhotoExtractionSchema', () => {
     category: 'wine' as const,
     color: 'rouge' as const,
     region: 'Bordeaux',
+    subRegion: 'Haut-Médoc',
     grapeVarieties: ['Cabernet Sauvignon', 'Merlot'],
     appellation: 'Margaux',
   };
@@ -82,6 +85,7 @@ describe('aiPhotoExtractionSchema', () => {
       category: null,
       color: null,
       region: null,
+      subRegion: null,
       grapeVarieties: null,
       appellation: null,
     };

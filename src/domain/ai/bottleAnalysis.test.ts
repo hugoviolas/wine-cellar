@@ -17,6 +17,7 @@ describe('buildBottleAnalysisPrompt', () => {
         vintage: 2015,
         category: 'wine',
         region: 'Bordeaux',
+        subRegion: null,
         color: 'rouge',
         grapeVarieties: ['Cabernet Sauvignon', 'Merlot'],
         appellation: 'Margaux',
@@ -46,6 +47,7 @@ describe('buildBottleAnalysisPrompt', () => {
         vintage: null,
         category: 'cider',
         region: null,
+        subRegion: null,
         color: null,
         grapeVarieties: [],
         appellation: null,
@@ -70,6 +72,7 @@ describe('buildBottleAnalysisPrompt', () => {
         vintage: 1998,
         category: 'wine',
         region: null,
+        subRegion: null,
         color: 'rouge',
         grapeVarieties: [],
         appellation: null,
@@ -119,7 +122,8 @@ describe('saveBottleAiAnalysis', () => {
     tastingAdvice: 'Servir à 16°C.',
     drinkFromYear: 2027,
     drinkUntilYear: 2032,
-    region: 'Bordeaux',
+    region: 'Corse',
+    subRegion: null,
     grapeVarieties: ['Niellucciu', 'Syrah'],
     appellation: 'Patrimonio',
   };
@@ -130,6 +134,7 @@ describe('saveBottleAiAnalysis', () => {
     drinkFrom: null,
     drinkUntil: null,
     region: null,
+    subRegion: null,
     details: {},
   };
 
@@ -149,12 +154,29 @@ describe('saveBottleAiAnalysis', () => {
     expect(after?.aiGeneratedAt).toBeTruthy();
     expect(after?.drinkFrom).toBe(2027);
     expect(after?.drinkUntil).toBe(2032);
-    expect(after?.region).toBe('Bordeaux');
+    expect(after?.region).toBe('Corse');
     expect(after?.details).toEqual({ grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' });
   });
 
-  it('n’écrase pas une fenêtre de garde, une région, des cépages ou une appellation déjà renseignés', async () => {
+  it('résout la région depuis l’appellation, même contre celle que le modèle a proposée', async () => {
     const { db, bottleId } = await setupBottle();
+
+    // Réponse volontairement incohérente : le modèle annonce Bordeaux alors
+    // qu'il donne une appellation corse. L'appellation tranche.
+    await saveBottleAiAnalysis({
+      db,
+      bottle: { ...emptyBottleRef, id: bottleId },
+      analysis: { ...analysis, region: 'Bordeaux' },
+    });
+
+    const after = await getBottle({ db, bottleId });
+    expect(after?.region).toBe('Corse');
+  });
+
+  it('n’écrase pas la garde, les cépages ni l’appellation, mais recale la région sur l’appellation', async () => {
+    const { db, bottleId } = await setupBottle();
+    // Région saisie trop fine, comme un Saint-Émilion rangé en « Bourgogne » :
+    // c'est précisément ce que la résolution doit rattraper.
     const existingDetails = { grapeVarieties: ['Merlot'], appellation: 'Saint-Émilion' };
     await db
       .update(bottles)
@@ -169,6 +191,7 @@ describe('saveBottleAiAnalysis', () => {
         drinkFrom: 2020,
         drinkUntil: 2024,
         region: 'Bourgogne',
+        subRegion: null,
         details: existingDetails,
       },
       analysis,
@@ -177,8 +200,11 @@ describe('saveBottleAiAnalysis', () => {
     const after = await getBottle({ db, bottleId });
     expect(after?.drinkFrom).toBe(2020);
     expect(after?.drinkUntil).toBe(2024);
-    expect(after?.region).toBe('Bourgogne');
     expect(after?.details).toEqual(existingDetails);
+    // La région, elle, est résolue et non « remplie » : Saint-Émilion est
+    // dans le Libournais, à Bordeaux — pas en Bourgogne.
+    expect(after?.region).toBe('Bordeaux');
+    expect(after?.subRegion).toBe('Libournais');
     // Les champs IA eux sont toujours écrasés, y compris à la régénération.
     expect(after?.aiAnalysis).toBe(analysis.analysis);
   });
@@ -193,7 +219,8 @@ describe('saveBottleAiAnalysis', () => {
       pairings: ['Volaille', 'Poisson', 'Fromage'],
       drinkFromYear: 2035,
       drinkUntilYear: 2040,
-      region: 'Alsace',
+      region: 'Rhône',
+      subRegion: 'Rhône méridional',
       grapeVarieties: ['Grenache'],
       appellation: 'Châteauneuf-du-Pape',
     };
@@ -204,7 +231,8 @@ describe('saveBottleAiAnalysis', () => {
         category: 'wine',
         drinkFrom: 2027,
         drinkUntil: 2032,
-        region: 'Bordeaux',
+        region: 'Corse',
+        subRegion: null,
         details: { grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' },
       },
       analysis: secondAnalysis,
@@ -213,10 +241,13 @@ describe('saveBottleAiAnalysis', () => {
     const after = await getBottle({ db, bottleId });
     expect(after?.aiAnalysis).toBe('Nouvelle analyse.');
     expect(after?.aiPairings).toEqual(['Volaille', 'Poisson', 'Fromage']);
-    // La garde, la région, les cépages et l'appellation étaient déjà remplis par le premier appel : pas réécrasés par le second.
+    // La garde, les cépages et l'appellation étaient déjà remplis par le
+    // premier appel : pas réécrasés par le second. La région reste Corse
+    // parce qu'elle découle de l'appellation stockée (Patrimonio), et non
+    // de celle que la seconde réponse propose.
     expect(after?.drinkFrom).toBe(2027);
     expect(after?.drinkUntil).toBe(2032);
-    expect(after?.region).toBe('Bordeaux');
+    expect(after?.region).toBe('Corse');
     expect(after?.details).toEqual({ grapeVarieties: ['Niellucciu', 'Syrah'], appellation: 'Patrimonio' });
   });
 });

@@ -2,7 +2,8 @@ import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { wishlistItems } from '../db/schema';
 import { newId } from '../db/id';
-import { parseBottleDetails } from './bottleCategories';
+import { parseBottleDetails, getAppellation } from './bottleCategories';
+import { resolveWineGeography } from './wineGeography';
 import { createBottle } from './bottles';
 import { listCrates } from './crates';
 import { canEditCellarContent } from './permissions';
@@ -30,6 +31,7 @@ export const createWishlistItemBodySchema = z
     producer: z.string().max(FIELD_MAX.shortText).optional(),
     vintage: z.number().int().optional(),
     region: z.string().max(FIELD_MAX.shortText).optional(),
+    subRegion: z.string().max(FIELD_MAX.shortText).optional(),
     color: z.string().max(FIELD_MAX.shortText).optional(),
     abv: z.number().optional(),
     volumeMl: z.number().int().optional(),
@@ -40,6 +42,11 @@ export const createWishlistItemBodySchema = z
 
 export const createWishlistItem = async ({ db, input }: CreateWishlistItemArgs): Promise<string> => {
   const details = parseBottleDetails(input.category, input.details);
+  const geography = resolveWineGeography({
+    region: input.region,
+    subRegion: input.subRegion,
+    appellation: getAppellation({ category: input.category, details }),
+  });
   const id = newId();
   await db.insert(wishlistItems).values({
     id,
@@ -48,7 +55,8 @@ export const createWishlistItem = async ({ db, input }: CreateWishlistItemArgs):
     name: input.name,
     producer: input.producer ?? null,
     vintage: input.vintage ?? null,
-    region: input.region ?? null,
+    region: geography.region,
+    subRegion: geography.subRegion,
     color: input.color ?? null,
     abv: input.abv ?? null,
     volumeMl: input.volumeMl ?? null,
@@ -110,6 +118,7 @@ export const updateWishlistItemBodySchema = z
     producer: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     vintage: z.number().int().nullable().optional(),
     region: z.string().max(FIELD_MAX.shortText).nullable().optional(),
+    subRegion: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     color: z.string().max(FIELD_MAX.shortText).nullable().optional(),
     abv: z.number().nullable().optional(),
     volumeMl: z.number().int().nullable().optional(),
@@ -118,7 +127,27 @@ export const updateWishlistItemBodySchema = z
   })
   .strict();
 
-export const updateWishlistItem = async ({ db, id, input }: UpdateWishlistItemArgs): Promise<void> => {
+export const updateWishlistItem = async ({
+  db,
+  id,
+  input: rawInput,
+}: UpdateWishlistItemArgs): Promise<void> => {
+  // Même raisonnement que `withResolvedGeography` côté bouteilles : la
+  // région canonique dépend de l'état après patch, pas du patch seul.
+  let input = rawInput;
+  const touchesGeography = 'region' in rawInput || 'subRegion' in rawInput || 'details' in rawInput;
+  if (touchesGeography) {
+    const current = await getWishlistItem({ db, id });
+    if (current) {
+      const details = 'details' in rawInput ? rawInput.details : current.details;
+      const geography = resolveWineGeography({
+        region: 'region' in rawInput ? rawInput.region : current.region,
+        subRegion: 'subRegion' in rawInput ? rawInput.subRegion : current.subRegion,
+        appellation: getAppellation({ category: current.category, details }),
+      });
+      input = { ...rawInput, region: geography.region, subRegion: geography.subRegion };
+    }
+  }
   await db.update(wishlistItems).set(input).where(eq(wishlistItems.id, id));
 };
 
@@ -163,6 +192,7 @@ export const promoteWishlistItem = async ({
         producer: item.producer ?? undefined,
         vintage: item.vintage ?? undefined,
         region: item.region ?? undefined,
+        subRegion: item.subRegion ?? undefined,
         color: item.color ?? undefined,
         abv: item.abv ?? undefined,
         volumeMl: item.volumeMl ?? undefined,
