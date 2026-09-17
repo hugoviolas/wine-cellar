@@ -5,12 +5,12 @@ import { requireUser } from '@/lib/requireUser';
 import { resolveWishlistItemAccess, listPromotionTargets } from '@/domain/wishlist';
 import { isAiAvailableForUser } from '@/domain/ai/available';
 import { AiAnalysisButton } from '@/components/AiAnalysisButton';
-import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
+import { getGrapeVarieties, getAppellation, getClassification } from '@/domain/bottleCategories';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { WishlistEditForm } from '@/components/WishlistEditForm';
 import { WishlistPromoteForm } from '@/components/WishlistPromoteForm';
 import type { ReactElement } from 'react';
-import { stringArrayOrEmpty } from '@/lib/stringArray';
+import { stringArrayOrEmpty, factLine } from '@/lib/stringArray';
 
 const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> }): Promise<ReactElement> => {
   const user = await requireUser();
@@ -27,6 +27,10 @@ const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> })
   // promu, c'est la fiche bouteille qui porte l'analyse et sa régénération.
   const aiAvailable = item.status === 'pending' && (await isAiAvailableForUser({ db, userId: user.id }));
   const pairings = stringArrayOrEmpty(item.aiPairings);
+  const grapeVarieties = getGrapeVarieties({ category: item.category, details: item.details });
+  const appellation = getAppellation({ category: item.category, details: item.details });
+  const classification = getClassification({ category: item.category, details: item.details });
+  const wineFacts = factLine([appellation, classification, grapeVarieties.join(', ')]);
 
   return (
     <div className="max-w-md">
@@ -34,9 +38,13 @@ const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> })
         ← Retour à la wishlist
       </Link>
       <h2 className="text-xl mb-1">{item.name}</h2>
-      <p className="text-xs text-gray-500 mb-4">
-        {item.vintage ?? 'NV'} · {item.region ?? '—'} · {CATEGORY_LABELS[item.category] ?? item.category}
-      </p>
+      {item.producer && <p className="text-sm text-gray-600 mb-1">{item.producer}</p>}
+      <div className="text-xs text-gray-500 space-y-1 mb-4">
+        <p>
+          {item.vintage ?? 'NV'} · {item.region ?? '—'} · {CATEGORY_LABELS[item.category] ?? item.category}
+        </p>
+        {wineFacts && <p>{wineFacts}</p>}
+      </div>
 
       {item.comment && (
         <p className="bg-white rounded p-4 text-sm whitespace-pre-wrap mb-6">{item.comment}</p>
@@ -122,8 +130,9 @@ const WishlistItemPage = async ({ params }: { params: Promise<{ id: string }> })
           vintage: item.vintage,
           region: item.region,
           color: item.color,
-          grapeVarieties: getGrapeVarieties({ category: item.category, details: item.details }),
-          appellation: getAppellation({ category: item.category, details: item.details }),
+          grapeVarieties,
+          appellation,
+          classification,
           comment: item.comment,
         }}
       />

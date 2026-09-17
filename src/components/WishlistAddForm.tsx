@@ -7,6 +7,7 @@ import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { useToast } from '@/components/Toast';
 import { PhotoFillButton, type PhotoExtractionResult } from '@/components/PhotoFillButton';
 import { RegionInput } from '@/components/RegionInput';
+import { buildBottleDetails } from '@/lib/bottleDetails';
 import { errorMessageFromResponse } from '@/lib/apiError';
 import type { ReactElement } from 'react';
 
@@ -20,6 +21,7 @@ export const WishlistAddForm = ({ aiAvailable }: { aiAvailable: boolean }): Reac
   const [region, setRegion] = useState('');
   const [grapeVarieties, setGrapeVarieties] = useState('');
   const [appellation, setAppellation] = useState('');
+  const [classification, setClassification] = useState('');
   const [vintage, setVintage] = useState('');
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -54,20 +56,6 @@ export const WishlistAddForm = ({ aiAvailable }: { aiAvailable: boolean }): Reac
     }
   };
 
-  const buildDetails = (): Record<string, unknown> => {
-    const grapeVarietiesArray = grapeVarieties
-      .split(',')
-      .map((v) => v.trim())
-      .filter(Boolean);
-    if (category === 'wine') {
-      return { grapeVarieties: grapeVarietiesArray, appellation: appellation.trim() || undefined };
-    }
-    if (category === 'sparkling') {
-      return { grapeVarieties: grapeVarietiesArray };
-    }
-    return {};
-  };
-
   const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
@@ -81,7 +69,7 @@ export const WishlistAddForm = ({ aiAvailable }: { aiAvailable: boolean }): Reac
         region: region || undefined,
         color: (category === 'wine' || category === 'sparkling') && color ? color : undefined,
         vintage: vintage ? Number(vintage) : undefined,
-        details: buildDetails(),
+        details: buildBottleDetails({ category, grapeVarieties, appellation, classification }),
         comment: comment.trim() || undefined,
       }),
     });
@@ -189,15 +177,27 @@ export const WishlistAddForm = ({ aiAvailable }: { aiAvailable: boolean }): Reac
         )}
 
         {category === 'wine' && (
-          <div>
-            <label className="block text-xs uppercase tracking-wide mb-1">Appellation</label>
-            <input
-              value={appellation}
-              onChange={(e) => setAppellation(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              placeholder="Patrimonio"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-xs uppercase tracking-wide mb-1">Appellation</label>
+              <input
+                value={appellation}
+                onChange={(e) => setAppellation(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                placeholder="Patrimonio"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wide mb-1">Classement</label>
+              <input
+                value={classification}
+                onChange={(e) => setClassification(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                placeholder="Grand Cru Classé"
+              />
+            </div>
+          </>
         )}
 
         <div>

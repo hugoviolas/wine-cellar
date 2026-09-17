@@ -8,5 +8,6 @@ export interface WishlistItemFields {
   color: string | null;
   grapeVarieties: string[];
   appellation: string | null;
+  classification: string | null;
   comment: string | null;
 }

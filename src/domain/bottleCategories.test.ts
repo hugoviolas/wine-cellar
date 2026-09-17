@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { parseBottleDetails, getGrapeVarieties, getAppellation } from './bottleCategories';
+import {
+  parseBottleDetails,
+  getGrapeVarieties,
+  getAppellation,
+  getClassification,
+  detailsSchemaByCategory,
+} from './bottleCategories';
 
 describe('parseBottleDetails', () => {
   it('valide des détails de vin corrects', () => {
@@ -15,47 +21,51 @@ describe('parseBottleDetails', () => {
     expect(result.grapeVarieties).toEqual([]);
   });
 
-  it('valide des détails de cidre corrects', () => {
-    const result = parseBottleDetails('cider', {
-      appleVarieties: ['Douce Coët Ligné'],
-      method: 'fermier',
-      sweetness: 'brut',
-    });
-    expect(result.method).toBe('fermier');
-  });
-
-  it('rejette une méthode de cidre invalide', () => {
-    expect(() => parseBottleDetails('cider', { method: 'industriel' })).toThrow();
-  });
-
-  it('valide des détails de bière corrects', () => {
-    const result = parseBottleDetails('beer', {
-      style: 'IPA',
-      ibu: 55,
-      ebc: 12,
-      fermentation: 'haute',
-    });
-    expect(result.style).toBe('IPA');
-    expect(result.ibu).toBe(55);
-    expect(result.fermentation).toBe('haute');
+  it('lit le classement d’un vin', () => {
+    const result = parseBottleDetails('wine', { classification: 'Grand Cru Classé' });
+    expect(result.classification).toBe('Grand Cru Classé');
   });
 
   it('valide des détails d’effervescent corrects', () => {
     const result = parseBottleDetails('sparkling', {
       grapeVarieties: ['Chardonnay', 'Pinot Noir'],
-      dosage: 'brut nature',
-      method: 'méthode traditionnelle',
-      disgorgementDate: '2023-04-15',
     });
     expect(result.grapeVarieties).toEqual(['Chardonnay', 'Pinot Noir']);
-    expect(result.dosage).toBe('brut nature');
-    expect(result.method).toBe('méthode traditionnelle');
-    expect(result.disgorgementDate).toBe('2023-04-15');
   });
 
-  it('valide des détails de spiritueux corrects', () => {
-    const result = parseBottleDetails('spirit', { spiritType: 'Whisky', age: 12 });
-    expect(result.age).toBe(12);
+  it.each(['cider', 'beer', 'spirit'] as const)(
+    'accepte un objet vide pour la catégorie %s, qui n’a aucun champ spécifique',
+    (category) => {
+      expect(parseBottleDetails(category, {})).toEqual({});
+    },
+  );
+
+  it('ignore une clé inconnue plutôt que de la stocker', () => {
+    expect(parseBottleDetails('beer', { ibu: 55 })).toEqual({});
+  });
+});
+
+/**
+ * Garde-fou : `details` est remplacé en entier à chaque édition (voir
+ * lib/bottleDetails.ts). Une clé ajoutée à un schéma sans son champ de
+ * saisie dans les quatre formulaires serait donc effacée à la première
+ * modification. Ce test casse pour forcer à traiter les deux ensemble.
+ */
+describe('schémas de détails', () => {
+  it('ne déclare que des clés qui ont un champ de saisie dans les formulaires', () => {
+    const keysByCategory = Object.fromEntries(
+      Object.entries(detailsSchemaByCategory).map(([category, schema]) => [
+        category,
+        Object.keys(schema.shape).sort(),
+      ]),
+    );
+    expect(keysByCategory).toEqual({
+      wine: ['appellation', 'classification', 'grapeVarieties'],
+      sparkling: ['grapeVarieties'],
+      cider: [],
+      beer: [],
+      spirit: [],
+    });
   });
 });
 
@@ -73,7 +83,23 @@ describe('getGrapeVarieties', () => {
   });
 
   it('renvoie [] pour une catégorie sans cépages', () => {
-    expect(getGrapeVarieties({ category: 'beer', details: { style: 'IPA' } })).toEqual([]);
+    expect(getGrapeVarieties({ category: 'beer', details: {} })).toEqual([]);
+  });
+});
+
+describe('getClassification', () => {
+  it('lit le classement pour un vin', () => {
+    expect(getClassification({ category: 'wine', details: { classification: 'Premier Cru' } })).toBe(
+      'Premier Cru',
+    );
+  });
+
+  it('renvoie null si absent', () => {
+    expect(getClassification({ category: 'wine', details: {} })).toBeNull();
+  });
+
+  it('renvoie null pour une catégorie sans classement', () => {
+    expect(getClassification({ category: 'spirit', details: {} })).toBeNull();
   });
 });
 

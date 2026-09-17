@@ -8,6 +8,7 @@ import { CATEGORY_LABELS } from '@/lib/bottleCategory';
 import { useToast } from '@/components/Toast';
 import { PhotoFillButton, type PhotoExtractionResult } from '@/components/PhotoFillButton';
 import { RegionInput } from '@/components/RegionInput';
+import { buildBottleDetails } from '@/lib/bottleDetails';
 import type { Crate } from './interfaces/crate.interface';
 import { errorMessageFromResponse } from '@/lib/apiError';
 import type { ReactElement } from 'react';
@@ -31,7 +32,10 @@ export const AddBottleForm = ({
   const [region, setRegion] = useState('');
   const [grapeVarieties, setGrapeVarieties] = useState('');
   const [appellation, setAppellation] = useState('');
+  const [classification, setClassification] = useState('');
   const [vintage, setVintage] = useState('');
+  const [abv, setAbv] = useState('');
+  const [volumeMl, setVolumeMl] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,23 +69,6 @@ export const AddBottleForm = ({
     }
   };
 
-  const buildDetails = (): Record<string, unknown> => {
-    const grapeVarietiesArray = grapeVarieties
-      .split(',')
-      .map((v) => v.trim())
-      .filter(Boolean);
-    if (category === 'wine') {
-      return {
-        grapeVarieties: grapeVarietiesArray,
-        appellation: appellation.trim() || undefined,
-      };
-    }
-    if (category === 'sparkling') {
-      return { grapeVarieties: grapeVarietiesArray };
-    }
-    return {};
-  };
-
   const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     setError(null);
@@ -96,8 +83,10 @@ export const AddBottleForm = ({
         region: region || undefined,
         color: (category === 'wine' || category === 'sparkling') && color ? color : undefined,
         vintage: vintage ? Number(vintage) : undefined,
+        abv: abv.trim() ? Number(abv) : undefined,
+        volumeMl: volumeMl.trim() ? Number(volumeMl) : undefined,
         quantity,
-        details: buildDetails(),
+        details: buildBottleDetails({ category, grapeVarieties, appellation, classification }),
       }),
     });
     if (!response.ok) {
@@ -225,15 +214,27 @@ export const AddBottleForm = ({
         )}
 
         {category === 'wine' && (
-          <div>
-            <label className="block text-xs uppercase tracking-wide mb-1">Appellation</label>
-            <input
-              value={appellation}
-              onChange={(e) => setAppellation(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              placeholder="Patrimonio"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-xs uppercase tracking-wide mb-1">Appellation</label>
+              <input
+                value={appellation}
+                onChange={(e) => setAppellation(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                placeholder="Patrimonio"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-wide mb-1">Classement</label>
+              <input
+                value={classification}
+                onChange={(e) => setClassification(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                placeholder="Grand Cru Classé"
+              />
+            </div>
+          </>
         )}
 
         <div className="flex gap-4">
@@ -255,6 +256,27 @@ export const AddBottleForm = ({
               className="border border-gray-300 rounded px-3 py-2 text-sm w-24"
               min={1}
               required
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <div>
+            <label className="block text-xs uppercase tracking-wide mb-1">Degré (%)</label>
+            <input
+              value={abv}
+              onChange={(e) => setAbv(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm w-24"
+              placeholder="13.5"
+            />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-wide mb-1">Volume (ml)</label>
+            <input
+              value={volumeMl}
+              onChange={(e) => setVolumeMl(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm w-24"
+              placeholder="750"
             />
           </div>
         </div>
