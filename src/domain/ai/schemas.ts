@@ -55,6 +55,14 @@ export const aiPriceEstimateSchema = z
     /** Ce que la fourchette couvre : format, millésime réellement trouvé, marché... */
     note: z.string().max(FIELD_MAX.longText).nullable(),
     sources: z.array(aiPriceSourceSchema).min(2).max(5),
+    /**
+     * Date du relevé, posée à l'écriture et non par le modèle (d'où le
+     * `nullish` : sa réponse ne la porte pas). Le prix ne se calcule plus
+     * en même temps que l'analyse, il ne peut donc plus emprunter
+     * `aiGeneratedAt` sans risquer de se faire passer pour plus frais
+     * qu'il n'est.
+     */
+    asOf: z.string().min(1).nullish(),
   })
   .refine((price) => price.lowEur <= price.highEur, {
     message: 'Fourchette de prix inversée',
@@ -72,15 +80,19 @@ export const aiBottleAnalysisSchema = z.object({
   subRegion: aiShortText().nullable(),
   grapeVarieties: z.array(aiShortText()).max(FIELD_MAX.listItems).nullable(),
   appellation: aiShortText().nullable(),
-  /**
-   * Absent des prompts qui ne demandent pas de prix (wishlist), d'où le
-   * `nullish`. Le `catch` est délibéré : une estimation malformée dégrade
-   * en « prix non trouvé » au lieu de faire échouer toute l'analyse — le
-   * prix est un bonus de la génération, l'analyse en est le cœur.
-   */
-  priceEstimate: aiPriceEstimateSchema.nullish().catch(null),
 });
 export type AiBottleAnalysis = z.infer<typeof aiBottleAnalysisSchema>;
+
+/**
+ * Réponse attendue pour l'estimation de prix, qui est désormais un appel à
+ * part (voir `buildBottlePricePrompt`). Un objet à une clé plutôt que
+ * l'estimation nue : le contrat « tu réponds un objet JSON » reste le même
+ * pour tous les appels, et `null` y a une place explicite.
+ */
+export const aiBottlePriceSchema = z.object({
+  priceEstimate: aiPriceEstimateSchema.nullable(),
+});
+export type AiBottlePrice = z.infer<typeof aiBottlePriceSchema>;
 
 /** Réponse attendue de Claude pour l'extraction par photo (chantier B). */
 export const aiPhotoExtractionSchema = z.object({

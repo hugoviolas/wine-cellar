@@ -30,13 +30,17 @@ export const PriceEstimate = ({
       ? EUR.format(estimate.lowEur)
       : `${EUR.format(estimate.lowEur)} – ${EUR.format(estimate.highEur)}`;
 
+  // La date du relevé de prix, et non celle de l'analyse : les deux
+  // générations sont indépendantes depuis que le prix a sa propre route.
+  // `generatedAt` ne sert plus que de repli pour les estimations écrites
+  // avant cette séparation.
+  const pricedAt = estimate.asOf ?? generatedAt;
+
   return (
     <div className="text-sm">
       <p className="font-serif">
         {range}
-        {generatedAt && (
-          <span className="text-xs text-gray-500"> · relevé le {generatedAt.slice(0, 10)}</span>
-        )}
+        {pricedAt && <span className="text-xs text-gray-500"> · relevé le {pricedAt.slice(0, 10)}</span>}
       </p>
       {estimate.note && <p className="text-xs text-gray-600 mt-1">{estimate.note}</p>}
       <ul className="text-xs text-gray-500 mt-2 space-y-0.5">

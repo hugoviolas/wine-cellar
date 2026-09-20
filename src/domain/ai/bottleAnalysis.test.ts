@@ -6,6 +6,7 @@ import { createCrate } from '../crates';
 import { createBottle, getBottle } from '../bottles';
 import { bottles } from '../../db/schema';
 import { buildBottleAnalysisPrompt, saveBottleAiAnalysis } from './bottleAnalysis';
+import { saveBottlePriceEstimate } from './bottlePrice';
 import type { Db } from '../../db/client';
 
 describe('buildBottleAnalysisPrompt', () => {
@@ -86,56 +87,6 @@ describe('buildBottleAnalysisPrompt', () => {
   });
 });
 
-describe('buildBottleAnalysisPrompt — estimation de prix', () => {
-  const bottle = {
-    name: 'Château Margaux',
-    producer: null,
-    vintage: 2015,
-    category: 'wine',
-    region: null,
-    subRegion: null,
-    color: 'rouge',
-    grapeVarieties: [],
-    appellation: null,
-  };
-
-  it('ne demande rien sur le prix par défaut (prompt wishlist, sans recherche web)', () => {
-    const { content } = buildBottleAnalysisPrompt({ bottle, currentYear: 2026 });
-    expect(content as string).not.toContain('priceEstimate');
-  });
-
-  it('demande un prix sourcé, et le refus d’inventer, quand la recherche web est jointe', () => {
-    const { content } = buildBottleAnalysisPrompt({
-      bottle,
-      currentYear: 2026,
-      withPriceEstimate: true,
-    });
-
-    const text = content as string;
-    expect(text).toContain('"priceEstimate"');
-    expect(text).toContain('recherche web');
-    expect(text).toContain('au moins deux sources distinctes');
-    expect(text).toContain('de mémoire');
-    expect(text).toContain("c'est une réponse attendue, pas un échec");
-  });
-
-  it('exclut explicitement les prix de restaurant', () => {
-    const { content } = buildBottleAnalysisPrompt({
-      bottle,
-      currentYear: 2026,
-      withPriceEstimate: true,
-    });
-
-    // Une carte de restaurant cite bien un prix pour la bonne bouteille,
-    // mais avec la marge de l'établissement : deux à trois fois le prix
-    // d'achat. C'est la principale source de prix aberrants.
-    const text = content as string;
-    expect(text).toContain("à l'achat chez un marchand");
-    expect(text).toContain('carte de restaurant');
-    expect(text).toContain('au verre');
-  });
-});
-
 interface SetupBottleResult {
   db: Db;
   bottleId: string;
@@ -188,38 +139,30 @@ describe('saveBottleAiAnalysis', () => {
     details: {},
   };
 
-  const priceEstimate = {
-    lowEur: 24.5,
-    highEur: 31,
-    note: null,
-    sources: [
-      { label: 'Caviste A', url: 'https://caviste-a.fr/vin' },
-      { label: 'Caviste B', url: 'https://caviste-b.fr/vin' },
-    ],
-  };
-
-  it('écrit l’estimation de prix avec ses sources', async () => {
+  it('ne touche pas à l’estimation de prix, qui a sa propre génération', async () => {
     const { db, bottleId } = await setupBottle();
-
-    await saveBottleAiAnalysis({
+    const priceEstimate = {
+      lowEur: 24.5,
+      highEur: 31,
+      note: null,
+      asOf: '2026-09-20T20:00:00.000Z',
+      sources: [
+        { label: 'Caviste A', url: 'https://caviste-a.fr/vin' },
+        { label: 'Caviste B', url: 'https://caviste-b.fr/vin' },
+      ],
+    };
+    await saveBottlePriceEstimate({
       db,
-      bottle: { ...emptyBottleRef, id: bottleId },
-      analysis: { ...analysis, priceEstimate },
+      bottleId,
+      estimate: priceEstimate,
+      now: new Date(priceEstimate.asOf),
     });
 
+    await saveBottleAiAnalysis({ db, bottle: { ...emptyBottleRef, id: bottleId }, analysis });
+
+    // Régénérer l'analyse effaçait le prix quand les deux voyageaient
+    // ensemble ; séparés, chacun garde sa date et sa durée de vie.
     expect((await getBottle({ db, bottleId }))?.aiPriceEstimate).toEqual(priceEstimate);
-  });
-
-  it('efface l’estimation quand une régénération ne trouve plus de prix', async () => {
-    const { db, bottleId } = await setupBottle();
-    const bottleRef = { ...emptyBottleRef, id: bottleId };
-
-    await saveBottleAiAnalysis({ db, bottle: bottleRef, analysis: { ...analysis, priceEstimate } });
-    await saveBottleAiAnalysis({ db, bottle: bottleRef, analysis: { ...analysis, priceEstimate: null } });
-
-    // Un prix daté d'une génération précédente passerait pour un relevé du
-    // jour à côté d'une analyse fraîche.
-    expect((await getBottle({ db, bottleId }))?.aiPriceEstimate).toBeNull();
   });
 
   it('écrit les champs IA, la fenêtre de garde, la région, les cépages et l’appellation quand ils sont vides', async () => {
