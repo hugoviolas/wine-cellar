@@ -5,6 +5,7 @@ import {
   extractFromPhotoRequestSchema,
   wishlistExtractFromPhotoRequestSchema,
 } from './schemas';
+import { parseAiPriceEstimate } from './priceEstimate';
 
 describe('aiBottleAnalysisSchema', () => {
   const valid = {
@@ -57,6 +58,78 @@ describe('aiBottleAnalysisSchema', () => {
   it('refuse un champ manquant', () => {
     const incomplete = Object.fromEntries(Object.entries(valid).filter(([key]) => key !== 'tastingAdvice'));
     expect(aiBottleAnalysisSchema.safeParse(incomplete).success).toBe(false);
+  });
+});
+
+describe('aiBottleAnalysisSchema — priceEstimate', () => {
+  const analysis = {
+    analysis: 'Un vin structuré avec de beaux tanins.',
+    pairings: ['Bœuf braisé', 'Fromages affinés', 'Gibier'],
+    tastingAdvice: 'Servir à 16-18°C.',
+    drinkFromYear: 2027,
+    drinkUntilYear: 2032,
+    region: 'Bordeaux',
+    subRegion: 'Haut-Médoc',
+    grapeVarieties: ['Merlot'],
+    appellation: 'Margaux',
+  };
+  const price = {
+    lowEur: 24.5,
+    highEur: 31,
+    note: 'Millésime 2015, bouteille de 75 cl.',
+    sources: [
+      { label: 'Caviste A', url: 'https://caviste-a.fr/vin' },
+      { label: 'Caviste B', url: 'https://caviste-b.fr/vin' },
+    ],
+  };
+
+  it('accepte une estimation sourcée', () => {
+    const result = aiBottleAnalysisSchema.safeParse({ ...analysis, priceEstimate: price });
+    expect(result.success).toBe(true);
+    expect(result.data?.priceEstimate?.lowEur).toBe(24.5);
+  });
+
+  it('accepte un prix absent ou nul — le modèle n’a rien trouvé', () => {
+    expect(aiBottleAnalysisSchema.safeParse(analysis).data?.priceEstimate ?? null).toBeNull();
+    expect(
+      aiBottleAnalysisSchema.safeParse({ ...analysis, priceEstimate: null }).data?.priceEstimate,
+    ).toBeNull();
+  });
+
+  it('dégrade en « pas de prix » plutôt que de faire échouer l’analyse', () => {
+    // Une seule source, une fourchette inversée, une URL non http : dans les
+    // trois cas l'analyse reste valide et c'est seulement le prix qui saute.
+    const cases = [
+      { ...price, sources: [price.sources[0]] },
+      { ...price, lowEur: 40 },
+      { ...price, sources: [{ label: 'X', url: 'javascript:alert(1)' }, price.sources[1]] },
+    ];
+    for (const priceEstimate of cases) {
+      const result = aiBottleAnalysisSchema.safeParse({ ...analysis, priceEstimate });
+      expect(result.success).toBe(true);
+      expect(result.data?.priceEstimate ?? null).toBeNull();
+    }
+  });
+});
+
+describe('parseAiPriceEstimate', () => {
+  it('relit une estimation écrite en base', () => {
+    const stored = {
+      lowEur: 20,
+      highEur: 25,
+      note: null,
+      sources: [
+        { label: 'A', url: 'https://a.fr' },
+        { label: 'B', url: 'https://b.fr' },
+      ],
+    };
+    expect(parseAiPriceEstimate(stored)).toEqual(stored);
+  });
+
+  it('rend null sur une valeur inattendue plutôt que de planter la fiche', () => {
+    expect(parseAiPriceEstimate(null)).toBeNull();
+    expect(parseAiPriceEstimate('20 €')).toBeNull();
+    expect(parseAiPriceEstimate({ lowEur: 20 })).toBeNull();
   });
 });
 

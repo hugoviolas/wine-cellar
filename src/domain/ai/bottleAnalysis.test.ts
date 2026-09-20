@@ -86,6 +86,40 @@ describe('buildBottleAnalysisPrompt', () => {
   });
 });
 
+describe('buildBottleAnalysisPrompt — estimation de prix', () => {
+  const bottle = {
+    name: 'Château Margaux',
+    producer: null,
+    vintage: 2015,
+    category: 'wine',
+    region: null,
+    subRegion: null,
+    color: 'rouge',
+    grapeVarieties: [],
+    appellation: null,
+  };
+
+  it('ne demande rien sur le prix par défaut (prompt wishlist, sans recherche web)', () => {
+    const { content } = buildBottleAnalysisPrompt({ bottle, currentYear: 2026 });
+    expect(content as string).not.toContain('priceEstimate');
+  });
+
+  it('demande un prix sourcé, et le refus d’inventer, quand la recherche web est jointe', () => {
+    const { content } = buildBottleAnalysisPrompt({
+      bottle,
+      currentYear: 2026,
+      withPriceEstimate: true,
+    });
+
+    const text = content as string;
+    expect(text).toContain('"priceEstimate"');
+    expect(text).toContain('recherche web');
+    expect(text).toContain('au moins deux sources distinctes');
+    expect(text).toContain('de mémoire');
+    expect(text).toContain("c'est une réponse attendue, pas un échec");
+  });
+});
+
 interface SetupBottleResult {
   db: Db;
   bottleId: string;
@@ -137,6 +171,40 @@ describe('saveBottleAiAnalysis', () => {
     subRegion: null,
     details: {},
   };
+
+  const priceEstimate = {
+    lowEur: 24.5,
+    highEur: 31,
+    note: null,
+    sources: [
+      { label: 'Caviste A', url: 'https://caviste-a.fr/vin' },
+      { label: 'Caviste B', url: 'https://caviste-b.fr/vin' },
+    ],
+  };
+
+  it('écrit l’estimation de prix avec ses sources', async () => {
+    const { db, bottleId } = await setupBottle();
+
+    await saveBottleAiAnalysis({
+      db,
+      bottle: { ...emptyBottleRef, id: bottleId },
+      analysis: { ...analysis, priceEstimate },
+    });
+
+    expect((await getBottle({ db, bottleId }))?.aiPriceEstimate).toEqual(priceEstimate);
+  });
+
+  it('efface l’estimation quand une régénération ne trouve plus de prix', async () => {
+    const { db, bottleId } = await setupBottle();
+    const bottleRef = { ...emptyBottleRef, id: bottleId };
+
+    await saveBottleAiAnalysis({ db, bottle: bottleRef, analysis: { ...analysis, priceEstimate } });
+    await saveBottleAiAnalysis({ db, bottle: bottleRef, analysis: { ...analysis, priceEstimate: null } });
+
+    // Un prix daté d'une génération précédente passerait pour un relevé du
+    // jour à côté d'une analyse fraîche.
+    expect((await getBottle({ db, bottleId }))?.aiPriceEstimate).toBeNull();
+  });
 
   it('écrit les champs IA, la fenêtre de garde, la région, les cépages et l’appellation quand ils sont vides', async () => {
     const { db, bottleId } = await setupBottle();
