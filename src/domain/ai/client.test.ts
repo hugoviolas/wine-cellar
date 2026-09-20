@@ -78,6 +78,54 @@ describe('callClaudeForJson', () => {
     expect(result).toEqual({ ok: true });
   });
 
+  it('recolle une réponse découpée en plusieurs blocs texte (cas de la recherche web)', async () => {
+    // Les citations s'attachent bloc par bloc : avec la recherche web, le
+    // JSON final arrive couramment en morceaux. Le dernier bloc seul n'est
+    // alors que sa fin — c'est ce qui cassait la génération en préprod.
+    const json = JSON.stringify({ ok: true });
+    const cut = Math.floor(json.length / 2);
+    createMock.mockResolvedValue({
+      content: [
+        { type: 'text', text: json.slice(0, cut) },
+        { type: 'text', text: json.slice(cut) },
+      ],
+    });
+
+    expect(await callClaudeForJson({ system: 'sys', content: 'hello', schema })).toEqual({ ok: true });
+  });
+
+  it('extrait le JSON d’un bloc encadré de phrases', async () => {
+    createMock.mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: `Après vérification chez deux cavistes :\n${JSON.stringify({ ok: true })}\nJ'espère que cela convient.`,
+        },
+      ],
+    });
+
+    expect(await callClaudeForJson({ system: 'sys', content: 'hello', schema })).toEqual({ ok: true });
+  });
+
+  it('nomme la troncature plutôt que de la faire passer pour un JSON invalide', async () => {
+    createMock.mockResolvedValue({
+      stop_reason: 'max_tokens',
+      content: [{ type: 'text', text: '{"ok": tr' }],
+    });
+
+    await expect(callClaudeForJson({ system: 'sys', content: 'hello', schema })).rejects.toThrow(/tronquée/);
+  });
+
+  it('joint un extrait de la réponse à l’erreur, pour le log', async () => {
+    createMock.mockResolvedValue({
+      content: [{ type: 'text', text: 'Je n’ai pas trouvé de prix fiable pour cette bouteille.' }],
+    });
+
+    await expect(callClaudeForJson({ system: 'sys', content: 'hello', schema })).rejects.toThrow(
+      /Je n’ai pas trouvé de prix fiable/,
+    );
+  });
+
   it('lève AiResponseError si le texte n’est pas du JSON valide', async () => {
     createMock.mockResolvedValue({ content: [{ type: 'text', text: 'pas du json' }] });
 
