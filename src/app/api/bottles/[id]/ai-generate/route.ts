@@ -72,7 +72,9 @@ export const POST = async (
   // La recherche web n'est jointe qu'ici : c'est la seule génération qui
   // demande un prix, et elle est la seule à pouvoir le sourcer. `maxTokens`
   // est relevé en conséquence — le JSON porte en plus la fourchette, sa
-  // note et ses URLs.
+  // note et ses URLs, et le modèle commente ses recherches avant de
+  // conclure, ce qui compte aussi dans ce budget. 4096 s'était révélé
+  // juste : une réponse coupée en plein JSON n'est plus parsable.
   const result = await callAiForRoute({
     route: 'bottles/ai-generate',
     system,
@@ -80,7 +82,7 @@ export const POST = async (
     schema: aiBottleAnalysisSchema,
     invalidResponseMessage: 'Réponse IA invalide, réessaie.',
     tools: [WEB_SEARCH_TOOL],
-    maxTokens: 4096,
+    maxTokens: 8192,
   });
   if ('error' in result) {
     return result.error;

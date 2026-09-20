@@ -72,6 +72,55 @@ const stripMarkdownCodeFence = (text: string): string => {
 };
 
 /**
+ * Le JSON d'une réponse, quelle que soit la façon dont le modèle l'a
+ * emballé.
+ *
+ * Prendre le dernier bloc texte suffisait tant qu'il n'y avait pas
+ * d'outils. Avec la recherche web, la réponse finale arrive couramment
+ * découpée en plusieurs blocs texte — les citations s'attachent bloc par
+ * bloc — et le dernier n'est alors que la fin du JSON : c'est ce qui a
+ * fait échouer la génération en préprod avec « JSON invalide ».
+ *
+ * D'où les trois tentatives, de la plus fidèle à la plus tolérante :
+ * le dernier bloc seul (cas sans outil, le plus courant), puis tous les
+ * blocs recollés (cas d'une réponse découpée), puis la tranche allant de
+ * la première accolade à la dernière (cas d'une phrase d'introduction ou
+ * de conclusion restée autour du JSON malgré la consigne).
+ */
+const extractJson = (texts: readonly string[]): unknown => {
+  const joined = texts.join('');
+  const last = texts[texts.length - 1] ?? '';
+  const sliceBetweenBraces = (text: string): string => {
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    return start !== -1 && end > start ? text.slice(start, end + 1) : '';
+  };
+
+  const candidates = [
+    stripMarkdownCodeFence(last),
+    stripMarkdownCodeFence(joined),
+    sliceBetweenBraces(joined),
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      continue;
+    }
+  }
+
+  // L'extrait part au log et jamais au client (voir callForRoute) : sans
+  // lui, un échec de parsing ne laisse aucune trace de ce que le modèle a
+  // réellement répondu, et le diagnostic repart de zéro à chaque fois.
+  throw new AiResponseError(
+    `Réponse Claude non conforme (JSON invalide). Début de la réponse : ${joined.slice(0, 300)}`,
+  );
+};
+
+/**
  * Envoie la conversation et rend la réponse, en reprenant les tours mis en
  * pause par la boucle d'outils serveur (`pause_turn`). La reprise ne
  * rajoute pas de message utilisateur : l'API repart d'elle-même du dernier
@@ -120,8 +169,8 @@ const createMessage = async ({
 };
 
 /**
- * Envoie un message à Claude, extrait le dernier bloc texte de la réponse,
- * le parse en JSON et le valide avec le schéma Zod fourni. Sortie
+ * Envoie un message à Claude, extrait le JSON de sa réponse (voir
+ * `extractJson`) et le valide avec le schéma Zod fourni. Sortie
  * structurée par prompt + validation (pas de tool-use côté app), voir le
  * spec IA. Lève `AiResponseError` si la réponse n'est pas un JSON valide ou
  * ne correspond pas au schéma — pas de nouvelle tentative automatique en
@@ -152,22 +201,19 @@ export const callClaudeForJson = async <T>({
     message = await createMessage({ ...args, tools: undefined });
   }
 
-  // Le dernier bloc texte, pas le premier : avec la recherche web, le
-  // modèle commente souvent ses recherches avant de conclure, et le JSON
-  // demandé est ce qu'il écrit en dernier. Sans outil, il n'y a qu'un bloc
-  // texte et les deux reviennent au même.
-  const block = message.content.findLast((b) => b.type === 'text');
-  if (!block) {
+  // Vérifié avant le parsing : une réponse coupée par `max_tokens` produit
+  // un JSON tronqué, donc invalide, et l'erreur générique ferait chercher
+  // du côté du modèle un problème qui n'est que de budget.
+  if (message.stop_reason === 'max_tokens') {
+    throw new AiResponseError('Réponse Claude tronquée : plafond max_tokens atteint.');
+  }
+
+  const texts = message.content.filter((b) => b.type === 'text').map((b) => b.text);
+  if (texts.length === 0) {
     throw new AiResponseError('Réponse Claude sans contenu texte.');
   }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripMarkdownCodeFence(block.text));
-  } catch {
-    throw new AiResponseError('Réponse Claude non conforme (JSON invalide).');
-  }
-
+  const parsed = extractJson(texts);
   const result = schema.safeParse(parsed);
   if (!result.success) {
     throw new AiResponseError('Réponse Claude non conforme au schéma attendu.');
