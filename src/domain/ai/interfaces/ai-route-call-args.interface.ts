@@ -14,4 +14,6 @@ export interface AiRouteCallArgs<T> {
   readonly tools?: Anthropic.Messages.ToolUnion[];
   /** Plafond de tokens de la réponse, quand le défaut est trop serré. */
   readonly maxTokens?: number;
+  /** Budget de temps de l'appel entier, quand le défaut ne convient pas. */
+  readonly budgetMs?: number;
 }

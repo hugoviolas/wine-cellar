@@ -27,13 +27,14 @@ const MAX_SERVER_TOOL_CONTINUATIONS = 3;
  * enrichie. Utilisée pour l'estimation de prix, qu'aucun modèle ne peut
  * produire de mémoire sans l'inventer.
  *
- * `max_uses` borne le coût : quelques requêtes suffisent à recouper deux ou
- * trois marchands, et chaque recherche est facturée.
+ * `max_uses` borne le coût *et* la durée : trois requêtes suffisent à
+ * recouper deux ou trois marchands, chaque recherche est facturée, et
+ * chacune allonge le temps passé devant un bouton qui tourne.
  */
 export const WEB_SEARCH_TOOL: Anthropic.Messages.WebSearchTool20260209 = {
   type: 'web_search_20260209',
   name: 'web_search',
-  max_uses: 5,
+  max_uses: 3,
 };
 
 /**
@@ -47,10 +48,33 @@ const getClient = (): Anthropic => {
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY doit être défini pour appeler Claude.');
   }
-  return new Anthropic({ apiKey });
+  // Une seule reprise automatique au lieu de deux : les reprises du SDK
+  // consomment le budget de l'appel (voir `CALL_BUDGET_MS`), et sur une
+  // requête qui dure déjà une minute, en enchaîner trois ne fait
+  // qu'éloigner le moment où l'utilisateur apprend que ça a échoué.
+  return new Anthropic({ apiKey, maxRetries: 1 });
 };
 
 export class AiResponseError extends Error {}
+
+/** Le budget de temps de l'appel est épuisé — voir `CALL_BUDGET_MS`. */
+export class AiTimeoutError extends Error {}
+
+/**
+ * Budget de temps d'un appel complet, reprises et tentatives comprises.
+ *
+ * Rien ne le bornait jusqu'ici, et les valeurs par défaut du SDK se
+ * multiplient : 10 minutes par requête, 2 reprises automatiques, jusqu'à
+ * quatre requêtes pour épuiser les `pause_turn`, plus un éventuel rejeu
+ * sans outil. Une génération pouvait donc tenir le bouton sur
+ * « Génération… » pendant des heures sans jamais rien afficher — c'est ce
+ * qui a été constaté en préprod sur la régénération d'une analyse.
+ *
+ * Quatre minutes : une analyse avec recherche web tient largement dedans,
+ * et au-delà il vaut mieux rendre la main avec un message clair que faire
+ * patienter indéfiniment.
+ */
+const CALL_BUDGET_MS = 4 * 60 * 1000;
 
 export type AiTextBlock = { type: 'text'; text: string };
 export type AiImageBlock = {
@@ -132,28 +156,39 @@ const createMessage = async ({
   content,
   tools,
   maxTokens,
+  deadline,
 }: {
   client: Anthropic;
   system: string;
   content: AiMessageContent;
   tools: Anthropic.Messages.ToolUnion[] | undefined;
   maxTokens: number;
+  deadline: number;
 }): Promise<Anthropic.Messages.Message> => {
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content }];
   const send = (): Promise<Anthropic.Messages.Message> => {
-    return client.messages.create({
-      model: MODEL,
-      max_tokens: maxTokens,
-      // Les modèles Claude 5 pensent de façon adaptative par défaut (effort
-      // "high" par défaut : le modèle décide seul de réfléchir ou non).
-      // Aucun des chantiers (extraction structurée courte) n'a besoin de
-      // raisonnement étendu, donc on le désactive explicitement — ça évite
-      // aussi qu'un bloc `thinking` précède le bloc texte dans la réponse.
-      thinking: { type: 'disabled' },
-      system,
-      messages,
-      ...(tools ? { tools } : {}),
-    });
+    // Le temps restant sert de délai à la requête : le budget couvre tout
+    // l'appel, pas chacune de ses reprises prise isolément.
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      throw new AiTimeoutError('Budget de temps épuisé avant la réponse de Claude.');
+    }
+    return client.messages.create(
+      {
+        model: MODEL,
+        max_tokens: maxTokens,
+        // Les modèles Claude 5 pensent de façon adaptative par défaut
+        // (effort "high" : le modèle décide seul de réfléchir ou non).
+        // Aucun des chantiers (extraction structurée courte) n'a besoin de
+        // raisonnement étendu, donc on le désactive explicitement — ça
+        // évite aussi qu'un bloc `thinking` précède le bloc texte.
+        thinking: { type: 'disabled' },
+        system,
+        messages,
+        ...(tools ? { tools } : {}),
+      },
+      { timeout: remaining },
+    );
   };
 
   let message = await send();
@@ -182,9 +217,13 @@ export const callClaudeForJson = async <T>({
   schema,
   tools,
   maxTokens,
+  budgetMs,
 }: ClaudeJsonCallParams<T>): Promise<T> => {
   const client = getClient();
-  const args = { client, system, content, maxTokens: maxTokens ?? DEFAULT_MAX_TOKENS };
+  // Une seule échéance pour tout l'appel, rejeu sans outil compris : deux
+  // budgets séparés se cumuleraient, ce qui reviendrait à ne rien borner.
+  const deadline = Date.now() + (budgetMs ?? CALL_BUDGET_MS);
+  const args = { client, system, content, maxTokens: maxTokens ?? DEFAULT_MAX_TOKENS, deadline };
 
   let message: Anthropic.Messages.Message;
   try {
