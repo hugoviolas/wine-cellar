@@ -1,0 +1,1 @@
+ALTER TABLE `bottles` ADD `ai_price_estimate` text;

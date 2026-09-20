@@ -20,6 +20,8 @@ export const callAiForRoute = async <T>(args: AiRouteCallArgs<T>): Promise<AiRou
     system: args.system,
     content: args.content,
     schema: args.schema,
+    tools: args.tools,
+    maxTokens: args.maxTokens,
   };
   try {
     return { data: await callClaudeForJson(params) };

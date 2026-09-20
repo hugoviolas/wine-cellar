@@ -7,6 +7,8 @@ import { computeGardeStatus, computeGardeProgress } from '@/domain/gardeStatus';
 import { getCrateById, listCrates } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
+import { listBottleConsumptions } from '@/domain/history';
+import { parseAiPriceEstimate } from '@/domain/ai/priceEstimate';
 import { getGrapeVarieties, getAppellation, getClassification } from '@/domain/bottleCategories';
 import { crateLabel } from '@/lib/crateLabel';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
@@ -17,6 +19,8 @@ import { UserNoteEditor } from '@/components/UserNoteEditor';
 import { BottleActions } from '@/components/BottleActions';
 import { EditBottleForm } from '@/components/EditBottleForm';
 import { AiAnalysisButton } from '@/components/AiAnalysisButton';
+import { ConsumptionList } from '@/components/ConsumptionList';
+import { PriceEstimate } from '@/components/PriceEstimate';
 import { wineColorStripeClass } from '@/lib/wineColor';
 import type { ReactElement } from 'react';
 import { stringArrayOrEmpty } from '@/lib/stringArray';
@@ -37,6 +41,8 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
   const cellar = currentCrate ? await getCellarById({ db, cellarId: currentCrate.cellarId }) : null;
   const aiAvailable = cellar ? isAiAvailable(cellar) : false;
   const pairings = stringArrayOrEmpty(bottle.aiPairings);
+  const consumptions = await listBottleConsumptions({ db, bottleId: bottle.id });
+  const priceEstimate = parseAiPriceEstimate(bottle.aiPriceEstimate);
 
   const currentYear = new Date().getFullYear();
   const status = computeGardeStatus({
@@ -153,7 +159,14 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
         </section>
       )}
 
-      {(bottle.aiAnalysis || pairings.length > 0 || bottle.aiTastingAdvice) && (
+      {priceEstimate && (
+        <section className="mb-6">
+          <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Estimation de prix</h4>
+          <PriceEstimate estimate={priceEstimate} generatedAt={bottle.aiGeneratedAt} />
+        </section>
+      )}
+
+      {(bottle.aiAnalysis || pairings.length > 0 || bottle.aiTastingAdvice || priceEstimate) && (
         <p className="text-xs text-gray-400 mb-6">
           Analyse générée par IA — à vérifier, notamment sur les détails pointus (appellation, cépages...).
         </p>
@@ -163,6 +176,18 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
         <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Ta note</h4>
         <UserNoteEditor bottleId={bottle.id} initialNote={bottle.userNote} initialRating={bottle.rating} />
       </section>
+
+      {/*
+        L'historique de cette bouteille-là. Il ne s'affiche qu'une fois la
+        première bouteille bue : sur une bouteille jamais ouverte, un titre
+        au-dessus d'une liste vide n'apprend rien.
+      */}
+      {consumptions.length > 0 && (
+        <section className="mb-6">
+          <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Consommations</h4>
+          <ConsumptionList entries={consumptions} />
+        </section>
+      )}
 
       <section className="mb-6">
         <EditBottleForm

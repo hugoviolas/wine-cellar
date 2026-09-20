@@ -13,6 +13,7 @@ import {
 } from '@/domain/ai/bottleAnalysis';
 import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
 import { aiBottleAnalysisSchema } from '@/domain/ai/schemas';
+import { WEB_SEARCH_TOOL } from '@/domain/ai/client';
 import { callAiForRoute } from '@/domain/ai/callForRoute';
 import { checkAiQuota } from '@/domain/ai/quota';
 
@@ -65,14 +66,21 @@ export const POST = async (
   const { system, content } = buildBottleAnalysisPrompt({
     bottle: bottleForPrompt,
     currentYear: new Date().getFullYear(),
+    withPriceEstimate: true,
   });
 
+  // La recherche web n'est jointe qu'ici : c'est la seule génération qui
+  // demande un prix, et elle est la seule à pouvoir le sourcer. `maxTokens`
+  // est relevé en conséquence — le JSON porte en plus la fourchette, sa
+  // note et ses URLs.
   const result = await callAiForRoute({
     route: 'bottles/ai-generate',
     system,
     content,
     schema: aiBottleAnalysisSchema,
     invalidResponseMessage: 'Réponse IA invalide, réessaie.',
+    tools: [WEB_SEARCH_TOOL],
+    maxTokens: 4096,
   });
   if ('error' in result) {
     return result.error;

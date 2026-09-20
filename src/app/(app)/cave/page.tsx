@@ -74,6 +74,12 @@ const CavePage = async ({
             Liste des vins
           </Link>
           <Link
+            href={`/cave/carte${cellarQuery}`}
+            className="border border-gray-300 text-forest rounded px-3 py-1.5 hover:bg-white whitespace-nowrap"
+          >
+            Carte
+          </Link>
+          <Link
             href={`/cave/clayettes${cellarQuery}`}
             className="border border-gray-300 text-forest rounded px-3 py-1.5 hover:bg-white whitespace-nowrap"
           >

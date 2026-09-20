@@ -46,6 +46,14 @@ export const WineListView = ({ rows }: { rows: WineListRow[] }): ReactElement =>
     });
   }, [rows, search, category, color, vintage, gardeStatus]);
 
+  // Deux nombres, pas un : une ligne du tableau est une référence (un vin
+  // d'un millésime donné), qui peut valoir plusieurs bouteilles. Le seul
+  // compteur affiché jusqu'ici comptait les lignes tout en les appelant
+  // « bouteilles » — six Margaux 2015 y pesaient autant qu'une seule.
+  const totalBottles = useMemo(() => {
+    return filtered.reduce((total, row) => total + row.quantity, 0);
+  }, [filtered]);
+
   return (
     <div>
       <div className="bg-white rounded p-4 mb-4 flex flex-wrap gap-3 items-end">
@@ -121,7 +129,8 @@ export const WineListView = ({ rows }: { rows: WineListRow[] }): ReactElement =>
       </div>
 
       <p className="text-xs text-gray-500 mb-2">
-        {filtered.length} bouteille{filtered.length > 1 ? 's' : ''} référencée{filtered.length > 1 ? 's' : ''}
+        {filtered.length} référence{filtered.length > 1 ? 's' : ''} · {totalBottles} bouteille
+        {totalBottles > 1 ? 's' : ''}
       </p>
 
       <div className="bg-white rounded overflow-x-auto">
