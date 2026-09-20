@@ -118,6 +118,22 @@ describe('buildBottleAnalysisPrompt — estimation de prix', () => {
     expect(text).toContain('de mémoire');
     expect(text).toContain("c'est une réponse attendue, pas un échec");
   });
+
+  it('exclut explicitement les prix de restaurant', () => {
+    const { content } = buildBottleAnalysisPrompt({
+      bottle,
+      currentYear: 2026,
+      withPriceEstimate: true,
+    });
+
+    // Une carte de restaurant cite bien un prix pour la bonne bouteille,
+    // mais avec la marge de l'établissement : deux à trois fois le prix
+    // d'achat. C'est la principale source de prix aberrants.
+    const text = content as string;
+    expect(text).toContain("à l'achat chez un marchand");
+    expect(text).toContain('carte de restaurant');
+    expect(text).toContain('au verre');
+  });
 });
 
 interface SetupBottleResult {

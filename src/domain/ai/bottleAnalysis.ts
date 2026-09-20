@@ -30,8 +30,10 @@ Règles, dans cet ordre de priorité :
 1. Utilise l'outil de recherche web pour trouver des prix réels (cavistes en ligne, places de marché du vin, cotes de référence). N'utilise jamais un prix que tu crois connaître de mémoire.
 2. Il faut au moins deux sources distinctes que tu as réellement consultées pendant cette recherche, et tu reportes leur URL exacte. Une seule source, ou une URL reconstruite de tête : renvoie \`null\`.
 3. Si tu ne trouves pas de prix pour cette bouteille, renvoie \`null\` — c'est une réponse attendue, pas un échec. Ne remplace jamais un prix introuvable par une approximation, une moyenne de la catégorie ou le prix d'un autre millésime sans le dire.
-4. Prix TTC en euros, pour une bouteille au format standard, sur le marché français quand il existe. Si les prix trouvés portent sur un autre millésime ou un autre format, dis-le dans "note".
-5. La fourchette reflète la dispersion réellement constatée entre les sources, pas une marge de confort ajoutée après coup.
+4. Prix TTC en euros, **à l'achat chez un marchand** : caviste, boutique en ligne, place de marché, ou cote de référence. Une bouteille au format standard, sur le marché français quand il existe.
+5. N'utilise JAMAIS un prix de carte de restaurant, de bar, de bistrot ou de prix au verre : ils portent la marge de l'établissement et valent deux à trois fois le prix d'achat. Si les seules sources trouvées sont de ce type, renvoie \`null\`.
+6. Si les prix trouvés portent sur un autre millésime ou un autre format, dis-le dans "note".
+7. La fourchette reflète la dispersion réellement constatée entre les sources, pas une marge de confort ajoutée après coup.
 
 `;
 

@@ -22,6 +22,36 @@ const DEFAULT_MAX_TOKENS = 2048;
 const MAX_SERVER_TOOL_CONTINUATIONS = 3;
 
 /**
+ * Sites de vente et de cote sur lesquels chercher un prix.
+ *
+ * Sans cette liste, le modèle tombait massivement sur des cartes de
+ * restaurant — elles sont nombreuses en ligne et citent bien un prix pour
+ * la bonne bouteille. Mais un prix de restaurant porte la marge du
+ * restaurateur : une bouteille à 20 € chez un caviste s'y affiche à 50 ou
+ * 60 €, et l'estimation devenait absurde pour quelqu'un qui veut savoir ce
+ * que vaut sa cave.
+ *
+ * Restreindre les domaines règle le problème à la racine plutôt que par
+ * une consigne que le modèle peut négliger, et accélère la recherche au
+ * passage. Le prix à payer est assumé : une bouteille absente de ces sites
+ * n'aura pas d'estimation du tout, ce qui vaut mieux qu'un prix faux.
+ *
+ * C'est le levier à ajuster si trop de bouteilles ressortent sans prix.
+ */
+const PRICE_SOURCE_DOMAINS = [
+  'wine-searcher.com',
+  'idealwine.com',
+  'vivino.com',
+  'vinatis.com',
+  'millesima.fr',
+  'lavinia.fr',
+  'twil.fr',
+  '1jour1vin.com',
+  'cavissima.com',
+  'chateaunet.com',
+];
+
+/**
  * Recherche web côté Anthropic : aucune boucle d'outil à tenir ici, le
  * modèle cherche et lit pendant l'appel, et la réponse arrive déjà
  * enrichie. Utilisée pour l'estimation de prix, qu'aucun modèle ne peut
@@ -35,6 +65,7 @@ export const WEB_SEARCH_TOOL: Anthropic.Messages.WebSearchTool20260209 = {
   type: 'web_search_20260209',
   name: 'web_search',
   max_uses: 3,
+  allowed_domains: PRICE_SOURCE_DOMAINS,
 };
 
 /**

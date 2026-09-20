@@ -177,6 +177,14 @@ describe('callClaudeForJson', () => {
     expect(callBody(0)).toMatchObject({ tools: [WEB_SEARCH_TOOL], max_tokens: 4096 });
   });
 
+  it('limite la recherche de prix aux sites de vente, jamais aux cartes de restaurant', () => {
+    // La restriction vit dans l'outil et non dans le prompt : une consigne
+    // se néglige, un domaine absent de la liste ne peut pas être cité.
+    expect(WEB_SEARCH_TOOL.allowed_domains).toContain('wine-searcher.com');
+    expect(WEB_SEARCH_TOOL.allowed_domains).toContain('idealwine.com');
+    expect(WEB_SEARCH_TOOL.max_uses).toBe(3);
+  });
+
   it('retient le dernier bloc texte, pas le premier — le modèle commente ses recherches avant de conclure', async () => {
     createMock.mockResolvedValue({
       content: [
