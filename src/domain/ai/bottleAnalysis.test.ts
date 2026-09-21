@@ -6,7 +6,6 @@ import { createCrate } from '../crates';
 import { createBottle, getBottle } from '../bottles';
 import { bottles } from '../../db/schema';
 import { buildBottleAnalysisPrompt, saveBottleAiAnalysis } from './bottleAnalysis';
-import { saveBottlePriceEstimate } from './bottlePrice';
 import type { Db } from '../../db/client';
 
 describe('buildBottleAnalysisPrompt', () => {
@@ -138,32 +137,6 @@ describe('saveBottleAiAnalysis', () => {
     subRegion: null,
     details: {},
   };
-
-  it('ne touche pas à l’estimation de prix, qui a sa propre génération', async () => {
-    const { db, bottleId } = await setupBottle();
-    const priceEstimate = {
-      lowEur: 24.5,
-      highEur: 31,
-      note: null,
-      asOf: '2026-09-20T20:00:00.000Z',
-      sources: [
-        { label: 'Caviste A', url: 'https://caviste-a.fr/vin' },
-        { label: 'Caviste B', url: 'https://caviste-b.fr/vin' },
-      ],
-    };
-    await saveBottlePriceEstimate({
-      db,
-      bottleId,
-      estimate: priceEstimate,
-      now: new Date(priceEstimate.asOf),
-    });
-
-    await saveBottleAiAnalysis({ db, bottle: { ...emptyBottleRef, id: bottleId }, analysis });
-
-    // Régénérer l'analyse effaçait le prix quand les deux voyageaient
-    // ensemble ; séparés, chacun garde sa date et sa durée de vie.
-    expect((await getBottle({ db, bottleId }))?.aiPriceEstimate).toEqual(priceEstimate);
-  });
 
   it('écrit les champs IA, la fenêtre de garde, la région, les cépages et l’appellation quand ils sont vides', async () => {
     const { db, bottleId } = await setupBottle();

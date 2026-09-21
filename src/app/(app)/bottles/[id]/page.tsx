@@ -8,7 +8,6 @@ import { getCrateById, listCrates } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
 import { listBottleConsumptions } from '@/domain/history';
-import { parseAiPriceEstimate } from '@/domain/ai/priceEstimate';
 import { getGrapeVarieties, getAppellation, getClassification } from '@/domain/bottleCategories';
 import { crateLabel } from '@/lib/crateLabel';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
@@ -20,7 +19,6 @@ import { BottleActions } from '@/components/BottleActions';
 import { EditBottleForm } from '@/components/EditBottleForm';
 import { AiAnalysisButton } from '@/components/AiAnalysisButton';
 import { ConsumptionList } from '@/components/ConsumptionList';
-import { PriceEstimate } from '@/components/PriceEstimate';
 import { wineColorStripeClass } from '@/lib/wineColor';
 import type { ReactElement } from 'react';
 import { stringArrayOrEmpty } from '@/lib/stringArray';
@@ -42,7 +40,6 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
   const aiAvailable = cellar ? isAiAvailable(cellar) : false;
   const pairings = stringArrayOrEmpty(bottle.aiPairings);
   const consumptions = await listBottleConsumptions({ db, bottleId: bottle.id });
-  const priceEstimate = parseAiPriceEstimate(bottle.aiPriceEstimate);
 
   const currentYear = new Date().getFullYear();
   const status = computeGardeStatus({
@@ -125,7 +122,6 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
       {aiAvailable && (
         <AiAnalysisButton
           endpoint={`/api/bottles/${bottle.id}/ai-generate`}
-          priceEndpoint={`/api/bottles/${bottle.id}/ai-price`}
           hasAnalysis={Boolean(bottle.aiGeneratedAt)}
         />
       )}
@@ -160,14 +156,7 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
         </section>
       )}
 
-      {priceEstimate && (
-        <section className="mb-6">
-          <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Estimation de prix</h4>
-          <PriceEstimate estimate={priceEstimate} generatedAt={bottle.aiGeneratedAt} />
-        </section>
-      )}
-
-      {(bottle.aiAnalysis || pairings.length > 0 || bottle.aiTastingAdvice || priceEstimate) && (
+      {(bottle.aiAnalysis || pairings.length > 0 || bottle.aiTastingAdvice) && (
         <p className="text-xs text-gray-400 mb-6">
           Analyse générée par IA — à vérifier, notamment sur les détails pointus (appellation, cépages...).
         </p>
