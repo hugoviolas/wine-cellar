@@ -508,7 +508,7 @@ export const CaveMap = ({ bottles }: { bottles: readonly BottleForMap[] }): Reac
             onSelect={select}
             hint={
               openCluster
-                ? 'Ces lieux sont trop proches pour tenir côte à côte : le point les rassemble, et l’étoile les déplie.'
+                ? 'Ces lieux sont trop proches pour tenir côte à côte : le point les rassemble, et l’étoile les déplie. Le reste de la cave est toujours sur la carte, en retrait.'
                 : precision === 'subRegion'
                   ? 'Points placés à la sous-région quand elle est connue. Touche un point pour voir les vins.'
                   : 'Points placés à la région. Touche un point pour voir les vins.'
@@ -610,6 +610,8 @@ const PlaceRanking = ({
     );
   }
 
+  const total = places.reduce((sum, place) => sum + place.bottles, 0);
+
   return (
     <div className="p-4">
       <p className="text-xs text-gray-500 mb-2">{hint}</p>
@@ -636,6 +638,18 @@ const PlaceRanking = ({
           </li>
         ))}
       </ul>
+      {/*
+        Le total dit toujours sur quoi porte la liste. Sans lui, la liste
+        d'une grappe se lit comme la cave entière : trois champagnes
+        affichés sur quatre, et on croit en avoir perdu un.
+      */}
+      <p className="pt-2 mt-1 border-t border-gray-100 text-xs text-gray-500">
+        <span className="text-forest">
+          {total} bouteille{total > 1 ? 's' : ''}
+        </span>{' '}
+        sur {places.length} lieu
+        {places.length > 1 ? 'x' : ''}
+      </p>
     </div>
   );
 };

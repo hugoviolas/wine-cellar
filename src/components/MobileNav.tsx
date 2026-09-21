@@ -11,6 +11,7 @@ export const MobileNav = ({ isSuperAdmin }: { isSuperAdmin: boolean }): ReactEle
   const links: NavLink[] = [
     { href: '/accueil', label: 'Accueil' },
     { href: '/cave', label: 'Cave' },
+    { href: '/degustation', label: 'Dégustation' },
     { href: '/wishlist', label: 'Wishlist' },
     { href: '/historique', label: 'Historique' },
     ...(isSuperAdmin ? [{ href: '/admin/utilisateurs', label: 'Admin' }] : []),
