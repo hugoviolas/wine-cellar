@@ -62,10 +62,6 @@ Bouteille :
  * cépages ou une appellation déjà renseignés (manuellement, par une photo,
  * ou par une génération précédente) ne sont jamais écrasés (voir le spec
  * IA, section Chantier A).
- *
- * `aiPriceEstimate` n'est pas touché ici : le prix a sa propre génération
- * (voir `bottlePrice.ts`) et sa propre date, justement pour ne pas faire
- * attendre l'analyse derrière une recherche web.
  */
 export const saveBottleAiAnalysis = async ({
   db,

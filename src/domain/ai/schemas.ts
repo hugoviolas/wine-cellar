@@ -16,59 +16,6 @@ const aiShortText = (): z.ZodString => {
   return z.string().min(1).max(FIELD_MAX.shortText);
 };
 
-/**
- * Source citée à l'appui d'une estimation de prix : le libellé du site et
- * l'URL consultée, pour que l'estimation soit vérifiable plutôt que d'être
- * à croire sur parole.
- *
- * Le protocole est contraint à http/https : l'URL vient du modèle et
- * atterrit dans un `href` de la fiche bouteille — un `javascript:` s'y
- * exécuterait au clic.
- */
-const aiPriceSourceSchema = z.object({
-  label: aiShortText(),
-  url: z
-    .string()
-    .url()
-    .max(FIELD_MAX.shortText)
-    .refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
-      message: 'URL de source non http(s)',
-    }),
-});
-export type AiPriceSource = z.infer<typeof aiPriceSourceSchema>;
-
-/**
- * Estimation de prix, toujours accompagnée de ses sources : au moins deux,
- * sans quoi ce n'est plus une estimation recoupée mais une valeur isolée.
- * Une fourchette plutôt qu'un prix unique — le marché d'une bouteille
- * n'est jamais un point, et une fourchette dit honnêtement la dispersion
- * constatée.
- *
- * Le modèle renvoie `null` quand il ne trouve pas : c'est le cas nominal,
- * pas un échec (voir `buildBottleAnalysisPrompt`). Inventer un prix
- * plausible serait pire que de ne rien afficher.
- */
-export const aiPriceEstimateSchema = z
-  .object({
-    lowEur: z.number().positive(),
-    highEur: z.number().positive(),
-    /** Ce que la fourchette couvre : format, millésime réellement trouvé, marché... */
-    note: z.string().max(FIELD_MAX.longText).nullable(),
-    sources: z.array(aiPriceSourceSchema).min(2).max(5),
-    /**
-     * Date du relevé, posée à l'écriture et non par le modèle (d'où le
-     * `nullish` : sa réponse ne la porte pas). Le prix ne se calcule plus
-     * en même temps que l'analyse, il ne peut donc plus emprunter
-     * `aiGeneratedAt` sans risquer de se faire passer pour plus frais
-     * qu'il n'est.
-     */
-    asOf: z.string().min(1).nullish(),
-  })
-  .refine((price) => price.lowEur <= price.highEur, {
-    message: 'Fourchette de prix inversée',
-  });
-export type AiPriceEstimate = z.infer<typeof aiPriceEstimateSchema>;
-
 /** Réponse attendue de Claude pour la fiche IA à la demande (chantier A). */
 export const aiBottleAnalysisSchema = z.object({
   analysis: z.string().min(1),
@@ -82,17 +29,6 @@ export const aiBottleAnalysisSchema = z.object({
   appellation: aiShortText().nullable(),
 });
 export type AiBottleAnalysis = z.infer<typeof aiBottleAnalysisSchema>;
-
-/**
- * Réponse attendue pour l'estimation de prix, qui est désormais un appel à
- * part (voir `buildBottlePricePrompt`). Un objet à une clé plutôt que
- * l'estimation nue : le contrat « tu réponds un objet JSON » reste le même
- * pour tous les appels, et `null` y a une place explicite.
- */
-export const aiBottlePriceSchema = z.object({
-  priceEstimate: aiPriceEstimateSchema.nullable(),
-});
-export type AiBottlePrice = z.infer<typeof aiBottlePriceSchema>;
 
 /** Réponse attendue de Claude pour l'extraction par photo (chantier B). */
 export const aiPhotoExtractionSchema = z.object({

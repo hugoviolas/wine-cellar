@@ -3,17 +3,15 @@ import { z } from 'zod';
 
 const createMock = vi.fn();
 
-/** Le SDK porte ses classes d'erreur sur l'export par défaut : le mock aussi. */
-class MockBadRequestError extends Error {}
-
 vi.mock('@anthropic-ai/sdk', () => {
-  const client = vi.fn().mockImplementation(function () {
-    return { messages: { create: createMock } };
-  });
-  return { default: Object.assign(client, { BadRequestError: MockBadRequestError }) };
+  return {
+    default: vi.fn().mockImplementation(function () {
+      return { messages: { create: createMock } };
+    }),
+  };
 });
 
-const { callClaudeForJson, AiResponseError, AiTimeoutError, WEB_SEARCH_TOOL } = await import('./client');
+const { callClaudeForJson, AiResponseError, AiTimeoutError } = await import('./client');
 
 describe('callClaudeForJson', () => {
   beforeEach(() => {
@@ -87,10 +85,9 @@ describe('callClaudeForJson', () => {
     expect(result).toEqual({ ok: true });
   });
 
-  it('recolle une réponse découpée en plusieurs blocs texte (cas de la recherche web)', async () => {
-    // Les citations s'attachent bloc par bloc : avec la recherche web, le
-    // JSON final arrive couramment en morceaux. Le dernier bloc seul n'est
-    // alors que sa fin — c'est ce qui cassait la génération en préprod.
+  it('recolle une réponse découpée en plusieurs blocs texte', async () => {
+    // Un modèle peut répondre en plusieurs blocs texte : le dernier seul
+    // n'est alors que la fin du JSON.
     const json = JSON.stringify({ ok: true });
     const cut = Math.floor(json.length / 2);
     createMock.mockResolvedValue({
@@ -161,30 +158,6 @@ describe('callClaudeForJson', () => {
     );
   });
 
-  it('joint les outils serveur et relève le plafond de tokens quand on les fournit', async () => {
-    createMock.mockResolvedValue({
-      content: [{ type: 'text', text: JSON.stringify({ ok: true }) }],
-    });
-
-    await callClaudeForJson({
-      system: 'sys',
-      content: 'hello',
-      schema,
-      tools: [WEB_SEARCH_TOOL],
-      maxTokens: 4096,
-    });
-
-    expect(callBody(0)).toMatchObject({ tools: [WEB_SEARCH_TOOL], max_tokens: 4096 });
-  });
-
-  it('limite la recherche de prix aux sites de vente, jamais aux cartes de restaurant', () => {
-    // La restriction vit dans l'outil et non dans le prompt : une consigne
-    // se néglige, un domaine absent de la liste ne peut pas être cité.
-    expect(WEB_SEARCH_TOOL.allowed_domains).toContain('wine-searcher.com');
-    expect(WEB_SEARCH_TOOL.allowed_domains).toContain('idealwine.com');
-    expect(WEB_SEARCH_TOOL.max_uses).toBe(3);
-  });
-
   it('retient le dernier bloc texte, pas le premier — le modèle commente ses recherches avant de conclure', async () => {
     createMock.mockResolvedValue({
       content: [
@@ -195,70 +168,7 @@ describe('callClaudeForJson', () => {
       ],
     });
 
-    expect(
-      await callClaudeForJson({ system: 'sys', content: 'hello', schema, tools: [WEB_SEARCH_TOOL] }),
-    ).toEqual({ ok: true });
-  });
-
-  it('reprend un tour interrompu par la boucle d’outils serveur (pause_turn)', async () => {
-    const paused = [{ type: 'server_tool_use', name: 'web_search', input: {} }];
-    createMock.mockResolvedValueOnce({ stop_reason: 'pause_turn', content: paused }).mockResolvedValueOnce({
-      stop_reason: 'end_turn',
-      content: [{ type: 'text', text: JSON.stringify({ ok: true }) }],
-    });
-
-    const result = await callClaudeForJson({
-      system: 'sys',
-      content: 'hello',
-      schema,
-      tools: [WEB_SEARCH_TOOL],
-    });
-
-    expect(result).toEqual({ ok: true });
-    expect(createMock).toHaveBeenCalledTimes(2);
-    // La reprise renvoie le tour d'assistant en l'état, sans message
-    // utilisateur ajouté : l'API repart d'elle-même de la recherche en cours.
-    expect(callBody(-1)).toMatchObject({
-      messages: [
-        { role: 'user', content: 'hello' },
-        { role: 'assistant', content: paused },
-      ],
-    });
-  });
-
-  it('abandonne si le tour reste en pause indéfiniment', async () => {
-    createMock.mockResolvedValue({ stop_reason: 'pause_turn', content: [] });
-
-    await expect(
-      callClaudeForJson({ system: 'sys', content: 'hello', schema, tools: [WEB_SEARCH_TOOL] }),
-    ).rejects.toThrow(AiResponseError);
-  });
-
-  it('rejoue sans outil si la requête outillée est refusée — l’analyse sort, sans prix', async () => {
-    createMock
-      .mockRejectedValueOnce(new MockBadRequestError('web search not enabled'))
-      .mockResolvedValueOnce({ content: [{ type: 'text', text: JSON.stringify({ ok: true }) }] });
-
-    const result = await callClaudeForJson({
-      system: 'sys',
-      content: 'hello',
-      schema,
-      tools: [WEB_SEARCH_TOOL],
-    });
-
-    expect(result).toEqual({ ok: true });
-    expect(createMock).toHaveBeenCalledTimes(2);
-    const [retryArgs] = createMock.mock.calls[1] as [Record<string, unknown>];
-    expect(retryArgs.tools).toBeUndefined();
-  });
-
-  it('ne rejoue pas une erreur qui n’est pas un refus de la requête', async () => {
-    createMock.mockRejectedValue(new Error('rate limited'));
-
-    await expect(
-      callClaudeForJson({ system: 'sys', content: 'hello', schema, tools: [WEB_SEARCH_TOOL] }),
-    ).rejects.toThrow('rate limited');
-    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(await callClaudeForJson({ system: 'sys', content: 'hello', schema })).toEqual({ ok: true });
   });
 
   it('borne l’appel dans le temps plutôt que de laisser la requête traîner', async () => {

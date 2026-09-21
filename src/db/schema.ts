@@ -77,11 +77,12 @@ export const bottles = sqliteTable('bottles', {
   aiAnalysis: text('ai_analysis'),
   aiPairings: text('ai_pairings', { mode: 'json' }),
   aiTastingAdvice: text('ai_tasting_advice'),
-  // Estimation de prix produite par la génération IA, avec les sources qui
-  // l'appuient (voir `aiPriceEstimateSchema`). Colonne JSON comme
-  // `ai_pairings` : c'est un objet composite dont seule la fiche se sert,
-  // jamais un critère de tri ou de filtre. `null` = prix non trouvé, ce qui
-  // est un résultat à part entière et non une absence de génération.
+  // Vestige de l'estimation de prix par recherche web, retirée : la
+  // recherche consommait un volume de tokens sans rapport avec le service
+  // rendu (les pages lues sont facturées en entrée). Plus personne ne lit
+  // ni n'écrit cette colonne. Elle est conservée plutôt que supprimée —
+  // une migration de suppression est irréversible, et le sujet est remis à
+  // plus tard, pas abandonné.
   aiPriceEstimate: text('ai_price_estimate', { mode: 'json' }),
   aiGeneratedAt: text('ai_generated_at'),
   userNote: text('user_note'),

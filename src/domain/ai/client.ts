@@ -14,61 +14,6 @@ const MODEL = 'claude-sonnet-5';
 const DEFAULT_MAX_TOKENS = 2048;
 
 /**
- * Nombre de reprises après un `pause_turn`. La boucle d'outils serveur
- * d'Anthropic s'arrête d'elle-même au bout de 10 itérations et rend la
- * main avec ce `stop_reason` : sans reprise, on récupérerait une réponse
- * tronquée au milieu des recherches, donc sans le JSON final.
- */
-const MAX_SERVER_TOOL_CONTINUATIONS = 3;
-
-/**
- * Sites de vente et de cote sur lesquels chercher un prix.
- *
- * Sans cette liste, le modèle tombait massivement sur des cartes de
- * restaurant — elles sont nombreuses en ligne et citent bien un prix pour
- * la bonne bouteille. Mais un prix de restaurant porte la marge du
- * restaurateur : une bouteille à 20 € chez un caviste s'y affiche à 50 ou
- * 60 €, et l'estimation devenait absurde pour quelqu'un qui veut savoir ce
- * que vaut sa cave.
- *
- * Restreindre les domaines règle le problème à la racine plutôt que par
- * une consigne que le modèle peut négliger, et accélère la recherche au
- * passage. Le prix à payer est assumé : une bouteille absente de ces sites
- * n'aura pas d'estimation du tout, ce qui vaut mieux qu'un prix faux.
- *
- * C'est le levier à ajuster si trop de bouteilles ressortent sans prix.
- */
-const PRICE_SOURCE_DOMAINS = [
-  'wine-searcher.com',
-  'idealwine.com',
-  'vivino.com',
-  'vinatis.com',
-  'millesima.fr',
-  'lavinia.fr',
-  'twil.fr',
-  '1jour1vin.com',
-  'cavissima.com',
-  'chateaunet.com',
-];
-
-/**
- * Recherche web côté Anthropic : aucune boucle d'outil à tenir ici, le
- * modèle cherche et lit pendant l'appel, et la réponse arrive déjà
- * enrichie. Utilisée pour l'estimation de prix, qu'aucun modèle ne peut
- * produire de mémoire sans l'inventer.
- *
- * `max_uses` borne le coût *et* la durée : trois requêtes suffisent à
- * recouper deux ou trois marchands, chaque recherche est facturée, et
- * chacune allonge le temps passé devant un bouton qui tourne.
- */
-export const WEB_SEARCH_TOOL: Anthropic.Messages.WebSearchTool20260209 = {
-  type: 'web_search_20260209',
-  name: 'web_search',
-  max_uses: 3,
-  allowed_domains: PRICE_SOURCE_DOMAINS,
-};
-
-/**
  * Clé API lue à l'appel, pas au chargement du module : `next build` importe
  * les fichiers de route pour les analyser, sans qu'une vraie clé soit
  * forcément présente à ce moment — même précaution que SESSION_SECRET
@@ -94,16 +39,11 @@ export class AiTimeoutError extends Error {}
 /**
  * Budget de temps d'un appel complet, reprises et tentatives comprises.
  *
- * Rien ne le bornait jusqu'ici, et les valeurs par défaut du SDK se
- * multiplient : 10 minutes par requête, 2 reprises automatiques, jusqu'à
- * quatre requêtes pour épuiser les `pause_turn`, plus un éventuel rejeu
- * sans outil. Une génération pouvait donc tenir le bouton sur
- * « Génération… » pendant des heures sans jamais rien afficher — c'est ce
- * qui a été constaté en préprod sur la régénération d'une analyse.
- *
- * Quatre minutes : une analyse avec recherche web tient largement dedans,
- * et au-delà il vaut mieux rendre la main avec un message clair que faire
- * patienter indéfiniment.
+ * Rien ne le bornait jusqu'ici : les défauts du SDK sont de 10 minutes par
+ * requête et 2 reprises automatiques, soit une demi-heure pendant laquelle
+ * l'utilisateur ne voit rien. Quatre minutes suffisent très largement à une
+ * génération, et au-delà il vaut mieux rendre la main avec un message clair
+ * que faire patienter indéfiniment.
  */
 const CALL_BUDGET_MS = 4 * 60 * 1000;
 
@@ -175,24 +115,17 @@ const extractJson = (texts: readonly string[]): unknown => {
   );
 };
 
-/**
- * Envoie la conversation et rend la réponse, en reprenant les tours mis en
- * pause par la boucle d'outils serveur (`pause_turn`). La reprise ne
- * rajoute pas de message utilisateur : l'API repart d'elle-même du dernier
- * bloc `server_tool_use` quand on lui renvoie le tour d'assistant en état.
- */
+/** Envoie la conversation et rend la réponse. */
 const createMessage = async ({
   client,
   system,
   content,
-  tools,
   maxTokens,
   deadline,
 }: {
   client: Anthropic;
   system: string;
   content: AiMessageContent;
-  tools: Anthropic.Messages.ToolUnion[] | undefined;
   maxTokens: number;
   deadline: number;
 }): Promise<Anthropic.Messages.Message> => {
@@ -216,27 +149,17 @@ const createMessage = async ({
         thinking: { type: 'disabled' },
         system,
         messages,
-        ...(tools ? { tools } : {}),
       },
       { timeout: remaining },
     );
   };
 
-  let message = await send();
-  for (let attempt = 0; message.stop_reason === 'pause_turn'; attempt += 1) {
-    if (attempt >= MAX_SERVER_TOOL_CONTINUATIONS) {
-      throw new AiResponseError('Recherche Claude interrompue (trop de reprises).');
-    }
-    messages.push({ role: 'assistant', content: message.content });
-    message = await send();
-  }
-
-  return message;
+  return send();
 };
 
 /**
- * Envoie un message à Claude, extrait le JSON de sa réponse (voir
- * `extractJson`) et le valide avec le schéma Zod fourni. Sortie
+ * Envoie un message à Claude, extrait le JSON de sa réponse et le valide
+ * avec le schéma Zod fourni. Sortie
  * structurée par prompt + validation (pas de tool-use côté app), voir le
  * spec IA. Lève `AiResponseError` si la réponse n'est pas un JSON valide ou
  * ne correspond pas au schéma — pas de nouvelle tentative automatique en
@@ -246,30 +169,15 @@ export const callClaudeForJson = async <T>({
   system,
   content,
   schema,
-  tools,
   maxTokens,
   budgetMs,
 }: ClaudeJsonCallParams<T>): Promise<T> => {
   const client = getClient();
-  // Une seule échéance pour tout l'appel, rejeu sans outil compris : deux
-  // budgets séparés se cumuleraient, ce qui reviendrait à ne rien borner.
+  // Une seule échéance pour tout l'appel, reprises du SDK comprises.
   const deadline = Date.now() + (budgetMs ?? CALL_BUDGET_MS);
   const args = { client, system, content, maxTokens: maxTokens ?? DEFAULT_MAX_TOKENS, deadline };
 
-  let message: Anthropic.Messages.Message;
-  try {
-    message = await createMessage({ ...args, tools });
-  } catch (error: unknown) {
-    // Les outils serveur dépendent de ce que la clé API a le droit
-    // d'utiliser : si la recherche web est refusée, l'analyse doit quand
-    // même sortir (sans prix) plutôt que d'échouer entièrement. Seul un
-    // refus de la requête est rattrapé ainsi — un 429 ou un 500 se
-    // repropage, le rejouer ne ferait que payer deux fois.
-    if (!tools || !(error instanceof Anthropic.BadRequestError)) {
-      throw error;
-    }
-    message = await createMessage({ ...args, tools: undefined });
-  }
+  const message = await createMessage(args);
 
   // Vérifié avant le parsing : une réponse coupée par `max_tokens` produit
   // un JSON tronqué, donc invalide, et l'erreur générique ferait chercher

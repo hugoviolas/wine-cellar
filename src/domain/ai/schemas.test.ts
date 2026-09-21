@@ -1,12 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   aiBottleAnalysisSchema,
-  aiBottlePriceSchema,
   aiPhotoExtractionSchema,
   extractFromPhotoRequestSchema,
   wishlistExtractFromPhotoRequestSchema,
 } from './schemas';
-import { parseAiPriceEstimate } from './priceEstimate';
 
 describe('aiBottleAnalysisSchema', () => {
   const valid = {
@@ -59,69 +57,6 @@ describe('aiBottleAnalysisSchema', () => {
   it('refuse un champ manquant', () => {
     const incomplete = Object.fromEntries(Object.entries(valid).filter(([key]) => key !== 'tastingAdvice'));
     expect(aiBottleAnalysisSchema.safeParse(incomplete).success).toBe(false);
-  });
-});
-
-describe('aiBottlePriceSchema', () => {
-  const price = {
-    lowEur: 24.5,
-    highEur: 31,
-    note: 'Millésime 2015, bouteille de 75 cl.',
-    sources: [
-      { label: 'Caviste A', url: 'https://caviste-a.fr/vin' },
-      { label: 'Caviste B', url: 'https://caviste-b.fr/vin' },
-    ],
-  };
-
-  it('accepte une estimation sourcée', () => {
-    const result = aiBottlePriceSchema.safeParse({ priceEstimate: price });
-    expect(result.success).toBe(true);
-    expect(result.data?.priceEstimate?.lowEur).toBe(24.5);
-  });
-
-  it('accepte null — le modèle n’a rien trouvé, ce n’est pas un échec', () => {
-    expect(aiBottlePriceSchema.safeParse({ priceEstimate: null }).success).toBe(true);
-  });
-
-  it('refuse une estimation mal formée plutôt que de l’afficher', () => {
-    // Une seule source, une fourchette inversée, une URL non http : dans
-    // les trois cas il vaut mieux pas de prix qu'un prix douteux.
-    const cases = [
-      { ...price, sources: [price.sources[0]] },
-      { ...price, lowEur: 40 },
-      { ...price, sources: [{ label: 'X', url: 'javascript:alert(1)' }, price.sources[1]] },
-    ];
-    for (const priceEstimate of cases) {
-      expect(aiBottlePriceSchema.safeParse({ priceEstimate }).success).toBe(false);
-    }
-  });
-
-  it('accepte une date de relevé, posée à l’écriture et non par le modèle', () => {
-    const stored = { ...price, asOf: '2026-09-20T20:00:00.000Z' };
-    expect(aiBottlePriceSchema.safeParse({ priceEstimate: stored }).data?.priceEstimate?.asOf).toBe(
-      '2026-09-20T20:00:00.000Z',
-    );
-  });
-});
-
-describe('parseAiPriceEstimate', () => {
-  it('relit une estimation écrite en base', () => {
-    const stored = {
-      lowEur: 20,
-      highEur: 25,
-      note: null,
-      sources: [
-        { label: 'A', url: 'https://a.fr' },
-        { label: 'B', url: 'https://b.fr' },
-      ],
-    };
-    expect(parseAiPriceEstimate(stored)).toEqual(stored);
-  });
-
-  it('rend null sur une valeur inattendue plutôt que de planter la fiche', () => {
-    expect(parseAiPriceEstimate(null)).toBeNull();
-    expect(parseAiPriceEstimate('20 €')).toBeNull();
-    expect(parseAiPriceEstimate({ lowEur: 20 })).toBeNull();
   });
 });
 
