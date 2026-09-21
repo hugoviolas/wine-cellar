@@ -92,12 +92,41 @@ export const SUB_REGION_COORDS: Readonly<Record<string, MapCoords>> = {
 };
 
 /**
+ * Zones françaises qui ne sont pas des régions viticoles au sens de
+ * `WINE_REGIONS`, mais qui produisent et qu'on trouve donc en cave : un IGP
+ * de montagne, un cidre breton, une bière du Nord, un pineau charentais.
+ *
+ * Elles vivent à part parce que `WINE_REGIONS` sert le select du champ
+ * Région et doit rester la liste courte des grandes régions viticoles.
+ * Ici, le seul critère est géographique : une zone de France
+ * métropolitaine qu'on sait placer. Ce qui n'est pas métropolitain — un
+ * rhum, un vin étranger — reste hors carte, par choix : le fond de carte
+ * est la France, y poser un point n'aurait aucun sens.
+ */
+export const EXTRA_ZONE_COORDS: Readonly<Record<string, MapCoords>> = {
+  'Hautes-Alpes': { lat: 44.57, lon: 6.1 },
+  Bugey: { lat: 45.85, lon: 5.55 },
+  Auvergne: { lat: 45.75, lon: 3.15 },
+  Bretagne: { lat: 48.2, lon: -2.9 },
+  Normandie: { lat: 49.05, lon: -0.15 },
+  Lorraine: { lat: 48.75, lon: 6.1 },
+  'Île-de-France': { lat: 48.85, lon: 2.35 },
+  Nord: { lat: 50.6, lon: 3.1 },
+  Charentes: { lat: 45.68, lon: -0.33 },
+  Limousin: { lat: 45.65, lon: 1.35 },
+};
+
+/**
  * Index tolérants à la casse et aux accents, comme ceux de
  * `wineGeography` : la colonne `region` d'une bouteille ancienne n'est pas
- * forcément passée par `resolveWineGeography`.
+ * forcément passée par `resolveWineGeography`. C'est aussi ce qui fait
+ * tomber « Hautes Alpes » et « Hautes-Alpes » sur la même entrée.
  */
 const REGION_INDEX = new Map(
-  Object.entries(REGION_COORDS).map(([label, coords]) => [geographyKey(label), { label, coords }]),
+  Object.entries({ ...REGION_COORDS, ...EXTRA_ZONE_COORDS }).map(([label, coords]) => [
+    geographyKey(label),
+    { label, coords },
+  ]),
 );
 
 const SUB_REGION_INDEX = new Map(

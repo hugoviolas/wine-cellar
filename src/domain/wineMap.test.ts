@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { SUB_REGIONS_BY_REGION, WINE_REGIONS, geographyKey } from './wineGeography';
 import {
+  EXTRA_ZONE_COORDS,
   REGION_COORDS,
   SUB_REGION_COORDS,
   buildMapPlaces,
@@ -43,7 +44,11 @@ describe('tables de coordonnées', () => {
 
   it('place chaque lieu dans le cadre de la carte', () => {
     const [, , width, height] = FRANCE_VIEWBOX.split(' ').map(Number);
-    const all = [...Object.values(REGION_COORDS), ...Object.values(SUB_REGION_COORDS)];
+    const all = [
+      ...Object.values(REGION_COORDS),
+      ...Object.values(SUB_REGION_COORDS),
+      ...Object.values(EXTRA_ZONE_COORDS),
+    ];
     for (const coords of all) {
       const { x, y } = projectLatLon(coords);
       expect(x).toBeGreaterThan(0);
@@ -81,6 +86,27 @@ describe('resolveMapPlace', () => {
 
   it('reconnaît une région mal accentuée ou en capitales', () => {
     expect(resolveMapPlace({ region: 'RHONE', subRegion: null, precision: 'region' })?.label).toBe('Rhône');
+  });
+
+  it('place les zones françaises hors liste viticole, quelle que soit l’orthographe', () => {
+    // « Hautes Alpes » produit en IGP, hors du découpage de WINE_REGIONS :
+    // sans cette table, la bouteille tombait en « région inconnue ».
+    expect(resolveMapPlace({ region: 'Hautes Alpes', subRegion: null, precision: 'region' })?.label).toBe(
+      'Hautes-Alpes',
+    );
+    // Cas réel d'une fiche : la sous-région répète la région. En précision
+    // fine, elle n'est pas dans la table des sous-régions, donc on retombe
+    // sur la région — qui, elle, est désormais connue.
+    expect(
+      resolveMapPlace({ region: 'Hautes Alpes', subRegion: 'Hautes-Alpes', precision: 'subRegion' })?.label,
+    ).toBe('Hautes-Alpes');
+  });
+
+  it('laisse hors carte ce qui n’est pas en France métropolitaine', () => {
+    // Le fond de carte est la France : y poser un rhum ou un rioja
+    // n'aurait aucun sens, ils sont listés à part.
+    expect(resolveMapPlace({ region: 'Martinique', subRegion: null, precision: 'region' })).toBeNull();
+    expect(resolveMapPlace({ region: 'Rioja', subRegion: null, precision: 'region' })).toBeNull();
   });
 
   it('ne place pas une bouteille dont la région est hors table', () => {
