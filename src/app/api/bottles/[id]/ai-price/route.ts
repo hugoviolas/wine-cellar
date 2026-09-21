@@ -6,16 +6,25 @@ import { canEditCellarContent } from '@/domain/permissions';
 import { getCrateById } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
-import {
-  buildBottleAnalysisPrompt,
-  saveBottleAiAnalysis,
-  type BottleAnalysisInput,
-} from '@/domain/ai/bottleAnalysis';
+import { buildBottlePricePrompt, saveBottlePriceEstimate } from '@/domain/ai/bottlePrice';
 import { getGrapeVarieties, getAppellation } from '@/domain/bottleCategories';
-import { aiBottleAnalysisSchema } from '@/domain/ai/schemas';
+import { aiBottlePriceSchema } from '@/domain/ai/schemas';
+import { WEB_SEARCH_TOOL } from '@/domain/ai/client';
 import { callAiForRoute } from '@/domain/ai/callForRoute';
 import { checkAiQuota } from '@/domain/ai/quota';
 
+/**
+ * Estimation de prix, séparée de `ai-generate`.
+ *
+ * C'est la seule génération qui interroge la recherche web, donc la seule
+ * qui se compte en dizaines de secondes plutôt qu'en secondes. La tenir à
+ * part permet d'afficher l'analyse dès qu'elle est prête et de laisser le
+ * prix arriver ensuite, au lieu de faire attendre les deux au rythme du
+ * plus lent.
+ *
+ * Contrôles d'accès identiques à ceux de `ai-generate` : même ressource,
+ * même écriture en base, donc mêmes conditions.
+ */
 export const POST = async (
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -43,17 +52,6 @@ export const POST = async (
     return NextResponse.json({ error: 'Fonction IA indisponible pour cette cave.' }, { status: 403 });
   }
 
-  const bottleForPrompt: BottleAnalysisInput = {
-    name: access.bottle.name,
-    producer: access.bottle.producer,
-    vintage: access.bottle.vintage,
-    category: access.bottle.category,
-    region: access.bottle.region,
-    subRegion: access.bottle.subRegion,
-    color: access.bottle.color,
-    grapeVarieties: getGrapeVarieties({ category: access.bottle.category, details: access.bottle.details }),
-    appellation: getAppellation({ category: access.bottle.category, details: access.bottle.details }),
-  };
   const quotaExceeded = checkAiQuota({
     userId: auth.user.id,
     isSuperAdmin: auth.user.isSuperAdmin,
@@ -62,25 +60,36 @@ export const POST = async (
     return quotaExceeded;
   }
 
-  const { system, content } = buildBottleAnalysisPrompt({
-    bottle: bottleForPrompt,
-    currentYear: new Date().getFullYear(),
+  const { system, content } = buildBottlePricePrompt({
+    bottle: {
+      name: access.bottle.name,
+      producer: access.bottle.producer,
+      vintage: access.bottle.vintage,
+      category: access.bottle.category,
+      region: access.bottle.region,
+      subRegion: access.bottle.subRegion,
+      color: access.bottle.color,
+      grapeVarieties: getGrapeVarieties({ category: access.bottle.category, details: access.bottle.details }),
+      appellation: getAppellation({ category: access.bottle.category, details: access.bottle.details }),
+    },
   });
 
-  // Aucun outil ici, donc quelques secondes : l'estimation de prix, qui
-  // exige une recherche web, est une route à part (`ai-price`) pour ne pas
-  // faire attendre l'analyse derrière elle.
+  // `maxTokens` reste modeste : le JSON attendu est court. Le budget de
+  // temps, lui, est celui par défaut — c'est la recherche qui le consomme,
+  // pas la rédaction.
   const result = await callAiForRoute({
-    route: 'bottles/ai-generate',
+    route: 'bottles/ai-price',
     system,
     content,
-    schema: aiBottleAnalysisSchema,
+    schema: aiBottlePriceSchema,
     invalidResponseMessage: 'Réponse IA invalide, réessaie.',
+    tools: [WEB_SEARCH_TOOL],
+    maxTokens: 4096,
   });
   if ('error' in result) {
     return result.error;
   }
 
-  await saveBottleAiAnalysis({ db, bottle: access.bottle, analysis: result.data });
-  return NextResponse.json({ ok: true });
+  await saveBottlePriceEstimate({ db, bottleId: access.bottle.id, estimate: result.data.priceEstimate });
+  return NextResponse.json({ ok: true, found: result.data.priceEstimate !== null });
 };

@@ -125,6 +125,7 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
       {aiAvailable && (
         <AiAnalysisButton
           endpoint={`/api/bottles/${bottle.id}/ai-generate`}
+          priceEndpoint={`/api/bottles/${bottle.id}/ai-price`}
           hasAnalysis={Boolean(bottle.aiGeneratedAt)}
         />
       )}

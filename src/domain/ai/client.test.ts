@@ -13,7 +13,7 @@ vi.mock('@anthropic-ai/sdk', () => {
   return { default: Object.assign(client, { BadRequestError: MockBadRequestError }) };
 });
 
-const { callClaudeForJson, AiResponseError, WEB_SEARCH_TOOL } = await import('./client');
+const { callClaudeForJson, AiResponseError, AiTimeoutError, WEB_SEARCH_TOOL } = await import('./client');
 
 describe('callClaudeForJson', () => {
   beforeEach(() => {
@@ -27,6 +27,17 @@ describe('callClaudeForJson', () => {
 
   const schema = z.object({ ok: z.boolean() });
 
+  /**
+   * Corps de la n-ième requête. `messages.create` reçoit désormais un
+   * second argument (les options, dont le délai calculé sur le budget
+   * restant) : on lit donc l'argument voulu plutôt que de comparer
+   * l'appel entier.
+   */
+  const callBody = (index: number): Record<string, unknown> => {
+    const call = createMock.mock.calls.at(index) as [Record<string, unknown>, unknown];
+    return call[0];
+  };
+
   it('parse et valide une réponse JSON conforme', async () => {
     createMock.mockResolvedValue({
       content: [{ type: 'text', text: JSON.stringify({ ok: true }) }],
@@ -35,14 +46,12 @@ describe('callClaudeForJson', () => {
     const result = await callClaudeForJson({ system: 'sys', content: 'hello', schema });
 
     expect(result).toEqual({ ok: true });
-    expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: 'claude-sonnet-5',
-        system: 'sys',
-        messages: [{ role: 'user', content: 'hello' }],
-        thinking: { type: 'disabled' },
-      }),
-    );
+    expect(callBody(0)).toMatchObject({
+      model: 'claude-sonnet-5',
+      system: 'sys',
+      messages: [{ role: 'user', content: 'hello' }],
+      thinking: { type: 'disabled' },
+    });
   });
 
   it('parse la réponse même quand un bloc thinking précède le bloc texte', async () => {
@@ -165,9 +174,15 @@ describe('callClaudeForJson', () => {
       maxTokens: 4096,
     });
 
-    expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ tools: [WEB_SEARCH_TOOL], max_tokens: 4096 }),
-    );
+    expect(callBody(0)).toMatchObject({ tools: [WEB_SEARCH_TOOL], max_tokens: 4096 });
+  });
+
+  it('limite la recherche de prix aux sites de vente, jamais aux cartes de restaurant', () => {
+    // La restriction vit dans l'outil et non dans le prompt : une consigne
+    // se néglige, un domaine absent de la liste ne peut pas être cité.
+    expect(WEB_SEARCH_TOOL.allowed_domains).toContain('wine-searcher.com');
+    expect(WEB_SEARCH_TOOL.allowed_domains).toContain('idealwine.com');
+    expect(WEB_SEARCH_TOOL.max_uses).toBe(3);
   });
 
   it('retient le dernier bloc texte, pas le premier — le modèle commente ses recherches avant de conclure', async () => {
@@ -203,14 +218,12 @@ describe('callClaudeForJson', () => {
     expect(createMock).toHaveBeenCalledTimes(2);
     // La reprise renvoie le tour d'assistant en l'état, sans message
     // utilisateur ajouté : l'API repart d'elle-même de la recherche en cours.
-    expect(createMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        messages: [
-          { role: 'user', content: 'hello' },
-          { role: 'assistant', content: paused },
-        ],
-      }),
-    );
+    expect(callBody(-1)).toMatchObject({
+      messages: [
+        { role: 'user', content: 'hello' },
+        { role: 'assistant', content: paused },
+      ],
+    });
   });
 
   it('abandonne si le tour reste en pause indéfiniment', async () => {
@@ -246,6 +259,27 @@ describe('callClaudeForJson', () => {
       callClaudeForJson({ system: 'sys', content: 'hello', schema, tools: [WEB_SEARCH_TOOL] }),
     ).rejects.toThrow('rate limited');
     expect(createMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('borne l’appel dans le temps plutôt que de laisser la requête traîner', async () => {
+    createMock.mockResolvedValue({ content: [{ type: 'text', text: '{}' }] });
+
+    await expect(callClaudeForJson({ system: 'sys', content: 'hello', schema, budgetMs: 0 })).rejects.toThrow(
+      AiTimeoutError,
+    );
+    // Le budget est vérifié avant d'appeler : épuisé, on n'engage pas de
+    // requête qu'on ne pourra pas attendre.
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it('passe le temps restant en délai de requête', async () => {
+    createMock.mockResolvedValue({ content: [{ type: 'text', text: JSON.stringify({ ok: true }) }] });
+
+    await callClaudeForJson({ system: 'sys', content: 'hello', schema, budgetMs: 60_000 });
+
+    const [, options] = createMock.mock.calls[0] as [unknown, { timeout: number }];
+    expect(options.timeout).toBeGreaterThan(0);
+    expect(options.timeout).toBeLessThanOrEqual(60_000);
   });
 
   it('lève une erreur si ANTHROPIC_API_KEY est absent', async () => {

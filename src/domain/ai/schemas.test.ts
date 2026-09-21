@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   aiBottleAnalysisSchema,
+  aiBottlePriceSchema,
   aiPhotoExtractionSchema,
   extractFromPhotoRequestSchema,
   wishlistExtractFromPhotoRequestSchema,
@@ -61,18 +62,7 @@ describe('aiBottleAnalysisSchema', () => {
   });
 });
 
-describe('aiBottleAnalysisSchema — priceEstimate', () => {
-  const analysis = {
-    analysis: 'Un vin structuré avec de beaux tanins.',
-    pairings: ['Bœuf braisé', 'Fromages affinés', 'Gibier'],
-    tastingAdvice: 'Servir à 16-18°C.',
-    drinkFromYear: 2027,
-    drinkUntilYear: 2032,
-    region: 'Bordeaux',
-    subRegion: 'Haut-Médoc',
-    grapeVarieties: ['Merlot'],
-    appellation: 'Margaux',
-  };
+describe('aiBottlePriceSchema', () => {
   const price = {
     lowEur: 24.5,
     highEur: 31,
@@ -84,31 +74,33 @@ describe('aiBottleAnalysisSchema — priceEstimate', () => {
   };
 
   it('accepte une estimation sourcée', () => {
-    const result = aiBottleAnalysisSchema.safeParse({ ...analysis, priceEstimate: price });
+    const result = aiBottlePriceSchema.safeParse({ priceEstimate: price });
     expect(result.success).toBe(true);
     expect(result.data?.priceEstimate?.lowEur).toBe(24.5);
   });
 
-  it('accepte un prix absent ou nul — le modèle n’a rien trouvé', () => {
-    expect(aiBottleAnalysisSchema.safeParse(analysis).data?.priceEstimate ?? null).toBeNull();
-    expect(
-      aiBottleAnalysisSchema.safeParse({ ...analysis, priceEstimate: null }).data?.priceEstimate,
-    ).toBeNull();
+  it('accepte null — le modèle n’a rien trouvé, ce n’est pas un échec', () => {
+    expect(aiBottlePriceSchema.safeParse({ priceEstimate: null }).success).toBe(true);
   });
 
-  it('dégrade en « pas de prix » plutôt que de faire échouer l’analyse', () => {
-    // Une seule source, une fourchette inversée, une URL non http : dans les
-    // trois cas l'analyse reste valide et c'est seulement le prix qui saute.
+  it('refuse une estimation mal formée plutôt que de l’afficher', () => {
+    // Une seule source, une fourchette inversée, une URL non http : dans
+    // les trois cas il vaut mieux pas de prix qu'un prix douteux.
     const cases = [
       { ...price, sources: [price.sources[0]] },
       { ...price, lowEur: 40 },
       { ...price, sources: [{ label: 'X', url: 'javascript:alert(1)' }, price.sources[1]] },
     ];
     for (const priceEstimate of cases) {
-      const result = aiBottleAnalysisSchema.safeParse({ ...analysis, priceEstimate });
-      expect(result.success).toBe(true);
-      expect(result.data?.priceEstimate ?? null).toBeNull();
+      expect(aiBottlePriceSchema.safeParse({ priceEstimate }).success).toBe(false);
     }
+  });
+
+  it('accepte une date de relevé, posée à l’écriture et non par le modèle', () => {
+    const stored = { ...price, asOf: '2026-09-20T20:00:00.000Z' };
+    expect(aiBottlePriceSchema.safeParse({ priceEstimate: stored }).data?.priceEstimate?.asOf).toBe(
+      '2026-09-20T20:00:00.000Z',
+    );
   });
 });
 
