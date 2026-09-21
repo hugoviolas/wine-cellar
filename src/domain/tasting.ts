@@ -91,8 +91,6 @@ export const TASTING_STEPS: readonly TastingStep[] = [
         values: ['Faible', 'Satisfaisante', 'Bonne', 'Très bonne', 'Excellente'],
         ordered: true,
       },
-      { label: 'Accords mets et vins', values: [] },
-      { label: 'Impression générale', values: [] },
     ],
   },
 ];

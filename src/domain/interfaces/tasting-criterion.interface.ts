@@ -3,8 +3,9 @@ import type { WineShade } from './wine-shade.type';
 /**
  * Un critère du mémo : son intitulé et les valeurs proposées.
  *
- * `values` vide veut dire que la réglette ne propose rien — c'est une ligne
- * à remplir de sa tête, pas un oubli.
+ * Un critère a toujours des valeurs : le mémo est là pour proposer des mots,
+ * et une ligne vide n'en donnerait aucun. Un test le vérifie, faute de
+ * pouvoir l'exiger du type.
  */
 export interface TastingCriterion {
   readonly label: string;
