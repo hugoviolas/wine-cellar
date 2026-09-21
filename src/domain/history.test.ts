@@ -6,6 +6,7 @@ import { createCrate, deleteCrate } from './crates';
 import { createBottle } from './bottles';
 import { consumeBottle } from './consume';
 import {
+  listBottleConsumptions,
   listConsumptionHistory,
   resolveHistoryEntryAccess,
   updateHistoryEntry,
@@ -192,6 +193,70 @@ const setupHistoryEntry = async (): Promise<SetupHistoryEntryResult> => {
   const entry = firstRow(await listConsumptionHistory({ db, cellarId }));
   return { db, userId, cellarId, entry };
 };
+
+describe('listBottleConsumptions', () => {
+  it('ne retourne que les consommations de la bouteille demandée, du plus récent au plus ancien', async () => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: { email: 'a@example.com', password: 'x', cellarName: 'Cave' },
+    });
+    const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette', capacity: 6 } });
+    const bottleId = await createBottle({
+      db,
+      input: { crateId, category: 'wine', name: 'Vin suivi', quantity: 3, details: {} },
+    });
+    const autreId = await createBottle({
+      db,
+      input: { crateId, category: 'wine', name: 'Autre vin', quantity: 1, details: {} },
+    });
+
+    await consumeBottle({
+      db,
+      input: {
+        bottleId,
+        consumedByUserId: userId,
+        consumedAt: '2026-01-01',
+        comment: 'Sur un gigot.',
+      },
+    });
+    await consumeBottle({
+      db,
+      input: {
+        bottleId,
+        consumedByUserId: userId,
+        consumedAt: '2026-06-01',
+        comment: 'Encore meilleur.',
+        rating: 5,
+      },
+    });
+    await consumeBottle({
+      db,
+      input: { bottleId: autreId, consumedByUserId: userId, consumedAt: '2026-03-01' },
+    });
+
+    const entries = await listBottleConsumptions({ db, bottleId });
+    expect(entries).toHaveLength(2);
+    expect(rowAt(entries, 0).comment).toBe('Encore meilleur.');
+    expect(rowAt(entries, 0).rating).toBe(5);
+    expect(rowAt(entries, 1).comment).toBe('Sur un gigot.');
+  });
+
+  it('retourne une liste vide pour une bouteille jamais consommée', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: { email: 'a@example.com', password: 'x', cellarName: 'Cave' },
+    });
+    const crateId = await createCrate({ db, input: { cellarId, name: 'Clayette', capacity: 6 } });
+    const bottleId = await createBottle({
+      db,
+      input: { crateId, category: 'wine', name: 'Vin intact', quantity: 1, details: {} },
+    });
+
+    expect(await listBottleConsumptions({ db, bottleId })).toEqual([]);
+  });
+});
 
 describe('resolveHistoryEntryAccess', () => {
   it('autorise un membre de la cave', async () => {

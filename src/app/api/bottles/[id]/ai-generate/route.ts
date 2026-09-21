@@ -67,6 +67,9 @@ export const POST = async (
     currentYear: new Date().getFullYear(),
   });
 
+  // Aucun outil ici, donc quelques secondes : l'estimation de prix, qui
+  // exige une recherche web, est une route à part (`ai-price`) pour ne pas
+  // faire attendre l'analyse derrière elle.
   const result = await callAiForRoute({
     route: 'bottles/ai-generate',
     system,

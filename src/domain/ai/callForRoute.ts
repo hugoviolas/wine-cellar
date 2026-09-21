@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { describeError, logger } from '@/lib/logger';
-import { AiResponseError, callClaudeForJson } from './client';
+import { AiResponseError, AiTimeoutError, callClaudeForJson } from './client';
 import type { ClaudeJsonCallParams } from './interfaces/claude-json-call-params.interface';
 import type { AiRouteCallArgs } from './interfaces/ai-route-call-args.interface';
 
@@ -20,11 +20,24 @@ export const callAiForRoute = async <T>(args: AiRouteCallArgs<T>): Promise<AiRou
     system: args.system,
     content: args.content,
     schema: args.schema,
+    maxTokens: args.maxTokens,
+    budgetMs: args.budgetMs,
   };
   try {
     return { data: await callClaudeForJson(params) };
   } catch (error: unknown) {
     logger.error(`Appel IA en échec (${args.route}).`, describeError(error));
+    // Distingué des autres échecs : « réessaie » n'a pas le même sens quand
+    // c'est le temps qui a manqué, et l'utilisateur qui vient d'attendre
+    // plusieurs minutes mérite de savoir que c'est ça qui s'est passé.
+    if (error instanceof AiTimeoutError) {
+      return {
+        error: NextResponse.json(
+          { error: "L'analyse IA a dépassé le temps imparti. Réessaie dans un moment." },
+          { status: 504 },
+        ),
+      };
+    }
     if (error instanceof AiResponseError) {
       return {
         error: NextResponse.json({ error: args.invalidResponseMessage }, { status: 502 }),

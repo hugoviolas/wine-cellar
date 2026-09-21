@@ -9,4 +9,8 @@ export interface AiRouteCallArgs<T> {
   readonly schema: z.ZodType<T>;
   /** Message affiché quand le modèle a répondu, mais hors du schéma attendu. */
   readonly invalidResponseMessage: string;
+  /** Plafond de tokens de la réponse, quand le défaut est trop serré. */
+  readonly maxTokens?: number;
+  /** Budget de temps de l'appel entier, quand le défaut ne convient pas. */
+  readonly budgetMs?: number;
 }
