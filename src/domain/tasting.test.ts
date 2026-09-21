@@ -24,16 +24,18 @@ describe('le contenu du mémo', () => {
   });
 
   /**
-   * Une ligne sans valeurs s'affiche « à noter librement ». Deux le sont
-   * réellement sur la réglette ; une troisième serait un oubli de recopie,
-   * pas une invitation.
+   * Le mémo est là pour proposer des mots : une ligne sans valeurs
+   * n'afficherait qu'un intitulé et du vide. Le rendu ne prévoit pas ce cas,
+   * c'est ce test qui l'interdit.
    */
-  it('ne laisse sans valeurs que les deux lignes qui le sont sur la réglette', () => {
+  it('donne des valeurs à chaque critère', () => {
     const vides = CRITERIA.filter((criterion) => criterion.values.length === 0);
-    expect(vides.map((criterion) => criterion.label)).toEqual([
-      'Accords mets et vins',
-      'Impression générale',
-    ]);
+    expect(vides.map((criterion) => criterion.label)).toEqual([]);
+  });
+
+  it('s’arrête à la qualité en conclusion', () => {
+    const conclusion = TASTING_STEPS.find((step) => step.key === 'conclusion');
+    expect(conclusion?.criteria.map((criterion) => criterion.label)).toEqual(['Qualité']);
   });
 
   it('ne rattache un critère qu’à une couleur déclarée', () => {

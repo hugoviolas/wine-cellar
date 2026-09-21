@@ -76,14 +76,6 @@ const Criterion = ({
 };
 
 const CriterionValues = ({ criterion }: { criterion: TastingCriterion }): ReactElement => {
-  if (criterion.values.length === 0) {
-    return (
-      <span className="inline-block text-sm text-gray-400 italic border border-dashed border-gray-300 rounded-full px-2.5 py-0.5">
-        à noter librement
-      </span>
-    );
-  }
-
   if (criterion.hues) {
     return (
       <div className="flex flex-wrap gap-1.5">
