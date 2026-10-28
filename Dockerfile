@@ -4,7 +4,7 @@
 # installée sur le runner. Sans elle, un Docker un peu ancien refuserait le
 # Dockerfile au lieu de l'exécuter.
 
-FROM node:22-bookworm-slim
+FROM node:22-bookworm-slim AS base
 
 WORKDIR /app
 
@@ -36,6 +36,34 @@ RUN --mount=type=cache,target=/yarn-cache \
     YARN_CACHE_FOLDER=/yarn-cache yarn install --frozen-lockfile --network-timeout 600000
 
 COPY . .
+
+# Stage de vérification — appelé par la CI via `docker build --target check .`
+#
+# Ces commandes tournaient auparavant directement sur le runner self-hosted.
+# Le problème n'était pas les commandes elles-mêmes mais le `yarn install`
+# qui les précédait : il exécute les scripts `postinstall` de chaque
+# dépendance sur la machine, avec les droits du runner — lequel appartient
+# aux groupes `sudo` et `docker` sur le Pi, donc équivaut à root. Une seule
+# dépendance transitive compromise suffisait à prendre la machine.
+#
+# Ici l'installation et les vérifications se font dans le build, qui part
+# du même `base` que l'image déployée — donc les tests tournent dans
+# l'environnement réel de production, et non dans celui du runner.
+#
+# Une commande par `RUN` : la cible qui échoue est nommée dans les logs,
+# comme le faisaient les étapes séparées du workflow. Ce stage n'est jamais
+# poussé, le nombre de couches n'a donc aucune importance.
+FROM base AS check
+
+RUN yarn tsc --noEmit
+RUN yarn lint
+RUN yarn format
+RUN yarn test
+
+# Stage final. Il reste le dernier du fichier, donc la cible par défaut :
+# un `docker build` sans `--target` produit exactement la même image
+# qu'avant, et `docker/build-push-action` n'a pas à être modifié.
+FROM base AS runtime
 
 RUN yarn build
 
