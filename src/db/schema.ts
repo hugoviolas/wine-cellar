@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -175,3 +175,84 @@ export const wishlistItems = sqliteTable('wishlist_items', {
   promotedBottleId: text('promoted_bottle_id').references(() => bottles.id, { onDelete: 'set null' }),
   createdAt: text('created_at').notNull(),
 });
+
+/**
+ * Applications tierces (Claude) enregistrées auprès du serveur OAuth qui
+ * protège `/mcp` — voir src/domain/oauth/. L'enregistrement est dynamique
+ * (RFC 7591) : c'est le client lui-même qui crée sa ligne, sans compte. Il
+ * n'obtient rien par là : seul un utilisateur qui se connecte sur la page
+ * d'autorisation lui ouvre l'accès à ses caves.
+ */
+export const oauthClients = sqliteTable('oauth_clients', {
+  id: text('id').primaryKey(),
+  name: text('name'),
+  // Liste JSON des adresses de retour déclarées. Chacune est vérifiée à
+  // l'enregistrement contre la liste des hôtes autorisés (voir
+  // domain/oauth/redirectUris.ts) puis comparée à l'identique à chaque
+  // demande d'autorisation.
+  redirectUris: text('redirect_uris', { mode: 'json' }).$type<string[]>().notNull(),
+  // `none` (client public, PKCE seul) ou `client_secret_post` /
+  // `client_secret_basic`. Le secret n'est jamais stocké, seulement son
+  // empreinte, comme les autres jetons de l'app (voir domain/token.ts).
+  tokenEndpointAuthMethod: text('token_endpoint_auth_method', {
+    enum: ['none', 'client_secret_post', 'client_secret_basic'],
+  }).notNull(),
+  clientSecretHash: text('client_secret_hash'),
+  createdAt: text('created_at').notNull(),
+});
+
+/**
+ * Codes d'autorisation, à usage unique et durée de vie de quelques minutes.
+ * En base plutôt qu'en mémoire : la page d'autorisation et l'échange du
+ * code sont deux route handlers distincts, que Next.js peut charger dans
+ * des modules séparés — une Map partagée entre eux n'est pas garantie.
+ */
+export const oauthCodes = sqliteTable('oauth_codes', {
+  codeHash: text('code_hash').primaryKey(),
+  clientId: text('client_id')
+    .notNull()
+    .references(() => oauthClients.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  redirectUri: text('redirect_uri').notNull(),
+  codeChallenge: text('code_challenge').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+/**
+ * Jetons d'accès et de renouvellement remis aux clients OAuth. Une même
+ * autorisation (`grantId`) produit une paire, renouvelée à chaque usage
+ * du refresh token : le jeton d'accès précédent est supprimé, le refresh
+ * token précédent marqué consommé.
+ *
+ * `grantedAt` est l'heure de l'autorisation d'origine, recopiée à chaque
+ * renouvellement : c'est elle qu'on compare à `users.sessionsValidFrom`.
+ * Avec la date du jeton courant, un refresh token volé se renouvellerait
+ * indéfiniment, même après une réinitialisation du mot de passe.
+ */
+export const oauthTokens = sqliteTable(
+  'oauth_tokens',
+  {
+    tokenHash: text('token_hash').primaryKey(),
+    kind: text('kind', { enum: ['access', 'refresh'] }).notNull(),
+    grantId: text('grant_id').notNull(),
+    clientId: text('client_id')
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    grantedAt: text('granted_at').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    // Refresh token déjà échangé. La ligne est gardée jusqu'à son
+    // expiration au lieu d'être supprimée : c'est ce qui permet de
+    // reconnaître sa réutilisation, signe qu'il a été volé, et de révoquer
+    // alors toute l'autorisation (voir domain/oauth/tokens.ts).
+    consumedAt: text('consumed_at'),
+    createdAt: text('created_at').notNull(),
+  },
+  // Chaque renouvellement supprime la paire précédente par `grantId`.
+  (table) => [index('oauth_tokens_grant_id_idx').on(table.grantId)],
+);

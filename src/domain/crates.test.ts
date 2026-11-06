@@ -10,6 +10,7 @@ import {
   getCrateById,
   crateHasActiveBottles,
   reorderCrates,
+  countBottlesInCrate,
 } from './crates';
 import { createBottle, getBottle } from './bottles';
 import { consumeBottle } from './consume';
@@ -300,5 +301,23 @@ describe('crates', () => {
       reorderCrates({ db, cellarId: caveA.cellarId, orderedIds: [id1, otherId] }),
     ).rejects.toThrow();
     await expect(reorderCrates({ db, cellarId: caveA.cellarId, orderedIds: [] })).rejects.toThrow();
+  });
+});
+
+describe('countBottlesInCrate', () => {
+  it('additionne les quantités en stock de la clayette, et elles seules', async () => {
+    const db = await createTestDb();
+    const { cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: { email: 'a@example.com', password: 'x', cellarName: 'Cave' },
+    });
+    const crateId = await createCrate({ db, input: { cellarId, capacity: 12 } });
+    const otherCrateId = await createCrate({ db, input: { cellarId, capacity: 12 } });
+    const wine = { category: 'wine' as const, details: { grapeVarieties: [] } };
+    await createBottle({ db, input: { ...wine, crateId, name: 'A', quantity: 3 } });
+    await createBottle({ db, input: { ...wine, crateId, name: 'B', quantity: 0 } });
+    await createBottle({ db, input: { ...wine, crateId: otherCrateId, name: 'C', quantity: 5 } });
+
+    expect(await countBottlesInCrate({ db, crateId })).toBe(3);
   });
 });

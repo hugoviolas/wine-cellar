@@ -6,6 +6,9 @@ import type {
   consumptionHistory,
   crates,
   invitations,
+  oauthClients,
+  oauthCodes,
+  oauthTokens,
   passwordResetTokens,
   users,
   wishlistItems,
@@ -27,3 +30,6 @@ export type InvitationRow = typeof invitations.$inferSelect;
 export type PasswordResetTokenRow = typeof passwordResetTokens.$inferSelect;
 export type WishlistItemRow = typeof wishlistItems.$inferSelect;
 export type AppSettingsRow = typeof appSettings.$inferSelect;
+export type OAuthClientRow = typeof oauthClients.$inferSelect;
+export type OAuthCodeRow = typeof oauthCodes.$inferSelect;
+export type OAuthTokenRow = typeof oauthTokens.$inferSelect;

@@ -3,17 +3,8 @@ import { z } from 'zod';
 import { db } from '@/db/client';
 import { authenticateUser } from '@/domain/authenticate';
 import { getSession } from '@/domain/session';
-import { checkRateLimit, clientKeyFromHeaders, resetRateLimit } from '@/lib/rateLimit';
+import { checkLoginRateLimit, clearLoginRateLimit } from '@/lib/loginRateLimit';
 import { readJsonBody } from '@/lib/readJsonBody';
-
-/**
- * Deux seaux distincts : par IP (limite un attaquant unique qui balaie
- * plusieurs comptes) et par email visé (limite une attaque distribuée sur
- * un seul compte, où chaque requête vient d'une IP différente). bcrypt en
- * coût 12 ralentit déjà chaque essai, mais ne borne pas leur nombre.
- */
-const PER_IP = { limit: 10, windowMs: 5 * 60 * 1000 };
-const PER_EMAIL = { limit: 5, windowMs: 5 * 60 * 1000 };
 
 /**
  * Validation volontairement minimale — pas de `.email()` ni de longueur : ce
@@ -42,16 +33,9 @@ export const POST = async (request: Request): Promise<NextResponse> => {
   }
   const { email, password } = parsed.data;
 
-  const ipKey = `login:ip:${clientKeyFromHeaders(request.headers)}`;
-  const emailKey = `login:email:${email.toLowerCase()}`;
-
-  const ipLimit = checkRateLimit({ key: ipKey, rule: PER_IP });
-  if (!ipLimit.allowed) {
-    return tooManyAttempts(ipLimit.retryAfterSeconds);
-  }
-  const emailLimit = checkRateLimit({ key: emailKey, rule: PER_EMAIL });
-  if (!emailLimit.allowed) {
-    return tooManyAttempts(emailLimit.retryAfterSeconds);
+  const limit = checkLoginRateLimit({ headers: request.headers, email });
+  if (!limit.allowed) {
+    return tooManyAttempts(limit.retryAfterSeconds);
   }
 
   const user = await authenticateUser({ db, email, password });
@@ -59,11 +43,7 @@ export const POST = async (request: Request): Promise<NextResponse> => {
     return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 });
   }
 
-  // Les seaux ne comptent que les échecs : une connexion réussie les
-  // libère, sinon quiconque connaît une adresse pouvait saturer son seau
-  // et bloquer son propriétaire pendant toute la fenêtre.
-  resetRateLimit(ipKey);
-  resetRateLimit(emailKey);
+  clearLoginRateLimit({ headers: request.headers, email });
 
   const session = await getSession();
   session.userId = user.id;

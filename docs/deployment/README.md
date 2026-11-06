@@ -201,11 +201,63 @@ Depuis l'onglet Actions du repo → workflow « Rollback préprod » ou
 `ghcr.io/hugoviolas/wine-cellar` — packages du repo GitHub). Le rollback
 prod passe par la même approbation manuelle que le déploiement normal.
 
+## 8. Connecteur Claude (MCP)
+
+Optionnel, prod seulement. Ajoute à `/opt/cave-vin-prod/.env` :
+
+```env
+MCP_PUBLIC_URL=https://cave.paupau-cuisine.com
+```
+
+puis recrée le conteneur pour qu'il relise son environnement :
+
+```bash
+cd /opt/cave-vin-prod && docker compose up -d
+```
+
+Vérification (aucune authentification requise pour ces deux appels) :
+
+```bash
+curl -s https://cave.paupau-cuisine.com/.well-known/oauth-protected-resource/mcp
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://cave.paupau-cuisine.com/mcp   # 401 attendu
+```
+
+Dans claude.ai → Paramètres → Connecteurs → « Ajouter un connecteur personnalisé » :
+URL `https://cave.paupau-cuisine.com/mcp`. Claude ouvre la page d'autorisation de la
+cave : s'y connecter avec son compte. Rien d'autre à configurer côté Cloudflare — le
+tunnel relaie déjà tout le sous-domaine.
+
+Pour couper l'accès, ne pas compter sur le retrait du connecteur dans claude.ai : l'app
+expose bien un endpoint de révocation, mais rien ne garantit que claude.ai l'appelle. Deux
+moyens sûrs :
+
+- réinitialiser le mot de passe du compte (lien de réinitialisation généré depuis
+  `/admin/utilisateurs`) : toutes ses autorisations tombent, ses sessions dans l'app
+  aussi ;
+- en urgence, supprimer les jetons directement dans la base, depuis le Pi (`sqlite3` à
+  installer avec `sudo apt install sqlite3` s'il manque) — effet immédiat, Claude devra
+  refaire l'autorisation :
+
+```bash
+# un seul compte
+sqlite3 /opt/cave-vin-prod/data/cave.db \
+  "DELETE FROM oauth_tokens WHERE user_id = (SELECT id FROM users WHERE email = 'toi@example.com');"
+# tout le monde
+sqlite3 /opt/cave-vin-prod/data/cave.db "DELETE FROM oauth_tokens;"
+```
+
+Un refresh token présenté deux fois (signe qu'il a été copié) révoque de lui-même toute
+l'autorisation ; l'événement apparaît dans `docker compose logs app` sous le message
+« Refresh token OAuth réutilisé ».
+
+La migration `0018_oauth_mcp` (tables `oauth_*`) est appliquée au démarrage comme les
+autres.
+
 ## Résumé de ce qui vit où
 
-| Où                                 | Quoi                                                                                                                  |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Dans le repo git                   | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret)                                        |
-| `/opt/cave-vin-preprod/` sur le Pi | `.env` (secrets préprod), `data/` (SQLite préprod), `docker-compose.yml` (copié par le workflow à chaque déploiement) |
-| `/opt/cave-vin-prod/` sur le Pi    | `.env` (secrets prod, dont `TUNNEL_TOKEN`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow)       |
-| `ghcr.io/hugoviolas/wine-cellar`   | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement)     |
+| Où                                 | Quoi                                                                                                                                |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Dans le repo git                   | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret)                                                      |
+| `/opt/cave-vin-preprod/` sur le Pi | `.env` (secrets préprod), `data/` (SQLite préprod), `docker-compose.yml` (copié par le workflow à chaque déploiement)               |
+| `/opt/cave-vin-prod/` sur le Pi    | `.env` (secrets prod, dont `TUNNEL_TOKEN` et `MCP_PUBLIC_URL`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow) |
+| `ghcr.io/hugoviolas/wine-cellar`   | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement)                   |
