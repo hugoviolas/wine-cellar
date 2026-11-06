@@ -8,6 +8,7 @@ import { getCrateById, listCrates } from '@/domain/crates';
 import { getCellarById } from '@/domain/cellars';
 import { isAiAvailable } from '@/domain/ai/available';
 import { listBottleConsumptions } from '@/domain/history';
+import { findSameWineLots } from '@/domain/bottles';
 import { getGrapeVarieties, getAppellation, getClassification } from '@/domain/bottleCategories';
 import { crateLabel } from '@/lib/crateLabel';
 import { CATEGORY_LABELS } from '@/lib/bottleCategory';
@@ -37,6 +38,15 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
     ? (await listCrates({ db, cellarId: currentCrate.cellarId })).filter((c) => c.id !== currentCrate.id)
     : [];
   const cellar = currentCrate ? await getCellarById({ db, cellarId: currentCrate.cellarId }) : null;
+  // Pour annoncer, avant de déplacer, que les bouteilles rejoindront un lot
+  // existant. Le premier lot de chaque clayette est celui que `moveBottles`
+  // choisit.
+  const sameWineQuantityByCrate: Record<string, number> = {};
+  for (const lot of await findSameWineLots({ db, bottle, crateIds: siblingCrates.map((c) => c.id) })) {
+    if (lot.crateId && sameWineQuantityByCrate[lot.crateId] === undefined) {
+      sameWineQuantityByCrate[lot.crateId] = lot.quantity;
+    }
+  }
   const aiAvailable = cellar ? isAiAvailable(cellar) : false;
   const pairings = stringArrayOrEmpty(bottle.aiPairings);
   const consumptions = await listBottleConsumptions({ db, bottleId: bottle.id });
@@ -209,6 +219,7 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
         bottleId={bottle.id}
         otherCrates={siblingCrates}
         initialQuantity={bottle.quantity}
+        sameWineQuantityByCrate={sameWineQuantityByCrate}
       />
 
       <a

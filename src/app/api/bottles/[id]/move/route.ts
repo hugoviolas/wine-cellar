@@ -22,8 +22,9 @@ const STATUS_BY_FAILURE: Record<BottleMoveFailure, number> = {
 
 /**
  * Déplace tout ou partie du stock d'une bouteille vers une autre clayette
- * (voir `moveBottles`). Répond avec l'identifiant de la ligne arrivée dans
- * la clayette cible : la même si tout le stock a bougé, une nouvelle sinon.
+ * (voir `moveBottles`). Répond `{ bottleId, merged }` : le lot qui contient
+ * désormais les bouteilles dans la clayette cible, et s'il existait déjà
+ * (fusion avec un lot du même vin).
  */
 export const POST = async (
   request: Request,
@@ -52,13 +53,13 @@ export const POST = async (
   }
 
   try {
-    const bottleId = await moveBottles({
+    const result = await moveBottles({
       db,
       bottleId: id,
       toCrateId: parsed.data.crateId,
       quantity: parsed.data.quantity,
     });
-    return NextResponse.json({ bottleId });
+    return NextResponse.json(result);
   } catch (err) {
     if (err instanceof BottleMoveError) {
       return NextResponse.json({ error: err.message }, { status: STATUS_BY_FAILURE[err.reason] });

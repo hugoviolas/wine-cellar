@@ -151,10 +151,28 @@ export const WineListView = ({ rows }: { rows: WineListRow[] }): ReactElement =>
           <tbody className="divide-y divide-gray-100">
             {filtered.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
-                <td className="px-2 sm:px-3 py-2 max-w-[120px] sm:max-w-none truncate">
-                  <Link href={`/bottles/${row.id}`} className="text-forest underline">
+                <td className="px-2 sm:px-3 py-2 max-w-[140px] sm:max-w-none">
+                  <Link href={`/bottles/${row.id}`} className="block truncate text-forest underline">
                     {row.name}
                   </Link>
+                  {/*
+                    Où est ce vin. Réparti sur plusieurs clayettes, chaque
+                    lot a sa propre fiche : un lien par lot, pour consommer
+                    ou déplacer depuis la bonne clayette.
+                  */}
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {row.lots.length > 1
+                      ? row.lots.map((lot) => (
+                          <Link
+                            key={lot.id}
+                            href={`/bottles/${lot.id}`}
+                            className="block whitespace-nowrap hover:underline"
+                          >
+                            {lot.crateLabel} ×{lot.quantity}
+                          </Link>
+                        ))
+                      : row.lots[0]?.crateLabel}
+                  </div>
                 </td>
                 <td className="px-2 sm:px-3 py-2 max-w-[160px] truncate hidden sm:table-cell">
                   {row.producer ?? '—'}

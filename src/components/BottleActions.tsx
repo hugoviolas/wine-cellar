@@ -6,16 +6,21 @@ import { crateLabel } from '@/lib/crateLabel';
 import { useToast } from '@/components/Toast';
 import type { CrateOption } from './interfaces/crate-option.interface';
 import { errorMessageFromResponse } from '@/lib/apiError';
+import { bottleMoveMessage, requestBottleMove } from '@/lib/bottleMove';
+import { QuantityStepper } from './QuantityStepper';
 import type { ReactElement } from 'react';
 
 export const BottleActions = ({
   bottleId,
   otherCrates,
   initialQuantity,
+  sameWineQuantityByCrate,
 }: {
   bottleId: string;
   otherCrates: CrateOption[];
   initialQuantity: number;
+  /** Clayettes qui contiennent déjà un lot de ce vin, et sa quantité. */
+  sameWineQuantityByCrate: Record<string, number>;
 }): ReactElement => {
   const router = useRouter();
   const toast = useToast();
@@ -62,34 +67,38 @@ export const BottleActions = ({
     if (!targetCrateId || !isMoveCountValid) {
       return;
     }
-    const isPartial = canSplit && moveCount < initialQuantity;
+    const movedQuantity = canSplit ? moveCount : initialQuantity;
+    const isPartial = movedQuantity < initialQuantity;
+    const target = otherCrates.find((crate) => crate.id === targetCrateId);
+    const targetLabel = target ? crateLabel({ number: target.number, name: target.name }) : 'la clayette';
     setError(null);
     setBusy(true);
-    const response = await fetch(`/api/bottles/${bottleId}/move`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(
-        isPartial ? { crateId: targetCrateId, quantity: moveCount } : { crateId: targetCrateId },
-      ),
+    const outcome = await requestBottleMove({
+      bottleId,
+      crateId: targetCrateId,
+      quantity: isPartial ? movedQuantity : undefined,
     });
     setBusy(false);
-    if (!response.ok) {
-      const message = await errorMessageFromResponse({
-        response,
-        fallback: 'Impossible de déplacer cette bouteille.',
-      });
-      setError(message);
-      toast.error(message);
+    if (!outcome.ok) {
+      setError(outcome.message);
+      toast.error(outcome.message);
       return;
     }
+    toast.success(
+      bottleMoveMessage({
+        quantity: movedQuantity,
+        merged: outcome.result?.merged ?? false,
+        targetLabel,
+      }),
+    );
     if (isPartial) {
       // Le reste du stock est toujours ici : on reste sur la fiche, pour
       // pouvoir répartir le lot sur une autre clayette dans la foulée.
-      toast.success(`${moveCount} bouteille${moveCount > 1 ? 's' : ''} déplacée${moveCount > 1 ? 's' : ''}.`);
       router.refresh();
       return;
     }
-    toast.success('Bouteille déplacée.');
+    // Tout le stock est parti — et la fiche elle-même a disparu s'il a
+    // rejoint un lot existant.
     router.push('/cave');
     router.refresh();
   };
@@ -156,18 +165,12 @@ export const BottleActions = ({
             </select>
             <div className="flex items-center gap-2">
               {canSplit && (
-                <label className="flex items-center gap-1.5 text-sm text-gray-600">
-                  <input
-                    type="number"
-                    min={1}
-                    max={initialQuantity}
-                    value={moveCount}
-                    onChange={(e) => setMoveCount(Number(e.target.value))}
-                    aria-label="Nombre de bouteilles à déplacer"
-                    className="border border-gray-300 rounded px-3 py-2 text-sm w-20"
-                  />
-                  <span className="whitespace-nowrap">sur {initialQuantity}</span>
-                </label>
+                <QuantityStepper
+                  value={moveCount}
+                  max={initialQuantity}
+                  onChange={setMoveCount}
+                  label="Nombre de bouteilles à déplacer"
+                />
               )}
               <button
                 type="button"
@@ -179,6 +182,12 @@ export const BottleActions = ({
               </button>
             </div>
           </div>
+          {sameWineQuantityByCrate[targetCrateId] !== undefined && (
+            <p className="text-xs text-sage mt-2">
+              Ce vin est déjà dans cette clayette (×{sameWineQuantityByCrate[targetCrateId]}) : les bouteilles
+              rejoindront ce lot.
+            </p>
+          )}
         </div>
       )}
 
