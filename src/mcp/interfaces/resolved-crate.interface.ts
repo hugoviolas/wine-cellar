@@ -1,7 +1,7 @@
 import type { CrateRow } from '@/db/rows';
-import type { CellarRole } from '@/domain/access';
+import type { MemberRole } from '@/domain/access';
 
 export interface ResolvedCrate {
   readonly crate: CrateRow;
-  readonly role: CellarRole;
+  readonly role: MemberRole;
 }

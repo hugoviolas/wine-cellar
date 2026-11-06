@@ -1,8 +1,9 @@
-import { and, eq, lt } from 'drizzle-orm';
+import { and, eq, isNull, lt } from 'drizzle-orm';
 import { oauthCodes, oauthTokens, users } from '../../db/schema';
 import { newId } from '../../db/id';
 import { generateToken, hashToken } from '../token';
 import { isSessionStillValid } from '../sessionValidity';
+import { logger } from '../../lib/logger';
 import type { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { OAuthError } from './oauthError';
 import { verifyCodeVerifier } from './secrets';
@@ -14,6 +15,7 @@ import type { RefreshTokensArgs } from './interfaces/refresh-tokens-args.interfa
 import type { RevokeTokenArgs } from './interfaces/revoke-token-args.interface';
 import type { VerifyAccessTokenArgs } from './interfaces/verify-access-token-args.interface';
 import type { GrantOwnerArgs } from './interfaces/grant-owner-args.interface';
+import type { RevokeReusedGrantArgs } from './interfaces/revoke-reused-grant-args.interface';
 
 export type { IssuedTokens };
 
@@ -68,10 +70,23 @@ export const exchangeAuthorizationCode = async ({
 };
 
 /**
- * Renouvelle une paire de jetons. Le refresh token présenté est consommé et
- * la paire précédente supprimée : un refresh token volé puis utilisé par
- * l'attaquant fait échouer le renouvellement suivant du client légitime,
- * qui devra se reconnecter — la fuite se voit au lieu de durer.
+ * Renouvelle une paire de jetons. Le refresh token présenté est marqué
+ * consommé (gardé, pas supprimé) et le jeton d'accès précédent supprimé.
+ *
+ * Détection de réutilisation (OAuth 2.1 §4.3.1, RFC 9700 §4.14.2) : un
+ * refresh token déjà consommé qui revient a forcément été copié — par le
+ * client légitime ou par un voleur, impossible de savoir lequel est lequel.
+ * Toute l'autorisation est alors révoquée, ce qui coupe aussi la branche
+ * que le voleur aurait ouverte en s'en servant le premier. Sans cette
+ * règle, il pouvait renouveler sa propre paire pendant 180 jours sans que
+ * rien ne l'arrête.
+ *
+ * Deux renouvellements simultanés du même jeton n'aboutissent jamais tous
+ * les deux : la consommation est conditionnelle (`consumed_at IS NULL`) et
+ * SQLite sérialise les écritures — le second échoue sur le verrou ou trouve
+ * le jeton consommé. Si le client rejoue ensuite ce même jeton, c'est une
+ * réutilisation, et il faudra se reconnecter : une reconnexion de trop vaut
+ * mieux qu'une fuite qui dure.
  */
 export const refreshTokens = async ({
   db,
@@ -80,7 +95,14 @@ export const refreshTokens = async ({
 }: RefreshTokensArgs): Promise<IssuedTokens> => {
   const tokenHash = hashToken(refreshToken);
   const [row] = await db.select().from(oauthTokens).where(eq(oauthTokens.tokenHash, tokenHash)).limit(1);
-  if (!row || row.kind !== 'refresh' || row.clientId !== client.id || isExpired(row.expiresAt)) {
+  if (!row || row.kind !== 'refresh' || row.clientId !== client.id) {
+    throw invalidGrant();
+  }
+  if (row.consumedAt !== null) {
+    await revokeReusedGrant({ db, token: row });
+    throw invalidGrant();
+  }
+  if (isExpired(row.expiresAt)) {
     throw invalidGrant();
   }
 
@@ -92,13 +114,18 @@ export const refreshTokens = async ({
     throw invalidGrant();
   }
 
-  return db.transaction(async (tx) => {
-    const consumed = await tx.delete(oauthTokens).where(eq(oauthTokens.tokenHash, tokenHash));
+  const issued = await db.transaction(async (tx) => {
+    const consumed = await tx
+      .update(oauthTokens)
+      .set({ consumedAt: new Date().toISOString() })
+      .where(and(eq(oauthTokens.tokenHash, tokenHash), isNull(oauthTokens.consumedAt)));
     if (consumed.rowsAffected === 0) {
-      // Déjà consommé par un renouvellement concurrent.
-      throw invalidGrant();
+      // Consommé entre la lecture et ici par un renouvellement concurrent.
+      return null;
     }
-    await tx.delete(oauthTokens).where(eq(oauthTokens.grantId, row.grantId));
+    await tx
+      .delete(oauthTokens)
+      .where(and(eq(oauthTokens.grantId, row.grantId), eq(oauthTokens.kind, 'access')));
     return issueTokens({
       db: tx,
       clientId: client.id,
@@ -107,6 +134,11 @@ export const refreshTokens = async ({
       grantedAt: row.grantedAt,
     });
   });
+  if (issued === null) {
+    await revokeReusedGrant({ db, token: row });
+    throw invalidGrant();
+  }
+  return issued;
 };
 
 /**
@@ -200,6 +232,19 @@ const findGrantOwner = async ({
     return null;
   }
   return { id: user.id, email: user.email, isSuperAdmin: user.isSuperAdmin };
+};
+
+/**
+ * Révoque l'autorisation dont un refresh token consommé vient d'être
+ * présenté à nouveau. Journalisé : c'est le seul signe visible côté
+ * serveur qu'un jeton a fuité.
+ */
+const revokeReusedGrant = async ({ db, token }: RevokeReusedGrantArgs): Promise<void> => {
+  logger.warn('Refresh token OAuth réutilisé : autorisation révoquée', {
+    clientId: token.clientId,
+    userId: token.userId,
+  });
+  await db.delete(oauthTokens).where(eq(oauthTokens.grantId, token.grantId));
 };
 
 const isExpired = (expiresAt: string): boolean => {

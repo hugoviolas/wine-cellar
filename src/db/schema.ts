@@ -224,7 +224,8 @@ export const oauthCodes = sqliteTable('oauth_codes', {
 /**
  * Jetons d'accès et de renouvellement remis aux clients OAuth. Une même
  * autorisation (`grantId`) produit une paire, renouvelée à chaque usage
- * du refresh token : la paire précédente est alors supprimée en bloc.
+ * du refresh token : le jeton d'accès précédent est supprimé, le refresh
+ * token précédent marqué consommé.
  *
  * `grantedAt` est l'heure de l'autorisation d'origine, recopiée à chaque
  * renouvellement : c'est elle qu'on compare à `users.sessionsValidFrom`.
@@ -245,6 +246,11 @@ export const oauthTokens = sqliteTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     grantedAt: text('granted_at').notNull(),
     expiresAt: text('expires_at').notNull(),
+    // Refresh token déjà échangé. La ligne est gardée jusqu'à son
+    // expiration au lieu d'être supprimée : c'est ce qui permet de
+    // reconnaître sa réutilisation, signe qu'il a été volé, et de révoquer
+    // alors toute l'autorisation (voir domain/oauth/tokens.ts).
+    consumedAt: text('consumed_at'),
     createdAt: text('created_at').notNull(),
   },
   // Chaque renouvellement supprime la paire précédente par `grantId`.

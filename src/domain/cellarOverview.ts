@@ -14,9 +14,8 @@ export type { MemberCellar, CellarSummary, CrateSummary };
  * Caves dont l'utilisateur est membre, dans l'ordre où il les a rejointes —
  * la première est sa cave par défaut, comme dans `resolveViewedCellarId`.
  *
- * Un super-admin n'y voit que ses propres caves : son accès transverse
- * (voir `checkCellarAccess`) reste ouvert sur une cave désignée, mais
- * lister toutes les caves de toutes les inscriptions n'aurait pas de sens.
+ * Adhésions seulement, super-admin compris : ce sont exactement les caves
+ * que le MCP laisse atteindre (voir `getMemberRole`).
  */
 export const listMemberCellars = async ({ db, userId }: ListMemberCellarsArgs): Promise<MemberCellar[]> => {
   return db

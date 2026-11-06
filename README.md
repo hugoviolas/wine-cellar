@@ -101,8 +101,8 @@ redémarrages des conteneurs.
 ## Connecteur MCP (Claude)
 
 L'app expose un serveur MCP sur `/mcp` (transport Streamable HTTP, sans session) : Claude
-peut consulter et modifier la cave au nom d'un utilisateur, avec ses droits dans chaque
-cave. Désactivé tant que `MCP_PUBLIC_URL` n'est pas défini (voir `.env.example`).
+peut consulter et modifier la cave au nom d'un utilisateur, avec son rôle dans chaque cave
+dont il est membre — jamais au-delà, même pour un super-admin. Désactivé tant que `MCP_PUBLIC_URL` n'est pas défini (voir `.env.example`).
 
 - **Connexion** : dans claude.ai, Paramètres → Connecteurs → Ajouter un connecteur
   personnalisé, URL `<MCP_PUBLIC_URL>/mcp`. Claude ouvre la page `/oauth/authorize`, où
@@ -110,8 +110,9 @@ cave. Désactivé tant que `MCP_PUBLIC_URL` n'est pas défini (voir `.env.exampl
   autorisation).
 - **OAuth** : l'app est son propre serveur d'autorisation (OAuth 2.1, enregistrement
   dynamique, PKCE S256). Jetons opaques, seule leur empreinte est stockée ; accès 30 jours,
-  renouvellement 180 jours, tournant à chaque usage. Une réinitialisation de mot de passe
-  ou un compte désactivé coupe immédiatement l'accès. Les adresses de retour sont limitées
+  renouvellement 180 jours, tournant à chaque usage. Un refresh token réutilisé (signe
+  d'un vol) révoque toute l'autorisation. Une réinitialisation de mot de passe ou un
+  compte désactivé coupe immédiatement l'accès. Les adresses de retour sont limitées
   à claude.ai, claude.com et la boucle locale (Claude Code, MCP Inspector).
 - **Tools** (`src/mcp/`) : `list_cellars`, `get_cellar_overview`, `search_bottles`,
   `get_bottle`, `add_bottle`, `update_bottle`, `delete_bottle`, `save_bottle_analysis`,

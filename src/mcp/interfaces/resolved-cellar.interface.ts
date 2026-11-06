@@ -1,7 +1,7 @@
 import type { CellarRow } from '@/db/rows';
-import type { CellarRole } from '@/domain/access';
+import type { MemberRole } from '@/domain/access';
 
 export interface ResolvedCellar {
   readonly cellar: CellarRow;
-  readonly role: CellarRole;
+  readonly role: MemberRole;
 }

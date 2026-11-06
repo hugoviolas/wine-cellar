@@ -224,8 +224,29 @@ URL `https://cave.paupau-cuisine.com/mcp`. Claude ouvre la page d'autorisation d
 cave : s'y connecter avec son compte. Rien d'autre à configurer côté Cloudflare — le
 tunnel relaie déjà tout le sous-domaine.
 
-Pour couper l'accès : déconnecter le connecteur dans claude.ai (qui révoque ses jetons),
-ou réinitialiser le mot de passe du compte, ce qui invalide toutes ses autorisations.
+Pour couper l'accès, ne pas compter sur le retrait du connecteur dans claude.ai : l'app
+expose bien un endpoint de révocation, mais rien ne garantit que claude.ai l'appelle. Deux
+moyens sûrs :
+
+- réinitialiser le mot de passe du compte (lien de réinitialisation généré depuis
+  `/admin/utilisateurs`) : toutes ses autorisations tombent, ses sessions dans l'app
+  aussi ;
+- en urgence, supprimer les jetons directement dans la base, depuis le Pi (`sqlite3` à
+  installer avec `sudo apt install sqlite3` s'il manque) — effet immédiat, Claude devra
+  refaire l'autorisation :
+
+```bash
+# un seul compte
+sqlite3 /opt/cave-vin-prod/data/cave.db \
+  "DELETE FROM oauth_tokens WHERE user_id = (SELECT id FROM users WHERE email = 'toi@example.com');"
+# tout le monde
+sqlite3 /opt/cave-vin-prod/data/cave.db "DELETE FROM oauth_tokens;"
+```
+
+Un refresh token présenté deux fois (signe qu'il a été copié) révoque de lui-même toute
+l'autorisation ; l'événement apparaît dans `docker compose logs app` sous le message
+« Refresh token OAuth réutilisé ».
+
 La migration `0018_oauth_mcp` (tables `oauth_*`) est appliquée au démarrage comme les
 autres.
 

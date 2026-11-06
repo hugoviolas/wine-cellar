@@ -14,7 +14,7 @@ export const registerCellarTools = ({ server, context }: RegisterToolsArgs): voi
     {
       title: 'Lister les caves',
       description:
-        "Liste les caves de l'utilisateur avec son rôle dans chacune — owner (propriétaire) et editor peuvent tout modifier ; reader peut consulter, consommer une bouteille et la noter — et le nombre de bouteilles en stock. La première (is_default) est celle qu'utilisent les autres tools quand cellar_id est omis.",
+        "Liste les caves dont l'utilisateur est membre — les seules accessibles par ces tools — avec son rôle dans chacune — owner (propriétaire) et editor peuvent tout modifier ; reader peut consulter, consommer une bouteille et la noter — et le nombre de bouteilles en stock. La première (is_default) est celle qu'utilisent les autres tools quand cellar_id est omis.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
     },

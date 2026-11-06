@@ -19,8 +19,10 @@ d'un utilisateur et avec ses droits.
   ouverts aux lecteurs, déplacement limité à la cave) sont passées dans
   `domain/bottleEditing.ts`, partagé par les deux.
 - **Multi-utilisateur.** Le jeton OAuth est lié à un compte de la cave ; chaque tool agit
-  avec les rôles de ce compte (owner / editor / reader, super-admin compris). La wishlist
-  reste strictement personnelle.
+  avec le rôle de ce compte (owner / editor / reader) dans les seules caves dont il est
+  membre. L'accès transverse du super-admin reste réservé à l'app : un jeton remis à une
+  application tierce ne doit pas, s'il fuit, exposer les caves de toutes les inscriptions.
+  La wishlist reste strictement personnelle.
 - **L'app est son propre serveur OAuth**, comme le serveur MCP Mealie et health-mcp :
   enregistrement dynamique (RFC 7591), code + PKCE S256, refresh tournant, révocation
   (RFC 7009), métadonnées RFC 8414 et RFC 9728. Pas d'Express ni de `mcpAuthRouter` : les
@@ -38,14 +40,22 @@ d'un utilisateur et avec ses droits.
   locale : l'enregistrement étant ouvert, c'est ce qui empêche un tiers de récupérer un
   code émis sur le bon domaine.
 - Jetons et codes : 32 octets aléatoires, seule l'empreinte SHA-256 est stockée. Code à
-  usage unique, brûlé dès sa présentation. Refresh : la paire précédente est supprimée à
-  chaque renouvellement.
+  usage unique, brûlé dès sa présentation.
+- Refresh tournant avec détection de réutilisation (OAuth 2.1 §4.3.1, RFC 9700) : le
+  refresh token échangé est marqué consommé et gardé jusqu'à son expiration ; s'il revient,
+  toute l'autorisation est révoquée — y compris la branche qu'un voleur aurait ouverte en
+  s'en servant le premier — et l'événement est journalisé. Deux renouvellements simultanés
+  du même jeton n'aboutissent jamais tous les deux.
 - Validité liée au compte : compte désactivé ou supprimé, ou mot de passe réinitialisé
   après l'autorisation (`users.sessionsValidFrom` comparé à l'heure de l'autorisation
   d'origine, conservée d'un refresh à l'autre) ⇒ accès refusé.
 - Clients jamais utilisés purgés au bout d'un jour ; enregistrement limité par IP.
 - `/mcp` et les endpoints OAuth appelés par des machines sont exemptés du contrôle
   d'origine de `proxy.ts` : sans cookie, pas de CSRF possible.
+- Révocation : l'endpoint RFC 7009 existe, mais rien ne garantit que claude.ai l'appelle
+  quand on retire le connecteur. Les coupures sûres sont la réinitialisation du mot de
+  passe (qui ferme aussi les sessions de l'app) et, en urgence, la suppression des lignes
+  `oauth_tokens` (voir le guide de déploiement).
 
 ## 4. Tools
 
@@ -67,6 +77,9 @@ d'un utilisateur et avec ses droits.
 
 ## 5. Hors périmètre (pistes)
 
-- Page « Applications connectées » dans l'app pour lister et révoquer les autorisations.
+- Page « Applications connectées » dans l'app pour lister et révoquer les autorisations,
+  sans passer par une réinitialisation de mot de passe.
+- Jetons d'accès plus courts (1 h à 24 h au lieu de 30 jours), une fois vérifié que
+  claude.ai renouvelle bien les siens.
 - Gestion des clayettes (création, renommage) et des membres par MCP.
 - CORS sur `/mcp` pour un client MCP 100 % navigateur.

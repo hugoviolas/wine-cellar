@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { migrate } from 'drizzle-orm/libsql/migrator';
 import { createTestDb } from '../../db/testDb';
+import { createDb } from '../../db/client';
 import { oauthCodes, oauthTokens, users } from '../../db/schema';
 import type { Db } from '../../db/client';
 import type { OAuthClientRow } from '../../db/rows';
@@ -147,6 +152,46 @@ describe('refreshTokens', () => {
     await expect(refreshTokens({ db, client, refreshToken: first.refresh_token })).rejects.toMatchObject({
       code: 'invalid_grant',
     });
+  });
+
+  it("révoque toute l'autorisation quand un refresh token consommé revient, branche du voleur comprise", async () => {
+    const context = await setup();
+    const { db, client } = context;
+    const stolen = await connect(context);
+
+    // Le voleur renouvelle le premier et obtient sa propre paire…
+    const thief = await refreshTokens({ db, client, refreshToken: stolen.refresh_token });
+    // …puis le client légitime présente le même refresh token.
+    await expect(refreshTokens({ db, client, refreshToken: stolen.refresh_token })).rejects.toMatchObject({
+      code: 'invalid_grant',
+    });
+
+    expect(await verifyAccessToken({ db, token: thief.access_token })).toBeNull();
+    await expect(refreshTokens({ db, client, refreshToken: thief.refresh_token })).rejects.toMatchObject({
+      code: 'invalid_grant',
+    });
+    expect(await db.select().from(oauthTokens)).toEqual([]);
+  });
+
+  it("n'émet jamais deux paires pour deux renouvellements simultanés du même jeton", async () => {
+    // Sur un vrai fichier : la base en mémoire n'a qu'une connexion, et le
+    // second appel y échouerait pour une raison sans rapport avec la règle.
+    const db = createDb(`file:${join(mkdtempSync(join(tmpdir(), 'cave-oauth-')), 'cave.db')}`);
+    await migrate(db, { migrationsFolder: './src/db/migrations' });
+    const userId = await insertTestUser(db);
+    const registered = await registerTestClient(db);
+    const client = await authenticateClient({
+      db,
+      credentials: { clientId: registered.client_id, clientSecret: null },
+    });
+    const tokens = await connect({ db, client, userId });
+
+    const results = await Promise.allSettled([
+      refreshTokens({ db, client, refreshToken: tokens.refresh_token }),
+      refreshTokens({ db, client, refreshToken: tokens.refresh_token }),
+    ]);
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
   });
 
   it("refuse le refresh token d'un autre client", async () => {

@@ -3,7 +3,8 @@ import { z } from 'zod';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { createTestDb } from '@/db/testDb';
 import type { Db } from '@/db/client';
-import { cellarMemberships } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { cellarMemberships, users } from '@/db/schema';
 import { newId } from '@/db/id';
 import { createCrate } from '@/domain/crates';
 import { parisDay } from '@/domain/parisDate';
@@ -381,6 +382,36 @@ describe('serveur MCP Ma Cave', () => {
       });
 
       expect(result.isError).toBe(false);
+    });
+  });
+
+  describe('accès du super-admin', () => {
+    it("n'ouvre que les caves dont le compte est membre", async () => {
+      const bottleId = await addLandonne(world);
+      const admin = await createTestMember(world.db, 'admin@example.com');
+      await world.db.update(users).set({ isSuperAdmin: true }).where(eq(users.id, admin.user.id));
+      const adminClient = await connectTestClient({
+        db: world.db,
+        user: { ...admin.user, isSuperAdmin: true },
+      });
+      const call = (name: string, args: Record<string, unknown>): ReturnType<typeof callTool> => {
+        return callTool({ client: adminClient, name, args });
+      };
+
+      // Dans l'app, ce compte verrait la cave d'Hugo ; par MCP, non.
+      expect((await call('get_cellar_overview', { cellar_id: world.owner.cellarId })).isError).toBe(true);
+      expect((await call('search_bottles', { cellar_id: world.owner.cellarId })).isError).toBe(true);
+      expect((await call('get_bottle', { bottle_id: bottleId })).isError).toBe(true);
+      expect((await call('consume_bottle', { bottle_id: bottleId })).isError).toBe(true);
+      expect(
+        (await call('add_bottle', { crate_id: world.crateId, category: 'wine', name: 'X' })).isError,
+      ).toBe(true);
+      expect(await callToolJson({ client: adminClient, name: 'list_cellars' })).toMatchObject({
+        cellars: [{ cellar_id: admin.cellarId, role: 'owner' }],
+      });
+      expect(await callToolJson({ client: adminClient, name: 'get_cellar_overview' })).toMatchObject({
+        cellar_id: admin.cellarId,
+      });
     });
   });
 
