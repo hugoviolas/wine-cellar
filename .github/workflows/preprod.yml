@@ -24,27 +24,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # corepack enable est une étape machine, faite une fois pour toutes sur
-      # le runner (voir docs/deployment/README.md) — pas la répéter ici,
-      # `corepack enable` échoue sans sudo si le Node système appartient à
-      # root (cas d'une install via le gestionnaire de paquets du Pi).
-      - name: Installer les dépendances
-        run: yarn install --frozen-lockfile
-
-      - name: Vérification des types
-        run: yarn tsc --noEmit
-
-      - name: Lint
-        run: yarn lint
-
-      # Le formatage fait partie du contrat de la base de code : sans
-      # vérification ici, un fichier non formaté passe et la prochaine
-      # exécution de Prettier le reformate au milieu d'un autre diff.
-      - name: Formatage
-        run: yarn format
-
-      - name: Tests
-        run: yarn test
+      # Vérifications déléguées au stage `check` du Dockerfile (voir le
+      # commentaire détaillé là-bas). Le runner n'a plus besoin ni de Node ni
+      # de yarn : il ne lui faut que Docker, et aucun script `postinstall` de
+      # dépendance ne s'exécute plus directement sur la machine.
+      #
+      # Le formatage reste vérifié ici au même titre que le lint : sans ça, un
+      # fichier non formaté passe et la prochaine exécution de Prettier le
+      # reformate au milieu d'un autre diff.
+      #
+      # Ce build partage le stage `base` avec celui de l'image poussée juste
+      # après : les dépendances ne sont installées qu'une fois, le démon Docker
+      # du Pi réutilisant son cache de couches entre les deux.
+      - name: Contrat, lint, formatage et tests
+        run: docker build --target check .
 
       - name: Connexion à GHCR
         uses: docker/login-action@v3

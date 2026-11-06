@@ -42,14 +42,17 @@ sudo usermod -aG docker $USER
 # se reconnecter (ou `newgrp docker`) pour que ça prenne effet
 ```
 
-Corepack (Yarn) doit être activé une fois pour toutes au niveau machine —
-si Node vient du gestionnaire de paquets du système, ses binaires
-appartiennent à root et un `corepack enable` lancé par le runner (utilisateur
-normal) échoue avec `EACCES`. D'où ce `sudo`, une seule fois :
+Rien d'autre n'est requis : ni Node, ni Yarn, ni Corepack sur l'hôte. Les
+vérifications de la CI (types, lint, formatage, tests) tournent dans le stage
+`check` du Dockerfile, pas sur la machine — c'est voulu. Un `yarn install`
+lancé sur le runner exécute les scripts `postinstall` de chaque dépendance
+avec les droits du runner, lequel appartient aux groupes `docker` (et souvent
+`sudo`) : une seule dépendance transitive compromise suffirait à prendre la
+machine. Les faire tourner dans le build isole cette exécution, et les tests
+s'exécutent du même coup dans l'environnement réel de l'image déployée.
 
-```bash
-sudo corepack enable
-```
+Si une ancienne installation a laissé un `corepack enable` au niveau machine,
+il n'est plus utilisé et peut rester en place sans effet.
 
 Crée les deux dossiers persistants, séparés de tout checkout git — c'est
 là que vivent les vraies données et les secrets, jamais dans le repo :
