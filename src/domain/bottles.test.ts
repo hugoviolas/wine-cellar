@@ -11,8 +11,14 @@ import {
   deleteBottle,
   updateBottleBodySchema,
   reorderBottlesInCrate,
+  moveBottles,
+  moveBottlesBodySchema,
+  BottleMoveError,
 } from './bottles';
+import { consumeBottle } from './consume';
+import { listBottleConsumptions } from './history';
 import { rowAt } from '../db/testRows';
+import type { Db } from '../db/client';
 
 describe('bottles', () => {
   it('crée une bouteille avec des détails valides pour sa catégorie', async () => {
@@ -513,5 +519,168 @@ describe('updateBottleBodySchema', () => {
   it('rejette une note hors de la plage 0-5', () => {
     expect(updateBottleBodySchema.safeParse({ rating: 6 }).success).toBe(false);
     expect(updateBottleBodySchema.safeParse({ rating: -1 }).success).toBe(false);
+  });
+});
+
+describe('moveBottles', () => {
+  const setup = async (): Promise<{
+    db: Db;
+    userId: string;
+    cellarId: string;
+    crateAId: string;
+    crateBId: string;
+    bottleId: string;
+  }> => {
+    const db = await createTestDb();
+    const { userId, cellarId } = await bootstrapSuperAdmin({
+      db,
+      params: { email: 'a@example.com', password: 'x', cellarName: 'Cave' },
+    });
+    const crateAId = await createCrate({ db, input: { cellarId, name: 'Clayette A', capacity: 12 } });
+    const crateBId = await createCrate({ db, input: { cellarId, name: 'Clayette B', capacity: 12 } });
+    await createBottle({
+      db,
+      input: { crateId: crateBId, category: 'wine', name: 'Déjà là', quantity: 1, details: {} },
+    });
+    const bottleId = await createBottle({
+      db,
+      input: {
+        crateId: crateAId,
+        category: 'wine',
+        name: 'Château Margaux',
+        producer: 'Château Margaux',
+        vintage: 2015,
+        quantity: 6,
+        drinkFrom: 2025,
+        drinkUntil: 2050,
+        details: { grapeVarieties: ['Cabernet Sauvignon'] },
+        userNote: 'Pour les grandes occasions',
+        aiAnalysis: 'Grand vin de garde.',
+      },
+    });
+    return { db, userId, cellarId, crateAId, crateBId, bottleId };
+  };
+
+  it('scinde la ligne : le reste ne bouge pas, les bouteilles déplacées forment une copie en fin de clayette cible', async () => {
+    const { db, crateAId, crateBId, bottleId } = await setup();
+    const source = await getBottle({ db, bottleId });
+
+    const movedId = await moveBottles({ db, bottleId, toCrateId: crateBId, quantity: 2 });
+
+    expect(movedId).not.toBe(bottleId);
+    const remaining = await getBottle({ db, bottleId });
+    expect(remaining?.crateId).toBe(crateAId);
+    expect(remaining?.quantity).toBe(4);
+
+    const moved = await getBottle({ db, bottleId: movedId });
+    expect(moved).toEqual({
+      ...source,
+      id: movedId,
+      crateId: crateBId,
+      sortOrder: 1,
+      quantity: 2,
+    });
+  });
+
+  it('laisse l’historique de consommation sur la ligne d’origine lors d’une scission', async () => {
+    const { db, userId, crateBId, bottleId } = await setup();
+    await consumeBottle({
+      db,
+      input: { bottleId, consumedByUserId: userId, consumedAt: '2026-11-01', quantity: 1 },
+    });
+
+    const movedId = await moveBottles({ db, bottleId, toCrateId: crateBId, quantity: 2 });
+
+    expect(await listBottleConsumptions({ db, bottleId })).toHaveLength(1);
+    expect(await listBottleConsumptions({ db, bottleId: movedId })).toHaveLength(0);
+    expect((await getBottle({ db, bottleId }))?.quantity).toBe(3);
+  });
+
+  it('déplace la ligne entière sans quantité précisée', async () => {
+    const { db, cellarId, crateBId, bottleId } = await setup();
+
+    const movedId = await moveBottles({ db, bottleId, toCrateId: crateBId });
+
+    expect(movedId).toBe(bottleId);
+    const moved = await getBottle({ db, bottleId });
+    expect(moved?.crateId).toBe(crateBId);
+    expect(moved?.quantity).toBe(6);
+    expect(moved?.sortOrder).toBe(1);
+    expect(await listBottlesByCellar({ db, cellarId })).toHaveLength(2);
+  });
+
+  it('déplace la ligne entière quand la quantité vaut tout le stock', async () => {
+    const { db, cellarId, crateBId, bottleId } = await setup();
+
+    const movedId = await moveBottles({ db, bottleId, toCrateId: crateBId, quantity: 6 });
+
+    expect(movedId).toBe(bottleId);
+    expect((await getBottle({ db, bottleId }))?.crateId).toBe(crateBId);
+    expect(await listBottlesByCellar({ db, cellarId })).toHaveLength(2);
+  });
+
+  it('refuse de déplacer plus que le stock, sans rien modifier', async () => {
+    const { db, cellarId, crateAId, crateBId, bottleId } = await setup();
+
+    await expect(moveBottles({ db, bottleId, toCrateId: crateBId, quantity: 7 })).rejects.toMatchObject({
+      reason: 'insufficient_stock',
+    });
+
+    const unchanged = await getBottle({ db, bottleId });
+    expect(unchanged?.crateId).toBe(crateAId);
+    expect(unchanged?.quantity).toBe(6);
+    expect(await listBottlesByCellar({ db, cellarId })).toHaveLength(2);
+  });
+
+  it('refuse une quantité nulle ou non entière', async () => {
+    const { db, crateBId, bottleId } = await setup();
+
+    await expect(moveBottles({ db, bottleId, toCrateId: crateBId, quantity: 0 })).rejects.toMatchObject({
+      reason: 'invalid_quantity',
+    });
+    await expect(moveBottles({ db, bottleId, toCrateId: crateBId, quantity: 1.5 })).rejects.toMatchObject({
+      reason: 'invalid_quantity',
+    });
+  });
+
+  it('refuse une clayette d’une autre cave', async () => {
+    const { db, bottleId } = await setup();
+    const other = await bootstrapSuperAdmin({
+      db,
+      params: { email: 'b@example.com', password: 'x', cellarName: 'Autre cave' },
+    });
+    const foreignCrateId = await createCrate({
+      db,
+      input: { cellarId: other.cellarId, name: 'Ailleurs', capacity: 12 },
+    });
+
+    await expect(moveBottles({ db, bottleId, toCrateId: foreignCrateId, quantity: 2 })).rejects.toMatchObject(
+      { reason: 'other_cellar' },
+    );
+    expect((await getBottle({ db, bottleId }))?.quantity).toBe(6);
+  });
+
+  it('refuse une clayette inconnue ou la clayette actuelle', async () => {
+    const { db, crateAId, bottleId } = await setup();
+
+    await expect(moveBottles({ db, bottleId, toCrateId: 'inconnue', quantity: 2 })).rejects.toMatchObject({
+      reason: 'crate_not_found',
+    });
+    await expect(moveBottles({ db, bottleId, toCrateId: crateAId, quantity: 2 })).rejects.toBeInstanceOf(
+      BottleMoveError,
+    );
+  });
+});
+
+describe('moveBottlesBodySchema', () => {
+  it('accepte une clayette seule (tout le stock) ou avec une quantité', () => {
+    expect(moveBottlesBodySchema.safeParse({ crateId: 'c1' }).success).toBe(true);
+    expect(moveBottlesBodySchema.safeParse({ crateId: 'c1', quantity: 2 }).success).toBe(true);
+  });
+
+  it('rejette une quantité nulle, décimale, ou une clé inconnue', () => {
+    expect(moveBottlesBodySchema.safeParse({ crateId: 'c1', quantity: 0 }).success).toBe(false);
+    expect(moveBottlesBodySchema.safeParse({ crateId: 'c1', quantity: 1.5 }).success).toBe(false);
+    expect(moveBottlesBodySchema.safeParse({ crateId: 'c1', name: 'x' }).success).toBe(false);
   });
 });

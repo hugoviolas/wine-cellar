@@ -21,6 +21,8 @@ export const BottleActions = ({
   const toast = useToast();
   const [targetCrateId, setTargetCrateId] = useState(otherCrates[0]?.id ?? '');
   const [quantity, setQuantity] = useState(initialQuantity);
+  // Par défaut tout le stock, comme avant l'ajout de ce choix.
+  const [moveCount, setMoveCount] = useState(initialQuantity);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -50,16 +52,25 @@ export const BottleActions = ({
     router.refresh();
   };
 
+  // Un stock de 0 ou 1 n'a rien à scinder : la ligne part entière, sans
+  // demander de nombre.
+  const canSplit = initialQuantity > 1;
+  const isMoveCountValid =
+    !canSplit || (Number.isInteger(moveCount) && moveCount >= 1 && moveCount <= initialQuantity);
+
   const moveBottle = async (): Promise<void> => {
-    if (!targetCrateId) {
+    if (!targetCrateId || !isMoveCountValid) {
       return;
     }
+    const isPartial = canSplit && moveCount < initialQuantity;
     setError(null);
     setBusy(true);
-    const response = await fetch(`/api/bottles/${bottleId}`, {
-      method: 'PATCH',
+    const response = await fetch(`/api/bottles/${bottleId}/move`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ crateId: targetCrateId }),
+      body: JSON.stringify(
+        isPartial ? { crateId: targetCrateId, quantity: moveCount } : { crateId: targetCrateId },
+      ),
     });
     setBusy(false);
     if (!response.ok) {
@@ -69,6 +80,13 @@ export const BottleActions = ({
       });
       setError(message);
       toast.error(message);
+      return;
+    }
+    if (isPartial) {
+      // Le reste du stock est toujours ici : on reste sur la fiche, pour
+      // pouvoir répartir le lot sur une autre clayette dans la foulée.
+      toast.success(`${moveCount} bouteille${moveCount > 1 ? 's' : ''} déplacée${moveCount > 1 ? 's' : ''}.`);
+      router.refresh();
       return;
     }
     toast.success('Bouteille déplacée.');
@@ -124,11 +142,11 @@ export const BottleActions = ({
       {otherCrates.length > 0 && (
         <div>
           <h4 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Déplacer vers</h4>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <select
               value={targetCrateId}
               onChange={(e) => setTargetCrateId(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm flex-1"
+              className="border border-gray-300 rounded px-3 py-2 text-sm sm:flex-1"
             >
               {otherCrates.map((crate) => (
                 <option key={crate.id} value={crate.id}>
@@ -136,14 +154,30 @@ export const BottleActions = ({
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={() => void moveBottle()}
-              disabled={busy}
-              className="border border-forest text-forest rounded px-3 py-2 text-sm"
-            >
-              Déplacer
-            </button>
+            <div className="flex items-center gap-2">
+              {canSplit && (
+                <label className="flex items-center gap-1.5 text-sm text-gray-600">
+                  <input
+                    type="number"
+                    min={1}
+                    max={initialQuantity}
+                    value={moveCount}
+                    onChange={(e) => setMoveCount(Number(e.target.value))}
+                    aria-label="Nombre de bouteilles à déplacer"
+                    className="border border-gray-300 rounded px-3 py-2 text-sm w-20"
+                  />
+                  <span className="whitespace-nowrap">sur {initialQuantity}</span>
+                </label>
+              )}
+              <button
+                type="button"
+                onClick={() => void moveBottle()}
+                disabled={busy || !isMoveCountValid}
+                className="border border-forest text-forest rounded px-3 py-2 text-sm"
+              >
+                Déplacer
+              </button>
+            </div>
           </div>
         </div>
       )}

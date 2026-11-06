@@ -199,7 +199,17 @@ const BottleDetailPage = async ({ params }: { params: Promise<{ id: string }> })
         />
       </section>
 
-      <BottleActions bottleId={bottle.id} otherCrates={siblingCrates} initialQuantity={bottle.quantity} />
+      {/*
+        `key` sur la quantité : après un déplacement partiel, la page est
+        rafraîchie sur place et le stock baisse. Sans remontage, les champs
+        du formulaire garderaient l'ancien stock comme valeur saisie.
+      */}
+      <BottleActions
+        key={bottle.quantity}
+        bottleId={bottle.id}
+        otherCrates={siblingCrates}
+        initialQuantity={bottle.quantity}
+      />
 
       <a
         href={`/bottles/${bottle.id}/consommer`}
