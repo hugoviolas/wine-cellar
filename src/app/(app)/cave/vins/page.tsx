@@ -3,8 +3,8 @@ import { db } from '@/db/client';
 import { requireUser } from '@/lib/requireUser';
 import { resolveViewedCellarId } from '@/domain/viewedCellar';
 import { listActiveBottlesByCellar } from '@/domain/bottles';
-import { computeGardeStatus } from '@/domain/gardeStatus';
-import { WineListView, type WineListRow } from '@/components/WineListView';
+import { buildWineList } from '@/domain/wineList';
+import { WineListView } from '@/components/WineListView';
 import type { ReactElement } from 'react';
 
 const VinsPage = async ({
@@ -22,24 +22,7 @@ const VinsPage = async ({
   }
 
   const bottleRows = await listActiveBottlesByCellar({ db, cellarId });
-  const currentYear = new Date().getFullYear();
-
-  const rows: WineListRow[] = bottleRows.map((row) => ({
-    id: row.bottle.id,
-    name: row.bottle.name,
-    producer: row.bottle.producer,
-    category: row.bottle.category,
-    color: row.bottle.color,
-    vintage: row.bottle.vintage,
-    quantity: row.bottle.quantity,
-    rating: row.bottle.rating,
-    gardeStatus: computeGardeStatus({
-      drinkFrom: row.bottle.drinkFrom,
-      drinkUntil: row.bottle.drinkUntil,
-      currentYear,
-    }),
-    createdAt: row.bottle.createdAt,
-  }));
+  const rows = buildWineList({ rows: bottleRows, currentYear: new Date().getFullYear() });
 
   return (
     <div>

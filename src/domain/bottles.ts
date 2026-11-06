@@ -1,6 +1,6 @@
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, and, gt, ne, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { bottles, crates } from '../db/schema';
+import { bottles, crates, consumptionHistory, wishlistItems } from '../db/schema';
 import { newId } from '../db/id';
 import { parseBottleDetails, getAppellation } from './bottleCategories';
 import { resolveWineGeography } from './wineGeography';
@@ -16,8 +16,13 @@ import type { GetBottleArgs } from './interfaces/get-bottle-args.interface';
 import type { UpdateBottleArgs } from './interfaces/update-bottle-args.interface';
 import type { ReorderBottlesInCrateArgs } from './interfaces/reorder-bottles-in-crate-args.interface';
 import type { DeleteBottleArgs } from './interfaces/delete-bottle-args.interface';
+import type { MoveBottlesArgs } from './interfaces/move-bottles-args.interface';
+import type { MoveBottlesResult } from './interfaces/move-bottles-result.interface';
+import type { FindSameWineLotsArgs } from './interfaces/find-same-wine-lots-args.interface';
+import { isSameWine } from './bottleIdentity';
+import { buildLotMergePatch } from './bottleMerge';
 
-export type { CreateBottleInput, UpdateBottleInput };
+export type { CreateBottleInput, UpdateBottleInput, MoveBottlesResult };
 
 /**
  * Corps attendu par `POST /api/bottles`. `.strict()` + typage explicite :
@@ -115,12 +120,10 @@ export const getBottle = async ({ db, bottleId }: GetBottleArgs): Promise<Bottle
 
 /**
  * Champs modifiables depuis `PATCH /api/bottles/[id]`. `.strict()` empêche
- * toute affectation de masse au-delà de cette liste précise. `crateId` est
- * volontairement autorisé (déplacer une bouteille vers une autre clayette),
- * mais la route doit vérifier que la clayette cible appartient à la même
- * cave que la clayette actuelle avant d'appeler `updateBottle` — sans quoi
- * ce champ redeviendrait le vecteur de déplacement inter-caves déjà corrigé
- * une fois (voir `PATCH /api/bottles/[id]`). `details` (cépages,
+ * toute affectation de masse au-delà de cette liste précise. `crateId` en
+ * est absent : changer de clayette passe par `moveBottles`
+ * (`POST /api/bottles/[id]/move`), qui vérifie la cave et applique la
+ * fusion des lots identiques. `details` (cépages,
  * appellation...) n'est validé qu'ici comme JSON quelconque — la route doit
  * le repasser dans `parseBottleDetails(bottle.category, ...)` avant
  * d'appeler `updateBottle`, pour valider sa forme selon la catégorie de la
@@ -141,7 +144,6 @@ export const updateBottleBodySchema = z
     rating: z.number().int().min(0).max(5).nullable().optional(),
     drinkFrom: z.number().int().nullable().optional(),
     drinkUntil: z.number().int().nullable().optional(),
-    crateId: z.string().min(1).optional(),
     details: z.unknown().optional(),
   })
   .strict();
@@ -179,20 +181,186 @@ const withResolvedGeography = async ({
 
 export const updateBottle = async ({ db, bottleId, input: rawInput }: UpdateBottleArgs): Promise<void> => {
   const input = await withResolvedGeography({ db, bottleId, input: rawInput });
-  if (input.crateId) {
-    // Une bouteille déplacée vers une autre clayette est ajoutée à la fin
-    // de celle-ci — son ancien sortOrder n'a aucun sens dans ce nouveau
-    // contexte et pourrait entrer en collision avec un ordre déjà existant.
-    const siblingCount = (
-      await db.select({ id: bottles.id }).from(bottles).where(eq(bottles.crateId, input.crateId))
-    ).length;
-    await db
-      .update(bottles)
-      .set({ ...input, sortOrder: siblingCount })
-      .where(eq(bottles.id, bottleId));
-    return;
-  }
   await db.update(bottles).set(input).where(eq(bottles.id, bottleId));
+};
+
+export type BottleMoveFailure =
+  | 'bottle_not_found'
+  | 'crate_not_found'
+  | 'other_cellar'
+  | 'same_crate'
+  | 'invalid_quantity'
+  | 'insufficient_stock';
+
+export class BottleMoveError extends Error {
+  readonly reason: BottleMoveFailure;
+
+  constructor(reason: BottleMoveFailure, message: string) {
+    super(message);
+    this.reason = reason;
+  }
+}
+
+/**
+ * Corps attendu par `POST /api/bottles/[id]/move`. `quantity` absent =
+ * tout le stock ; sa borne haute (le stock réel) n'est vérifiable qu'en
+ * base, dans `moveBottles`.
+ */
+export const moveBottlesBodySchema = z
+  .object({
+    crateId: z.string().min(1),
+    quantity: z.number().int().min(1).optional(),
+  })
+  .strict();
+
+/**
+ * Lots actifs (quantité > 0) du même vin que `bottle` (voir `isSameWine`)
+ * dans les clayettes données, `bottle` exclue, dans l'ordre d'affichage.
+ * Le SQL ne filtre que sur les colonnes comparables telles quelles ; la
+ * comparaison normalisée du nom et du producteur se fait ensuite, sur une
+ * poignée de lignes.
+ */
+export const findSameWineLots = async ({
+  db,
+  bottle,
+  crateIds,
+}: FindSameWineLotsArgs): Promise<BottleRow[]> => {
+  if (crateIds.length === 0) {
+    return [];
+  }
+  const candidates = await db
+    .select()
+    .from(bottles)
+    .where(
+      and(
+        inArray(bottles.crateId, [...crateIds]),
+        ne(bottles.id, bottle.id),
+        eq(bottles.category, bottle.category),
+        gt(bottles.quantity, 0),
+        bottle.vintage === null ? isNull(bottles.vintage) : eq(bottles.vintage, bottle.vintage),
+      ),
+    )
+    .orderBy(bottles.sortOrder);
+  return candidates.filter((candidate) => isSameWine(candidate, bottle));
+};
+
+/**
+ * Déplace tout ou partie du stock d'une bouteille vers une autre clayette
+ * de la même cave. C'est le seul chemin de déplacement : le PATCH de la
+ * bouteille n'accepte plus `crateId`, pour que la fusion ne puisse pas
+ * être contournée.
+ *
+ * Si la clayette cible contient déjà un lot du même vin, les bouteilles le
+ * rejoignent (fusion) :
+ * - le lot cible gagne la quantité et comble ses vides avec ce que sait le
+ *   lot d'origine (voir `buildLotMergePatch`) ;
+ * - tout le stock déplacé : le lot d'origine disparaît, son historique de
+ *   consommation et le lien de wishlist sont rattachés au lot cible ;
+ * - une partie : le lot d'origine garde le reste.
+ *
+ * Sinon :
+ * - tout le stock : la ligne elle-même change de clayette, avec son
+ *   historique ;
+ * - une partie : la ligne est scindée, les bouteilles déplacées deviennent
+ *   une copie de la fiche en fin de clayette cible ; le reste garde
+ *   l'historique.
+ *
+ * Lecture et écritures dans une même transaction : le stock vérifié est
+ * celui qui est décrémenté, même si une consommation tombe entre-temps.
+ */
+export const moveBottles = async ({
+  db,
+  bottleId,
+  toCrateId,
+  quantity,
+}: MoveBottlesArgs): Promise<MoveBottlesResult> => {
+  if (quantity !== undefined && (!Number.isInteger(quantity) || quantity < 1)) {
+    throw new BottleMoveError('invalid_quantity', 'Le nombre de bouteilles à déplacer doit être au moins 1.');
+  }
+
+  return db.transaction(async (tx) => {
+    const [source] = await tx.select().from(bottles).where(eq(bottles.id, bottleId)).limit(1);
+    if (!source) {
+      throw new BottleMoveError('bottle_not_found', 'Bouteille introuvable.');
+    }
+    const [targetCrate] = await tx.select().from(crates).where(eq(crates.id, toCrateId)).limit(1);
+    if (!targetCrate) {
+      throw new BottleMoveError('crate_not_found', 'Clayette de destination introuvable.');
+    }
+    const [sourceCrate] = source.crateId
+      ? await tx.select().from(crates).where(eq(crates.id, source.crateId)).limit(1)
+      : [];
+    // Sans ce garde-fou, le déplacement redevient un moyen de faire passer
+    // une bouteille dans une cave où l'on n'a aucun droit.
+    if (!sourceCrate || sourceCrate.cellarId !== targetCrate.cellarId) {
+      throw new BottleMoveError('other_cellar', 'La clayette de destination doit appartenir à la même cave.');
+    }
+    if (sourceCrate.id === targetCrate.id) {
+      throw new BottleMoveError('same_crate', 'Cette bouteille est déjà dans cette clayette.');
+    }
+
+    const movedQuantity = quantity ?? source.quantity;
+    if (movedQuantity > source.quantity) {
+      throw new BottleMoveError(
+        'insufficient_stock',
+        'Nombre de bouteilles à déplacer supérieur au stock disponible.',
+      );
+    }
+    const absorbsSource = movedQuantity === source.quantity;
+
+    const [sameWineLot] = await findSameWineLots({ db: tx, bottle: source, crateIds: [toCrateId] });
+    if (sameWineLot) {
+      await tx
+        .update(bottles)
+        .set({
+          ...buildLotMergePatch({ target: sameWineLot, source, absorbsSource }),
+          quantity: sameWineLot.quantity + movedQuantity,
+        })
+        .where(eq(bottles.id, sameWineLot.id));
+      if (absorbsSource) {
+        await tx
+          .update(consumptionHistory)
+          .set({ bottleId: sameWineLot.id })
+          .where(eq(consumptionHistory.bottleId, source.id));
+        await tx
+          .update(wishlistItems)
+          .set({ promotedBottleId: sameWineLot.id })
+          .where(eq(wishlistItems.promotedBottleId, source.id));
+        await tx.delete(bottles).where(eq(bottles.id, source.id));
+      } else {
+        await tx
+          .update(bottles)
+          .set({ quantity: source.quantity - movedQuantity })
+          .where(eq(bottles.id, source.id));
+      }
+      return { bottleId: sameWineLot.id, merged: true };
+    }
+
+    // Ajoutée en fin de clayette cible : son ancien sortOrder n'a aucun
+    // sens dans ce nouveau contexte.
+    const sortOrder = (
+      await tx.select({ id: bottles.id }).from(bottles).where(eq(bottles.crateId, toCrateId))
+    ).length;
+
+    if (absorbsSource) {
+      await tx.update(bottles).set({ crateId: toCrateId, sortOrder }).where(eq(bottles.id, source.id));
+      return { bottleId: source.id, merged: false };
+    }
+
+    const movedId = newId();
+    await tx
+      .update(bottles)
+      .set({ quantity: source.quantity - movedQuantity })
+      .where(eq(bottles.id, source.id));
+    await tx.insert(bottles).values({
+      ...source,
+      id: movedId,
+      crateId: toCrateId,
+      sortOrder,
+      quantity: movedQuantity,
+    });
+    return { bottleId: movedId, merged: false };
+  });
 };
 
 /**
