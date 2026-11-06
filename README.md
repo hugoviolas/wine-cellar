@@ -115,7 +115,7 @@ dont il est membre — jamais au-delà, même pour un super-admin. Désactivé t
   compte désactivé coupe immédiatement l'accès. Les adresses de retour sont limitées
   à claude.ai, claude.com et la boucle locale (Claude Code, MCP Inspector).
 - **Tools** (`src/mcp/`) : `list_cellars`, `get_cellar_overview`, `search_bottles`,
-  `get_bottle`, `add_bottle`, `update_bottle`, `delete_bottle`, `save_bottle_analysis`,
+  `get_bottle`, `add_bottle`, `update_bottle`, `move_bottles`, `delete_bottle`, `save_bottle_analysis`,
   `consume_bottle`, `list_consumptions`, `update_consumption`, `delete_consumption`,
   `list_wishlist`, `add_wishlist_item`, `update_wishlist_item`, `delete_wishlist_item`,
   `promote_wishlist_item`. Ils passent par les mêmes fonctions du domaine et les mêmes

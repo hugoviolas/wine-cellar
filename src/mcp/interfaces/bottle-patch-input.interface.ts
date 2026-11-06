@@ -7,5 +7,4 @@ export interface BottlePatchInput extends DescriptionPatchInput {
   drink_until?: number | null;
   user_note?: string | null;
   rating?: number | null;
-  crate_id?: string;
 }

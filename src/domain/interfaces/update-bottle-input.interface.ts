@@ -12,6 +12,5 @@ export interface UpdateBottleInput {
   rating?: number | null;
   drinkFrom?: number | null;
   drinkUntil?: number | null;
-  crateId?: string;
   details?: unknown;
 }

@@ -61,7 +61,7 @@ d'un utilisateur et avec ses droits.
 
 | Lecture               | Écriture                                                      |
 | --------------------- | ------------------------------------------------------------- |
-| `list_cellars`        | `add_bottle`, `update_bottle`, `delete_bottle`                |
+| `list_cellars`        | `add_bottle`, `update_bottle`, `move_bottles`, `delete_bottle` |
 | `get_cellar_overview` | `save_bottle_analysis` (analyse rédigée par Claude)           |
 | `search_bottles`      | `consume_bottle`, `update_consumption`, `delete_consumption`  |
 | `get_bottle`          | `add_wishlist_item`, `update_wishlist_item`                   |
@@ -73,6 +73,8 @@ d'un utilisateur et avec ses droits.
   SQLite) : une cave tient en quelques centaines de lignes. Pagination `limit`/`offset`.
 - `save_bottle_analysis` écrit au même endroit que l'analyse IA de l'app, avec les mêmes
   règles de non-écrasement (`buildAiAnalysisPatch`), sans appel payant à l'API.
+- `move_bottles` passe par `moveBottles` (seul chemin de déplacement de l'app) : tout ou
+  partie du stock, fusion avec un lot du même vin dans la clayette cible.
 - Jours en `AAAA-MM-JJ` à l'heure de Paris (`domain/parisDate.ts`).
 
 ## 5. Hors périmètre (pistes)

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/requireApiUser';
 import { db } from '@/db/client';
 import { updateBottle, deleteBottle, updateBottleBodySchema, type UpdateBottleInput } from '@/domain/bottles';
-import { checkCrateMove, isPersonalBottlePatch } from '@/domain/bottleEditing';
+import { isPersonalBottlePatch } from '@/domain/bottleEditing';
 import { canEditCellarContent } from '@/domain/permissions';
 import { resolveBottleAccess, type BottleAccessResult } from '@/domain/bottleAccess';
 import { parseBottleDetails } from '@/domain/bottleCategories';
@@ -75,19 +75,6 @@ export const PATCH = async (
   // reader (voir isPersonalBottlePatch).
   if (!isPersonalBottlePatch(patchKeys) && !canEditCellarContent(role)) {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
-  }
-
-  if (parsed.data.crateId) {
-    const move = await checkCrateMove({ db, fromCrateId: bottle.crateId, toCrateId: parsed.data.crateId });
-    if (move === 'target_not_found') {
-      return NextResponse.json({ error: 'Clayette de destination introuvable.' }, { status: 404 });
-    }
-    if (move === 'other_cellar') {
-      return NextResponse.json(
-        { error: 'La clayette de destination doit appartenir à la même cave.' },
-        { status: 400 },
-      );
-    }
   }
 
   const patch: UpdateBottleInput = { ...parsed.data };

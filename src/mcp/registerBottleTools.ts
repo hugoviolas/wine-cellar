@@ -1,6 +1,14 @@
 import { z } from 'zod';
-import { createBottle, deleteBottle, listBottlesByCellar, updateBottle } from '@/domain/bottles';
-import { checkCrateMove, isPersonalBottlePatch } from '@/domain/bottleEditing';
+import {
+  BottleMoveError,
+  createBottle,
+  deleteBottle,
+  listBottlesByCellar,
+  moveBottles,
+  updateBottle,
+  type MoveBottlesResult,
+} from '@/domain/bottles';
+import { isPersonalBottlePatch } from '@/domain/bottleEditing';
 import { filterBottles } from '@/domain/bottleSearch';
 import { countBottlesInCrate } from '@/domain/crates';
 import { listBottleConsumptions } from '@/domain/history';
@@ -238,7 +246,7 @@ const registerWriteTools = ({ server, context }: RegisterToolsArgs): void => {
     {
       title: 'Modifier une bouteille',
       description:
-        "Modifie une bouteille. Seuls les champs fournis changent ; null efface un champ facultatif. user_note et rating sont modifiables par tout membre de la cave, y compris reader ; tout le reste est réservé à owner et editor. Pour une bouteille bue, utiliser consume_bottle plutôt que de baisser quantity : la consommation reste dans l'historique. crate_id déplace la bouteille, dans la même cave seulement. Renvoie la fiche à jour.",
+        "Modifie une bouteille. Seuls les champs fournis changent ; null efface un champ facultatif. user_note et rating sont modifiables par tout membre de la cave, y compris reader ; tout le reste est réservé à owner et editor. Pour une bouteille bue, utiliser consume_bottle plutôt que de baisser quantity : la consommation reste dans l'historique. Pour changer de clayette, utiliser move_bottles. Renvoie la fiche à jour.",
       inputSchema: {
         bottle_id: bottleIdField,
         name: bottleDescriptionFields.name.optional(),
@@ -257,9 +265,6 @@ const registerWriteTools = ({ server, context }: RegisterToolsArgs): void => {
         drink_until: clearable(drinkWindowFields.drink_until),
         user_note: clearable(userNoteField),
         rating: clearable(ratingField),
-        crate_id: crateIdField
-          .optional()
-          .describe('Nouvelle clayette, dans la même cave (voir get_cellar_overview).'),
       },
       annotations: {
         readOnlyHint: false,
@@ -274,11 +279,6 @@ const registerWriteTools = ({ server, context }: RegisterToolsArgs): void => {
         work: async () => {
           const { bottle, role } = await resolveBottle({ context, id: bottleId });
           const patch = buildBottlePatch({ target: bottle, input });
-          if (patch.crateId === bottle.crateId) {
-            // Déjà dans cette clayette : rien à déplacer, et `updateBottle`
-            // la renverrait sinon en fin de clayette.
-            delete patch.crateId;
-          }
           const fields = Object.keys(patch);
           if (fields.length === 0) {
             throw new ToolError('Aucun champ à modifier.');
@@ -286,14 +286,62 @@ const registerWriteTools = ({ server, context }: RegisterToolsArgs): void => {
           if (!isPersonalBottlePatch(fields)) {
             requireEditor(role);
           }
-          if (patch.crateId !== undefined) {
-            const move = await checkCrateMove({ db, fromCrateId: bottle.crateId, toCrateId: patch.crateId });
-            if (move !== 'ok') {
-              throw new ToolError('Clayette de destination introuvable ou dans une autre cave.');
-            }
-          }
           await updateBottle({ db, bottleId, input: patch });
           return reloadDetail({ context, id: bottleId });
+        },
+      });
+    },
+  );
+
+  server.registerTool(
+    'move_bottles',
+    {
+      title: 'Déplacer des bouteilles',
+      description:
+        "Déplace tout ou partie du stock d'une bouteille vers une autre clayette de la même cave. Si la clayette cible contient déjà un lot du même vin (même catégorie, nom, producteur, millésime, couleur et contenance, sans tenir compte des accents ni de la casse), les bouteilles le rejoignent (merged : true) : bottle_id du résultat est alors celui de ce lot, et la fiche d'origine disparaît si tout son stock est parti. Un déplacement partiel sans lot identique crée une copie de la fiche dans la clayette cible. Réservé à owner et editor. Renvoie la fiche du lot qui contient désormais les bouteilles.",
+      inputSchema: {
+        bottle_id: bottleIdField,
+        crate_id: crateIdField.describe(
+          'Clayette de destination, dans la même cave (voir get_cellar_overview).',
+        ),
+        quantity: z
+          .number()
+          .int()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe('Nombre de bouteilles à déplacer. Par défaut : tout le stock.'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    (input) => {
+      return runTool({
+        tool: 'move_bottles',
+        work: async () => {
+          const { bottle, role } = await resolveBottle({ context, id: input.bottle_id });
+          requireEditor(role);
+          // La clayette cible doit aussi être dans une cave dont le compte est
+          // membre ; `moveBottles` vérifie ensuite qu'elle est dans la même.
+          await resolveCrate({ context, id: input.crate_id });
+          let moved: MoveBottlesResult;
+          try {
+            moved = await moveBottles({
+              db,
+              bottleId: bottle.id,
+              toCrateId: input.crate_id,
+              quantity: input.quantity,
+            });
+          } catch (error: unknown) {
+            if (error instanceof BottleMoveError) {
+              throw new ToolError(error.message);
+            }
+            throw error;
+          }
+          return {
+            moved_quantity: input.quantity ?? bottle.quantity,
+            merged: moved.merged,
+            bottle: await reloadDetail({ context, id: moved.bottleId }),
+          };
         },
       });
     },

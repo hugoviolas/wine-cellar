@@ -74,9 +74,6 @@ export const buildBottlePatch = ({ target, input }: BuildBottlePatchArgs): Updat
   if (input.rating !== undefined) {
     patch.rating = input.rating;
   }
-  if (input.crate_id !== undefined) {
-    patch.crateId = input.crate_id;
-  }
   checkDrinkWindow({
     drinkFrom: 'drinkFrom' in patch ? patch.drinkFrom : target.drinkFrom,
     drinkUntil: 'drinkUntil' in patch ? patch.drinkUntil : target.drinkUntil,

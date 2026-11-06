@@ -94,6 +94,7 @@ describe('serveur MCP Ma Cave', () => {
       'list_cellars',
       'list_consumptions',
       'list_wishlist',
+      'move_bottles',
       'promote_wishlist_item',
       'save_bottle_analysis',
       'search_bottles',
@@ -271,6 +272,73 @@ describe('serveur MCP Ma Cave', () => {
       expect(result.isError).toBe(true);
     });
 
+    it('déplace une partie du stock : une copie de la fiche rejoint la clayette cible', async () => {
+      const bottleId = await addLandonne(world);
+      const otherCrate = await createCrate({
+        db: world.db,
+        input: { cellarId: world.owner.cellarId, capacity: 6 },
+      });
+
+      const moved = await callToolJson({
+        client: world.client,
+        name: 'move_bottles',
+        args: { bottle_id: bottleId, crate_id: otherCrate, quantity: 1 },
+      });
+      const source = await callToolJson({
+        client: world.client,
+        name: 'get_bottle',
+        args: { bottle_id: bottleId },
+      });
+
+      expect(moved).toMatchObject({
+        moved_quantity: 1,
+        merged: false,
+        bottle: { quantity: 1, crate: { crate_id: otherCrate } },
+      });
+      expect(idOf(moved)).not.toBe(bottleId);
+      expect(source).toMatchObject({ quantity: 2, crate: { crate_id: world.crateId } });
+    });
+
+    it('fusionne avec le lot du même vin déjà présent dans la clayette cible', async () => {
+      const bottleId = await addLandonne(world);
+      const otherCrate = await createCrate({
+        db: world.db,
+        input: { cellarId: world.owner.cellarId, capacity: 6 },
+      });
+      const lotId = idOf(
+        await callToolJson({
+          client: world.client,
+          name: 'add_bottle',
+          args: {
+            crate_id: otherCrate,
+            category: 'wine',
+            name: 'Côte-Rôtie La Landonne',
+            producer: 'Guigal',
+            vintage: 2015,
+            color: 'rouge',
+          },
+        }),
+      );
+
+      const moved = await callToolJson({
+        client: world.client,
+        name: 'move_bottles',
+        args: { bottle_id: bottleId, crate_id: otherCrate },
+      });
+      const gone = await callTool({
+        client: world.client,
+        name: 'get_bottle',
+        args: { bottle_id: bottleId },
+      });
+
+      expect(moved).toMatchObject({
+        moved_quantity: 3,
+        merged: true,
+        bottle: { bottle_id: lotId, quantity: 4 },
+      });
+      expect(gone.isError).toBe(true);
+    });
+
     it("refuse de déplacer une bouteille vers la clayette d'une autre cave", async () => {
       const bottleId = await addLandonne(world);
       const stranger = await createTestMember(world.db, 'autre@example.com');
@@ -278,14 +346,36 @@ describe('serveur MCP Ma Cave', () => {
         db: world.db,
         input: { cellarId: stranger.cellarId, capacity: 6 },
       });
-
-      const result = await callTool({
-        client: world.client,
-        name: 'update_bottle',
-        args: { bottle_id: bottleId, crate_id: foreignCrate },
+      const ownCellar = await createTestMember(world.db, 'second@example.com');
+      // Membre des deux caves : le refus vient bien de la règle « même cave ».
+      await world.db.insert(cellarMemberships).values({
+        id: newId(),
+        cellarId: ownCellar.cellarId,
+        userId: world.owner.user.id,
+        role: 'owner',
+        createdAt: new Date(Date.now() + 1000).toISOString(),
+      });
+      const secondCrate = await createCrate({
+        db: world.db,
+        input: { cellarId: ownCellar.cellarId, capacity: 6 },
       });
 
-      expect(result.isError).toBe(true);
+      const foreign = await callTool({
+        client: world.client,
+        name: 'move_bottles',
+        args: { bottle_id: bottleId, crate_id: foreignCrate },
+      });
+      const otherCellar = await callTool({
+        client: world.client,
+        name: 'move_bottles',
+        args: { bottle_id: bottleId, crate_id: secondCrate },
+      });
+
+      expect(foreign.isError).toBe(true);
+      expect(otherCellar).toEqual({
+        isError: true,
+        text: 'La clayette de destination doit appartenir à la même cave.',
+      });
     });
 
     it("ne montre pas la bouteille d'une cave dont on n'est pas membre", async () => {
@@ -363,7 +453,17 @@ describe('serveur MCP Ma Cave', () => {
         args: { crate_id: world.crateId, category: 'wine', name: 'X' },
       });
 
+      const move = await callTool({
+        client: reader,
+        name: 'move_bottles',
+        args: { bottle_id: bottleId, crate_id: world.crateId },
+      });
+
       expect(rating.isError).toBe(false);
+      expect(move).toMatchObject({
+        isError: true,
+        text: expect.stringContaining('Rôle insuffisant') as unknown,
+      });
       expect(rename).toMatchObject({
         isError: true,
         text: expect.stringContaining('Rôle insuffisant') as unknown,
