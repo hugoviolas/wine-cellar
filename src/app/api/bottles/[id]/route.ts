@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/requireApiUser';
 import { db } from '@/db/client';
 import { updateBottle, deleteBottle, updateBottleBodySchema, type UpdateBottleInput } from '@/domain/bottles';
-import { getCrateById } from '@/domain/crates';
 import { canEditCellarContent } from '@/domain/permissions';
 import { resolveBottleAccess, type BottleAccessResult } from '@/domain/bottleAccess';
 import { parseBottleDetails } from '@/domain/bottleCategories';
@@ -80,20 +79,6 @@ export const PATCH = async (
   const isPersonalOnlyPatch = patchKeys.every((key) => personalFields.has(key));
   if (!isPersonalOnlyPatch && !canEditCellarContent(role)) {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
-  }
-
-  if (parsed.data.crateId) {
-    const currentCrate = await getCrateById({ db, crateId: bottle.crateId });
-    const targetCrate = await getCrateById({ db, crateId: parsed.data.crateId });
-    if (!targetCrate) {
-      return NextResponse.json({ error: 'Clayette de destination introuvable.' }, { status: 404 });
-    }
-    if (!currentCrate || targetCrate.cellarId !== currentCrate.cellarId) {
-      return NextResponse.json(
-        { error: 'La clayette de destination doit appartenir à la même cave.' },
-        { status: 400 },
-      );
-    }
   }
 
   const patch: UpdateBottleInput = { ...parsed.data };

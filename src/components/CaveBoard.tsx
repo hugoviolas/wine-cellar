@@ -17,9 +17,14 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CrateCard, type BottleRow } from './CrateCard';
+import { MoveBottlesDialog } from './MoveBottlesDialog';
 import { useToast } from '@/components/Toast';
 import type { Crate } from './interfaces/crate.interface';
+import type { PendingBottleMove } from './interfaces/pending-bottle-move.interface';
 import { errorMessageFromResponse } from '@/lib/apiError';
+import { applyBottleMove, bottleMoveMessage, requestBottleMove } from '@/lib/bottleMove';
+import { crateLabel } from '@/lib/crateLabel';
+import { isSameWine } from '@/domain/bottleIdentity';
 import type { ReactElement } from 'react';
 
 /**
@@ -44,8 +49,19 @@ export const CaveBoard = ({
   const router = useRouter();
   const toast = useToast();
   const [bottlesByCrate, setBottlesByCrate] = useState(initialBottlesByCrate);
+  // Après un `router.refresh()`, la page serveur renvoie l'état réel de la
+  // cave : on le reprend tel quel, plutôt que de garder une copie locale
+  // qui divergerait (ex. un lot fusionné ou supprimé par le serveur).
+  const [syncedBottlesByCrate, setSyncedBottlesByCrate] = useState(initialBottlesByCrate);
+  if (syncedBottlesByCrate !== initialBottlesByCrate) {
+    setSyncedBottlesByCrate(initialBottlesByCrate);
+    setBottlesByCrate(initialBottlesByCrate);
+  }
   const [error, setError] = useState<string | null>(null);
   const [activeBottle, setActiveBottle] = useState<BottleRow | null>(null);
+  const [pendingMove, setPendingMove] = useState<PendingBottleMove | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -128,34 +144,56 @@ export const CaveBoard = ({
     }
 
     const moved = bottlesByCrate[fromCrateId]?.find((b) => b.id === bottleId);
-    if (!moved) {
+    if (!moved || !crates.some((crate) => crate.id === toCrateId)) {
       return;
     }
-
-    const previous = bottlesByCrate;
+    // Rien ne bouge avant confirmation : un lâcher accidentel s'annule d'un
+    // clic, et c'est là qu'on choisit combien de bouteilles déplacer.
     setError(null);
-    setBottlesByCrate({
-      ...previous,
-      [fromCrateId]: (previous[fromCrateId] ?? []).filter((b) => b.id !== bottleId),
-      [toCrateId]: [...(previous[toCrateId] ?? []), moved],
-    });
+    setMoveError(null);
+    setPendingMove({ bottle: moved, fromCrateId, toCrateId });
+  };
 
-    const response = await fetch(`/api/bottles/${bottleId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ crateId: toCrateId }),
-    });
-    if (!response.ok) {
-      const message = await errorMessageFromResponse({
-        response,
-        fallback: 'Impossible de déplacer cette bouteille.',
-      });
-      setError(message);
-      toast.error(message);
-      setBottlesByCrate(previous);
+  const labelOfCrate = (crateId: string): string => {
+    const crate = crates.find((c) => c.id === crateId);
+    return crate ? crateLabel({ number: crate.number, name: crate.name }) : 'la clayette';
+  };
+
+  const confirmMove = async (quantity: number): Promise<void> => {
+    if (!pendingMove) {
       return;
     }
+    const { bottle, fromCrateId, toCrateId } = pendingMove;
+    setMoving(true);
+    setMoveError(null);
+    const outcome = await requestBottleMove({
+      bottleId: bottle.id,
+      crateId: toCrateId,
+      quantity: quantity < bottle.quantity ? quantity : undefined,
+    });
+    setMoving(false);
+    if (!outcome.ok) {
+      setMoveError(outcome.message);
+      return;
+    }
+    const { result } = outcome;
+    if (result) {
+      setBottlesByCrate((current) =>
+        applyBottleMove({ bottlesByCrate: current, bottle, fromCrateId, toCrateId, quantity, result }),
+      );
+    }
+    setPendingMove(null);
+    toast.success(
+      bottleMoveMessage({ quantity, merged: result?.merged ?? false, targetLabel: labelOfCrate(toCrateId) }),
+    );
     router.refresh();
+  };
+
+  const sameWineQuantity = (move: PendingBottleMove): number | null => {
+    const lot = (bottlesByCrate[move.toCrateId] ?? []).find(
+      (b) => b.id !== move.bottle.id && isSameWine(b, move.bottle),
+    );
+    return lot ? lot.quantity : null;
   };
 
   return (
@@ -189,6 +227,19 @@ export const CaveBoard = ({
           )}
         </DragOverlay>
       </DndContext>
+      {pendingMove && (
+        <MoveBottlesDialog
+          key={`${pendingMove.bottle.id}-${pendingMove.toCrateId}`}
+          bottleLabel={[pendingMove.bottle.name, pendingMove.bottle.vintage].filter(Boolean).join(' ')}
+          available={pendingMove.bottle.quantity}
+          targetLabel={labelOfCrate(pendingMove.toCrateId)}
+          sameWineQuantity={sameWineQuantity(pendingMove)}
+          busy={moving}
+          error={moveError}
+          onConfirm={(quantity) => void confirmMove(quantity)}
+          onCancel={() => setPendingMove(null)}
+        />
+      )}
     </div>
   );
 };

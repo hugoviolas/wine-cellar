@@ -50,7 +50,9 @@ const CavePage = async ({
         id: row.bottle.id,
         name: row.bottle.name,
         category: row.bottle.category,
+        producer: row.bottle.producer,
         vintage: row.bottle.vintage,
+        volumeMl: row.bottle.volumeMl,
         quantity: row.bottle.quantity,
         color: row.bottle.color,
       }));
