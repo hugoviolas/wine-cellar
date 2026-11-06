@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/requireApiUser';
 import { db } from '@/db/client';
 import { updateBottle, deleteBottle, updateBottleBodySchema, type UpdateBottleInput } from '@/domain/bottles';
-import { getCrateById } from '@/domain/crates';
+import { checkCrateMove, isPersonalBottlePatch } from '@/domain/bottleEditing';
 import { canEditCellarContent } from '@/domain/permissions';
 import { resolveBottleAccess, type BottleAccessResult } from '@/domain/bottleAccess';
 import { parseBottleDetails } from '@/domain/bottleCategories';
@@ -71,24 +71,18 @@ export const PATCH = async (
     return NextResponse.json({ error: 'Aucun champ à mettre à jour.' }, { status: 400 });
   }
 
-  // Un patch qui ne porte que sur la note personnelle et/ou la note sur 5
-  // est ouvert à tout membre (y compris reader — voir la matrice de
-  // permissions du spec : "Consommer une bouteille + noter"). Tout autre
-  // champ, seul ou combiné à ceux-ci, reste réservé aux rôles pouvant
-  // éditer le contenu de la cave.
-  const personalFields = new Set(['userNote', 'rating']);
-  const isPersonalOnlyPatch = patchKeys.every((key) => personalFields.has(key));
-  if (!isPersonalOnlyPatch && !canEditCellarContent(role)) {
+  // Note personnelle et note sur 5 : ouvertes à tout membre, y compris
+  // reader (voir isPersonalBottlePatch).
+  if (!isPersonalBottlePatch(patchKeys) && !canEditCellarContent(role)) {
     return NextResponse.json({ error: 'Rôle insuffisant pour cette action.' }, { status: 403 });
   }
 
   if (parsed.data.crateId) {
-    const currentCrate = await getCrateById({ db, crateId: bottle.crateId });
-    const targetCrate = await getCrateById({ db, crateId: parsed.data.crateId });
-    if (!targetCrate) {
+    const move = await checkCrateMove({ db, fromCrateId: bottle.crateId, toCrateId: parsed.data.crateId });
+    if (move === 'target_not_found') {
       return NextResponse.json({ error: 'Clayette de destination introuvable.' }, { status: 404 });
     }
-    if (!currentCrate || targetCrate.cellarId !== currentCrate.cellarId) {
+    if (move === 'other_cellar') {
       return NextResponse.json(
         { error: 'La clayette de destination doit appartenir à la même cave.' },
         { status: 400 },

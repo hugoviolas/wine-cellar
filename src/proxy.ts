@@ -23,8 +23,18 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+/**
+ * Routes authentifiées sans cookie — jeton OAuth dans l'en-tête
+ * `Authorization` (`/mcp`), identifiants du client OAuth dans la requête
+ * (les autres). Un site tiers ne peut rien y faire porter à la place de
+ * l'utilisateur, donc rien à protéger ici contre le CSRF ; et un client MCP
+ * qui tourne dans un navigateur (MCP Inspector) y envoie légitimement une
+ * origine étrangère.
+ */
+const COOKIELESS_PATHS = new Set(['/mcp', '/api/oauth/token', '/api/oauth/register', '/api/oauth/revoke']);
+
 export const proxy = (request: NextRequest): NextResponse => {
-  if (!MUTATING_METHODS.has(request.method)) {
+  if (!MUTATING_METHODS.has(request.method) || COOKIELESS_PATHS.has(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
 

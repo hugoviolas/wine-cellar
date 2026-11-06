@@ -127,6 +127,13 @@
       "when": 1789927484662,
       "tag": "0017_curly_salo",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1793976002689,
+      "tag": "0018_oauth_mcp",
+      "breakpoints": true
     }
   ]
 }

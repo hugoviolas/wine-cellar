@@ -198,11 +198,42 @@ Depuis l'onglet Actions du repo → workflow « Rollback préprod » ou
 `ghcr.io/hugoviolas/wine-cellar` — packages du repo GitHub). Le rollback
 prod passe par la même approbation manuelle que le déploiement normal.
 
+## 8. Connecteur Claude (MCP)
+
+Optionnel, prod seulement. Ajoute à `/opt/cave-vin-prod/.env` :
+
+```env
+MCP_PUBLIC_URL=https://cave.paupau-cuisine.com
+```
+
+puis recrée le conteneur pour qu'il relise son environnement :
+
+```bash
+cd /opt/cave-vin-prod && docker compose up -d
+```
+
+Vérification (aucune authentification requise pour ces deux appels) :
+
+```bash
+curl -s https://cave.paupau-cuisine.com/.well-known/oauth-protected-resource/mcp
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://cave.paupau-cuisine.com/mcp   # 401 attendu
+```
+
+Dans claude.ai → Paramètres → Connecteurs → « Ajouter un connecteur personnalisé » :
+URL `https://cave.paupau-cuisine.com/mcp`. Claude ouvre la page d'autorisation de la
+cave : s'y connecter avec son compte. Rien d'autre à configurer côté Cloudflare — le
+tunnel relaie déjà tout le sous-domaine.
+
+Pour couper l'accès : déconnecter le connecteur dans claude.ai (qui révoque ses jetons),
+ou réinitialiser le mot de passe du compte, ce qui invalide toutes ses autorisations.
+La migration `0018_oauth_mcp` (tables `oauth_*`) est appliquée au démarrage comme les
+autres.
+
 ## Résumé de ce qui vit où
 
-| Où                                 | Quoi                                                                                                                  |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Dans le repo git                   | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret)                                        |
-| `/opt/cave-vin-preprod/` sur le Pi | `.env` (secrets préprod), `data/` (SQLite préprod), `docker-compose.yml` (copié par le workflow à chaque déploiement) |
-| `/opt/cave-vin-prod/` sur le Pi    | `.env` (secrets prod, dont `TUNNEL_TOKEN`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow)       |
-| `ghcr.io/hugoviolas/wine-cellar`   | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement)     |
+| Où                                 | Quoi                                                                                                                                |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Dans le repo git                   | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret)                                                      |
+| `/opt/cave-vin-preprod/` sur le Pi | `.env` (secrets préprod), `data/` (SQLite préprod), `docker-compose.yml` (copié par le workflow à chaque déploiement)               |
+| `/opt/cave-vin-prod/` sur le Pi    | `.env` (secrets prod, dont `TUNNEL_TOKEN` et `MCP_PUBLIC_URL`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow) |
+| `ghcr.io/hugoviolas/wine-cellar`   | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement)                   |
