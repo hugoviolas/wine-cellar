@@ -10,6 +10,13 @@ services:
       - '3000'
     env_file:
       - .env
+    environment:
+      # Active le connecteur MCP (voir docs/deployment/README.md, étape 8).
+      # Pas un secret : c'est l'adresse publique de l'app, celle qu'on saisit
+      # dans claude.ai. Déclarée ici plutôt que dans .env pour que chaque
+      # déploiement l'applique sans intervention sur le Pi ; elle l'emporte
+      # sur une éventuelle valeur du .env. La retirer désactive le MCP.
+      MCP_PUBLIC_URL: https://cave.paupau-cuisine.com
     volumes:
       - ./data:/app/data
 

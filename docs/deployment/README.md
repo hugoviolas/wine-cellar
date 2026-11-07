@@ -203,19 +203,16 @@ prod passe par la même approbation manuelle que le déploiement normal.
 
 ## 8. Connecteur Claude (MCP)
 
-Optionnel, prod seulement. Ajoute à `/opt/cave-vin-prod/.env` :
+Prod seulement. Le connecteur est activé par `MCP_PUBLIC_URL`, déclarée dans
+`docker-compose.prod.yml` (section `environment` du service `app`) : le workflow prod
+copie ce fichier sur le Pi à chaque déploiement, il n'y a donc rien à faire à la main.
+La préprod ne la définit pas, et y répond 404 sur toutes les routes MCP et OAuth.
 
-```env
-MCP_PUBLIC_URL=https://cave.paupau-cuisine.com
-```
+Pour désactiver le MCP, retirer cette ligne et redéployer. En dépannage sans passer par un
+déploiement, la même ligne s'édite directement dans `/opt/cave-vin-prod/docker-compose.yml`,
+suivie de `docker compose up -d` — elle sera écrasée au déploiement suivant.
 
-puis recrée le conteneur pour qu'il relise son environnement :
-
-```bash
-cd /opt/cave-vin-prod && docker compose up -d
-```
-
-Vérification (aucune authentification requise pour ces deux appels) :
+Vérification après déploiement (aucune authentification requise pour ces deux appels) :
 
 ```bash
 curl -s https://cave.paupau-cuisine.com/.well-known/oauth-protected-resource/mcp
@@ -255,9 +252,9 @@ autres.
 
 ## Résumé de ce qui vit où
 
-| Où                                 | Quoi                                                                                                                                |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Dans le repo git                   | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret)                                                      |
-| `/opt/cave-vin-preprod/` sur le Pi | `.env` (secrets préprod), `data/` (SQLite préprod), `docker-compose.yml` (copié par le workflow à chaque déploiement)               |
-| `/opt/cave-vin-prod/` sur le Pi    | `.env` (secrets prod, dont `TUNNEL_TOKEN` et `MCP_PUBLIC_URL`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow) |
-| `ghcr.io/hugoviolas/wine-cellar`   | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement)                   |
+| Où                                 | Quoi                                                                                                                                    |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Dans le repo git                   | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret)                                                          |
+| `/opt/cave-vin-preprod/` sur le Pi | `.env` (secrets préprod), `data/` (SQLite préprod), `docker-compose.yml` (copié par le workflow à chaque déploiement)                   |
+| `/opt/cave-vin-prod/` sur le Pi    | `.env` (secrets prod, dont `TUNNEL_TOKEN`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow, porte `MCP_PUBLIC_URL`) |
+| `ghcr.io/hugoviolas/wine-cellar`   | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement)                       |
