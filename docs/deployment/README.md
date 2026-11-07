@@ -42,14 +42,17 @@ sudo usermod -aG docker $USER
 # se reconnecter (ou `newgrp docker`) pour que ça prenne effet
 ```
 
-Corepack (Yarn) doit être activé une fois pour toutes au niveau machine —
-si Node vient du gestionnaire de paquets du système, ses binaires
-appartiennent à root et un `corepack enable` lancé par le runner (utilisateur
-normal) échoue avec `EACCES`. D'où ce `sudo`, une seule fois :
+Rien d'autre n'est requis : ni Node, ni Yarn, ni Corepack sur l'hôte. Les
+vérifications de la CI (types, lint, formatage, tests) tournent dans le stage
+`check` du Dockerfile, pas sur la machine — c'est voulu. Un `yarn install`
+lancé sur le runner exécute les scripts `postinstall` de chaque dépendance
+avec les droits du runner, lequel appartient aux groupes `docker` (et souvent
+`sudo`) : une seule dépendance transitive compromise suffirait à prendre la
+machine. Les faire tourner dans le build isole cette exécution, et les tests
+s'exécutent du même coup dans l'environnement réel de l'image déployée.
 
-```bash
-sudo corepack enable
-```
+Si une ancienne installation a laissé un `corepack enable` au niveau machine,
+il n'est plus utilisé et peut rester en place sans effet.
 
 Crée les deux dossiers persistants, séparés de tout checkout git — c'est
 là que vivent les vraies données et les secrets, jamais dans le repo :
@@ -198,11 +201,60 @@ Depuis l'onglet Actions du repo → workflow « Rollback préprod » ou
 `ghcr.io/hugoviolas/wine-cellar` — packages du repo GitHub). Le rollback
 prod passe par la même approbation manuelle que le déploiement normal.
 
+## 8. Connecteur Claude (MCP)
+
+Prod seulement. Le connecteur est activé par `MCP_PUBLIC_URL`, déclarée dans
+`docker-compose.prod.yml` (section `environment` du service `app`) : le workflow prod
+copie ce fichier sur le Pi à chaque déploiement, il n'y a donc rien à faire à la main.
+La préprod ne la définit pas, et y répond 404 sur toutes les routes MCP et OAuth.
+
+Pour désactiver le MCP, retirer cette ligne et redéployer. En dépannage sans passer par un
+déploiement, la même ligne s'édite directement dans `/opt/cave-vin-prod/docker-compose.yml`,
+suivie de `docker compose up -d` — elle sera écrasée au déploiement suivant.
+
+Vérification après déploiement (aucune authentification requise pour ces deux appels) :
+
+```bash
+curl -s https://cave.paupau-cuisine.com/.well-known/oauth-protected-resource/mcp
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://cave.paupau-cuisine.com/mcp   # 401 attendu
+```
+
+Dans claude.ai → Paramètres → Connecteurs → « Ajouter un connecteur personnalisé » :
+URL `https://cave.paupau-cuisine.com/mcp`. Claude ouvre la page d'autorisation de la
+cave : s'y connecter avec son compte. Rien d'autre à configurer côté Cloudflare — le
+tunnel relaie déjà tout le sous-domaine.
+
+Pour couper l'accès, ne pas compter sur le retrait du connecteur dans claude.ai : l'app
+expose bien un endpoint de révocation, mais rien ne garantit que claude.ai l'appelle. Deux
+moyens sûrs :
+
+- réinitialiser le mot de passe du compte (lien de réinitialisation généré depuis
+  `/admin/utilisateurs`) : toutes ses autorisations tombent, ses sessions dans l'app
+  aussi ;
+- en urgence, supprimer les jetons directement dans la base, depuis le Pi (`sqlite3` à
+  installer avec `sudo apt install sqlite3` s'il manque) — effet immédiat, Claude devra
+  refaire l'autorisation :
+
+```bash
+# un seul compte
+sqlite3 /opt/cave-vin-prod/data/cave.db \
+  "DELETE FROM oauth_tokens WHERE user_id = (SELECT id FROM users WHERE email = 'toi@example.com');"
+# tout le monde
+sqlite3 /opt/cave-vin-prod/data/cave.db "DELETE FROM oauth_tokens;"
+```
+
+Un refresh token présenté deux fois (signe qu'il a été copié) révoque de lui-même toute
+l'autorisation ; l'événement apparaît dans `docker compose logs app` sous le message
+« Refresh token OAuth réutilisé ».
+
+La migration `0018_oauth_mcp` (tables `oauth_*`) est appliquée au démarrage comme les
+autres.
+
 ## Résumé de ce qui vit où
 
-| Où                                 | Quoi                                                                                                                  |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Dans le repo git                   | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret)                                        |
-| `/opt/cave-vin-preprod/` sur le Pi | `.env` (secrets préprod), `data/` (SQLite préprod), `docker-compose.yml` (copié par le workflow à chaque déploiement) |
-| `/opt/cave-vin-prod/` sur le Pi    | `.env` (secrets prod, dont `TUNNEL_TOKEN`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow)       |
-| `ghcr.io/hugoviolas/wine-cellar`   | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement)     |
+| Où                                 | Quoi                                                                                                                                    |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Dans le repo git                   | Code, `Dockerfile`, workflows, `docker-compose.*.yml` (structure, sans secret)                                                          |
+| `/opt/cave-vin-preprod/` sur le Pi | `.env` (secrets préprod), `data/` (SQLite préprod), `docker-compose.yml` (copié par le workflow à chaque déploiement)                   |
+| `/opt/cave-vin-prod/` sur le Pi    | `.env` (secrets prod, dont `TUNNEL_TOKEN`), `data/` (SQLite prod), `docker-compose.yml` (copié par le workflow, porte `MCP_PUBLIC_URL`) |
+| `ghcr.io/hugoviolas/wine-cellar`   | Images Docker taggées par SHA de commit, plus `:preprod` et `:prod` (dernière déployée dans chaque environnement)                       |

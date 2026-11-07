@@ -14,6 +14,7 @@ import type { UpdateCrateCapacityArgs } from './interfaces/update-crate-capacity
 import type { CrateHasActiveBottlesArgs } from './interfaces/crate-has-active-bottles-args.interface';
 import type { DeleteCrateArgs } from './interfaces/delete-crate-args.interface';
 import type { GetCrateByIdArgs } from './interfaces/get-crate-by-id-args.interface';
+import type { CountBottlesInCrateArgs } from './interfaces/count-bottles-in-crate-args.interface';
 
 export type { CreateCrateInput };
 
@@ -104,6 +105,15 @@ export const updateCrateCapacity = async ({
   capacity,
 }: UpdateCrateCapacityArgs): Promise<void> => {
   await db.update(crates).set({ capacity }).where(eq(crates.id, crateId));
+};
+
+/** Bouteilles en stock dans une clayette (somme des quantités), à comparer à sa capacité. */
+export const countBottlesInCrate = async ({ db, crateId }: CountBottlesInCrateArgs): Promise<number> => {
+  const rows = await db
+    .select({ quantity: bottles.quantity })
+    .from(bottles)
+    .where(and(eq(bottles.crateId, crateId), gt(bottles.quantity, 0)));
+  return rows.reduce((sum, row) => sum + row.quantity, 0);
 };
 
 /** Vrai si la clayette contient encore au moins une bouteille en stock (quantité > 0). */

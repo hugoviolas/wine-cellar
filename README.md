@@ -98,6 +98,32 @@ redémarrages des conteneurs.
 | `yarn docker:watch`          | `docker compose up build` (vérification de types en continu) |
 | `yarn docker:up`             | `docker compose up` (les deux services ensemble)             |
 
+## Connecteur MCP (Claude)
+
+L'app expose un serveur MCP sur `/mcp` (transport Streamable HTTP, sans session) : Claude
+peut consulter et modifier la cave au nom d'un utilisateur, avec son rôle dans chaque cave
+dont il est membre — jamais au-delà, même pour un super-admin. Désactivé tant que `MCP_PUBLIC_URL` n'est pas défini (voir `.env.example`) ; en prod, elle est déclarée dans `docker-compose.prod.yml`.
+
+- **Connexion** : dans claude.ai, Paramètres → Connecteurs → Ajouter un connecteur
+  personnalisé, URL `<MCP_PUBLIC_URL>/mcp`. Claude ouvre la page `/oauth/authorize`, où
+  l'on s'identifie avec son compte de la cave (email + mot de passe, redemandés à chaque
+  autorisation).
+- **OAuth** : l'app est son propre serveur d'autorisation (OAuth 2.1, enregistrement
+  dynamique, PKCE S256). Jetons opaques, seule leur empreinte est stockée ; accès 30 jours,
+  renouvellement 180 jours, tournant à chaque usage. Un refresh token réutilisé (signe
+  d'un vol) révoque toute l'autorisation. Une réinitialisation de mot de passe ou un
+  compte désactivé coupe immédiatement l'accès. Les adresses de retour sont limitées
+  à claude.ai, claude.com et la boucle locale (Claude Code, MCP Inspector).
+- **Tools** (`src/mcp/`) : `list_cellars`, `get_cellar_overview`, `search_bottles`,
+  `get_bottle`, `add_bottle`, `update_bottle`, `move_bottles`, `delete_bottle`, `save_bottle_analysis`,
+  `consume_bottle`, `list_consumptions`, `update_consumption`, `delete_consumption`,
+  `list_wishlist`, `add_wishlist_item`, `update_wishlist_item`, `delete_wishlist_item`,
+  `promote_wishlist_item`. Ils passent par les mêmes fonctions du domaine et les mêmes
+  contrôles de rôle que les routes de l'API.
+- **En local** : `MCP_PUBLIC_URL=http://localhost:3000`, puis
+  `npx @modelcontextprotocol/inspector` sur `http://localhost:3000/mcp`, ou
+  `claude mcp add --transport http ma-cave http://localhost:3000/mcp` dans Claude Code.
+
 ## Organisation du code
 
 - `src/domain/*` — logique métier pure : chaque fonction reçoit une instance `Db` en
@@ -108,6 +134,8 @@ redémarrages des conteneurs.
   domaine et formatent la réponse.
 - `src/app/(app)/**` — pages rendues côté serveur, protégées par `requireUser()`.
 - `src/db/*` — schéma Drizzle, migrations et fabrique de base de test.
+- `src/domain/oauth/*` — serveur d'autorisation OAuth qui protège `/mcp`.
+- `src/mcp/*` — serveur MCP : tools, contrôles d'accès, mise en forme des réponses.
 
 ## Géographie viticole
 
