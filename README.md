@@ -102,7 +102,7 @@ redémarrages des conteneurs.
 
 L'app expose un serveur MCP sur `/mcp` (transport Streamable HTTP, sans session) : Claude
 peut consulter et modifier la cave au nom d'un utilisateur, avec son rôle dans chaque cave
-dont il est membre — jamais au-delà, même pour un super-admin. Désactivé tant que `MCP_PUBLIC_URL` n'est pas défini (voir `.env.example`).
+dont il est membre — jamais au-delà, même pour un super-admin. Désactivé tant que `MCP_PUBLIC_URL` n'est pas défini (voir `.env.example`) ; en prod, elle est déclarée dans `docker-compose.prod.yml`.
 
 - **Connexion** : dans claude.ai, Paramètres → Connecteurs → Ajouter un connecteur
   personnalisé, URL `<MCP_PUBLIC_URL>/mcp`. Claude ouvre la page `/oauth/authorize`, où

@@ -28,7 +28,8 @@ d'un utilisateur et avec ses droits.
   (RFC 7009), métadonnées RFC 8414 et RFC 9728. Pas d'Express ni de `mcpAuthRouter` : les
   endpoints sont des route handlers, et l'état (clients, codes, jetons) vit en base —
   deux route handlers ne partagent pas forcément un module en mémoire.
-- **Opt-in par environnement** : `MCP_PUBLIC_URL` (émetteur OAuth). Absente, tout répond
+- **Opt-in par environnement** : `MCP_PUBLIC_URL` (émetteur OAuth), déclarée en prod dans
+  `docker-compose.prod.yml` pour que le déploiement l'applique sans intervention sur le Pi. Absente, tout répond
   404 — c'est le cas de la préprod.
 
 ## 3. Sécurité
